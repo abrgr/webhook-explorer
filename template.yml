@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Webhook Explorer
+Parameters:
+  DomainName:
+    Type: String
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+Resources:
+  WebhookApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          version: "1.0"
+          title: webhook-api
+        basePath: "/"
+        schemes:
+          - "http"
+          - "https"
+        paths:
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              produces:
+                - "application/json"
+              parameters:
+                - name: "proxy"
+                  in: "path"
+                  required: true
+                  type: "string"
+              responses: {}
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+  WebhookHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: src/webhook-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        WebhookApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: "*"
+            RestApiId: !Ref WebhookApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  WebhookHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebhookHandler
+      Principal: apigateway.amazonaws.com
+  CustomCertificateCreator:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: src/custom-certificate-creator.handler
+      MemorySize: 512
+      Timeout: 60
+      AutoPublishAlias: live
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - acm:DescribeCertificate
+              - acm:DeleteCertificate
+              - acm:RequestCertificate
+            Resource: "*"
+        - Statement:
+          - Effect: Allow
+            Action:
+              - route53:*
+            Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
+  Certificate:
+    Type: 'Custom::CertificateCreator'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt CustomCertificateCreator.Arn
+      HostedZoneId: !Ref HostedZoneId
+      DomainName: !Ref DomainName
+  WebhookDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref Certificate
+  APIDomainMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref WebhookDomain
+      RestApiId: !Ref WebhookApi
+      Stage: prod
+  WebhookRequestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-webhook-reqs"

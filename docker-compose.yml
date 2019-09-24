@@ -1,0 +1,40 @@
+version: '2'
+services:
+  aws:
+    image: mesosphere/aws-cli:1.14.5
+    volumes:
+     - ".:/project"
+     - "${AWS_CONFIG_DIR}:/root/.aws"
+    network_mode: "bridge"
+  app:
+    image: aws-sam:0.6.0
+    environment:
+     - "DOCKER_HOST=tcp://host.docker.internal:2375"
+    ports:
+     - "3000:3000"
+    volumes:
+     - ".:/var/opt"
+     - "${AWS_CONFIG_DIR}:/root/.aws"
+    network_mode: "bridge"
+  build:
+    image: aws-sam:0.6.0
+    entrypoint: "/root/.yarn/bin/yarn"
+    working_dir: "/var/opt"
+    environment:
+     - "YARN_CACHE_FOLDER=/yarn-cache"
+    volumes:
+     - ".:/var/opt"
+     - "${AWS_CONFIG_DIR}:/root/.aws"
+     - "${YARN_CACHE_DIR}:/yarn-cache"
+    network_mode: "bridge"
+  shell:
+    image: aws-sam:0.6.0
+    entrypoint: "/bin/sh"
+    working_dir: "/var/opt"
+    environment:
+     - "YARN_CACHE_FOLDER=/yarn-cache"
+    volumes:
+     - ".:/var/opt"
+     - "${AWS_CONFIG_DIR}:/root/.aws"
+     - "${YARN_CACHE_DIR}:/yarn-cache"
+    network_mode: "bridge"
