@@ -8,9 +8,9 @@ const acm = new ACM({ apiVersion });
 const route53 = new Route53({ apiVersion });
 
 exports.handler = async function handler(event, context) {
-  try {
-    const { RequestType, RequestId, StackId, LogicalResourceId } = event;
+  const { RequestType, RequestId, ResponseURL, StackId, LogicalResourceId } = event;
 
+  try {
     if ( RequestType === 'Create' ) {
       await handleCreate(event);
     } else if ( RequestType === 'Update' ) {
@@ -28,18 +28,25 @@ exports.handler = async function handler(event, context) {
       RequestId,
       LogicalResourceId
     };
-    await sendRespone(errResponse, ResponseURL);
+    await sendResponse(errResponse, ResponseURL);
   }
 };
 
 async function handleDelete(event) {
   console.log('Handling delete...');
-  const { PhysicalResourceId, ResponseURL } = event;
+  const { RequestId, StackId, LogicalResourceId, PhysicalResourceId, ResponseURL } = event;
   const { HostedZoneId } = event.ResourceProperties;
 
   const cnameRecord = await getCertCname(PhysicalResourceId);
 
-  await deleteDomain(HostedZoneId, cnameRecord);
+  try {
+    await deleteDomain(HostedZoneId, cnameRecord);
+  } catch ( err ) {
+    // ignore the error if domain isn't found
+    if ( (err.message || '').indexOf('not found') <= 0) {
+      throw err;
+    }
+  }
 
   await acm.deleteCertificate({
     CertificateArn: PhysicalResourceId
@@ -50,7 +57,7 @@ async function handleDelete(event) {
     RequestId,
     LogicalResourceId,
     StackId,
-    PhysicalResourceId: CertificateArn
+    PhysicalResourceId
   };
 
   await sendResponse(response, ResponseURL);

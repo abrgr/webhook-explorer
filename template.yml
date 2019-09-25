@@ -69,7 +69,7 @@ Resources:
       Runtime: nodejs10.x
       Handler: src/custom-certificate-creator.handler
       MemorySize: 512
-      Timeout: 60
+      Timeout: 600
       AutoPublishAlias: live
       Policies:
         - Statement:
@@ -92,12 +92,14 @@ Resources:
       HostedZoneId: !Ref HostedZoneId
       DomainName: !Ref DomainName
   WebhookDomain:
-    Type: AWS::ApiGatewayV2::DomainName
+    Type: AWS::ApiGateway::DomainName
     Properties:
       DomainName: !Ref DomainName
-      DomainNameConfigurations:
-        - CertificateArn: !Ref Certificate
-  APIDomainMapping:
+      RegionalCertificateArn: !Ref Certificate
+      EndpointConfiguration:
+        Types:
+          - "REGIONAL"
+  WebhookDomainMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Properties:
       DomainName: !Ref WebhookDomain
@@ -107,3 +109,14 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-webhook-reqs"
+  WebhookDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties: 
+      Comment: "DNS for Webhook API"
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets: 
+        - Name: !Ref WebhookDomain
+          Type: "A"
+          AliasTarget:
+            DNSName: !GetAtt WebhookDomain.RegionalDomainName
+            HostedZoneId: !GetAtt WebhookDomain.RegionalHostedZoneId
