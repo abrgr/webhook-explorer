@@ -120,3 +120,21 @@ Resources:
           AliasTarget:
             DNSName: !GetAtt WebhookDomain.RegionalDomainName
             HostedZoneId: !GetAtt WebhookDomain.RegionalHostedZoneId
+  WebhookExplorerUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+        InviteMessageTemplate:
+          EmailSubject: "You're invited to Webhook Explorer"
+          EmailMessage: "Welcome to Webhook Explorer.  You can log in with username \"{username}\"  and password \"{####}\"."
+      AliasAttributes:
+        - email
+        - preferred_username
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+        ReplyToEmailAddress: "adam.g.berger@gmail.com"
+      Schema:
+        - AttributeDataType: String
+          Name: tenant_role
+      UserPoolName: !Sub "${AWS::StackName}-user-pool"
