@@ -2,9 +2,15 @@ AWSTemplateFormatVersion : '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Webhook Explorer
 Parameters:
-  DomainName:
+  WebhookDomainName:
     Type: String
-  HostedZoneId:
+  WebhookHostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+  WebhookExplorerAuthDomainName:
+    Type: String
+  WebhookExplorerDomainName:
+    Type: String
+  WebhookExplorerHostedZoneId:
     Type: AWS::Route53::HostedZone::Id
 Resources:
   WebhookApi:
@@ -83,18 +89,18 @@ Resources:
           - Effect: Allow
             Action:
               - route53:*
-            Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
+            Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${WebhookHostedZoneId}"
   Certificate:
     Type: 'Custom::CertificateCreator'
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt CustomCertificateCreator.Arn
-      HostedZoneId: !Ref HostedZoneId
-      DomainName: !Ref DomainName
+      HostedZoneId: !Ref WebhookHostedZoneId
+      DomainName: !Ref WebhookDomainName
   WebhookDomain:
     Type: AWS::ApiGateway::DomainName
     Properties:
-      DomainName: !Ref DomainName
+      DomainName: !Ref WebhookDomainName
       RegionalCertificateArn: !Ref Certificate
       EndpointConfiguration:
         Types:
@@ -113,7 +119,7 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties: 
       Comment: "DNS for Webhook API"
-      HostedZoneId: !Ref HostedZoneId
+      HostedZoneId: !Ref WebhookHostedZoneId
       RecordSets: 
         - Name: !Ref WebhookDomain
           Type: "A"
@@ -138,3 +144,60 @@ Resources:
         - AttributeDataType: String
           Name: tenant_role
       UserPoolName: !Sub "${AWS::StackName}-user-pool"
+  WebhookExplorerApp:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: WebhookExplorer
+      UserPoolId: !Ref WebhookExplorerUserPool
+      ExplicitAuthFlows:
+        - USER_PASSWORD_AUTH
+      AllowedOAuthFlows:
+        - implicit
+      CallbackURLs:
+        - !Sub "https://${WebhookDomainName}/"
+  WebhookExplorerCertificate:
+    Type: 'Custom::CertificateCreator'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt CustomCertificateCreator.Arn
+      HostedZoneId: !Ref WebhookExplorerHostedZoneId
+      DomainName: !Ref WebhookExplorerAuthDomainName
+  CustomCognitoDomainCreator:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: src/custom-cognito-domain.handler
+      MemorySize: 512
+      Timeout: 600
+      AutoPublishAlias: live
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:DescribeUserPoolDomain
+              - cognito-idp:DeleteUserPoolDomain
+              - cognito-idp:CreateUserPoolDomain
+            Resource: !GetAtt WebhookExplorerUserPool.Arn
+          - Effect: Allow
+            Action:
+              - cloudfront:UpdateDistribution
+            Resource: "*"
+  CustomCognitoDomain:
+    Type: 'Custom::CustomCognitoDomainCreator'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt CustomCognitoDomainCreator.Arn
+      UserPoolId: !Ref WebhookExplorerUserPool
+      Domain: !Ref WebhookExplorerAuthDomainName
+      CertificateArn: !Ref WebhookExplorerCertificate
+  CognitoDomainDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties: 
+      Comment: "DNS for Cognito Auth"
+      HostedZoneId: !Ref WebhookExplorerHostedZoneId
+      RecordSets: 
+        - Name: !Ref WebhookExplorerAuthDomainName
+          Type: "A"
+          AliasTarget:
+            DNSName: !Ref CustomCognitoDomain
+            HostedZoneId: Z2FDTNDATAQYW2
