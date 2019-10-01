@@ -10,7 +10,7 @@ if ! docker-compose run --rm aws cloudformation package --template-file template
 fi
 
 echo "Deploying..."
-if ! docker-compose run --rm aws cloudformation deploy --template-file built-template.yml --stack-name "${stack_id}" --parameter-overrides "WebhookDomainName=api.easybetes.com" "WebhookHostedZoneId=Z3M2WNLI9UC7O9" "WebhookExplorerAuthDomainName=auth-webhook-explorer.easybetes.com" "WebhookExplorerDomainName=webhook-explorer.easybetes.com" "WebhookExplorerHostedZoneId=Z3M2WNLI9UC7O9" --capabilities CAPABILITY_IAM; then
+if ! docker-compose run --rm aws cloudformation deploy --template-file built-template.yml --stack-name "${stack_id}" --parameter-overrides "WebhookDomainName=api.easybetes.com" "WebhookHostedZoneId=Z3M2WNLI9UC7O9" "WebhookExplorerAuthDomainName=auth-webhook-explorer.easybetes.com" "WebhookExplorerDomainName=webhook-explorer.easybetes.com" "WebhookExplorerHostedZoneId=Z3M2WNLI9UC7O9" "AdminEmailAddress=adam.g.berger@gmail.com" --capabilities CAPABILITY_IAM; then
   echo "Failed to deploy"
   exit 2
 fi
