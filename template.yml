@@ -152,9 +152,18 @@ Resources:
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
       AllowedOAuthFlows:
+        - code
         - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+        - aws.cognito.signin.user.admin
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
       CallbackURLs:
-        - !Sub "https://${WebhookDomainName}/"
+        - !Sub "https://${WebhookExplorerDomainName}/"
   WebhookExplorerCertificate:
     Type: 'Custom::CertificateCreator'
     Version: '1.0'
