@@ -14,6 +14,46 @@ Parameters:
     Type: AWS::Route53::HostedZone::Id
   AdminEmailAddress:
     Type: String
+Mappings:
+  S3WebsiteHostedZoneIds:
+    us-east-2:
+      HostedZoneId: Z2O1EMRO9K5GLX
+    us-east-1:
+      HostedZoneId: Z3AQBSTGFYJSTF 
+    us-west-1:
+      HostedZoneId: Z2F56UZL2M1ACD 
+    us-west-2:
+      HostedZoneId: Z3BJ6K6RIION7M
+    ap-east-1:
+      HostedZoneId: ZNB98KWMFR0R6
+    ap-south-1:
+      HostedZoneId: Z11RGJOFQNVJUP
+    ap-northeast-3:
+      HostedZoneId: Z2YQB5RD63NC85
+    ap-northeast-2:
+      HostedZoneId: Z3W03O7B5YMIYP
+    ap-southeast-1:
+      HostedZoneId: Z3O0J2DXBE1FTB
+    ap-southeast-2:
+      HostedZoneId: Z1WCIGYICN2BYD
+    ap-northeast-1:
+      HostedZoneId: Z2M4EHUR26P7ZW
+    ca-central-1:
+      HostedZoneId: Z1QDHH18159H29
+    eu-central-1:
+      HostedZoneId: Z21DNDUVLTQW6Q
+    eu-west-1:
+      HostedZoneId: Z1BKCTXD74EZPE
+    eu-west-2:
+      HostedZoneId: Z3GKZC51ZF0DB4
+    eu-west-3:
+      HostedZoneId: Z3R1K369G5AVDG
+    eu-north-1:
+      HostedZoneId: Z3BAZG2TWCNX0D
+    sa-east-1:
+      HostedZoneId: Z7KQH4QJS55SO
+    me-south-1:
+      HostedZoneId: Z1MPMWCPA7YB62
 Resources:
   WebhookApi:
     Type: AWS::Serverless::Api
@@ -225,3 +265,22 @@ Resources:
           Value: !Ref AdminEmailAddress
         - Name: email_verified
           Value: true
+  WebhookExplorerBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref WebhookExplorerDomainName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        ErrorDocument: index.html
+        IndexDocument: index.html
+  WebhookExplorerDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties: 
+      Comment: "DNS for Webhook Explorer"
+      HostedZoneId: !Ref WebhookExplorerHostedZoneId
+      RecordSets:
+        - Name: !Ref WebhookExplorerDomainName
+          Type: "A"
+          AliasTarget:
+            DNSName: !Sub "s3-website-${AWS::Region}.amazonaws.com"
+            HostedZoneId: !FindInMap ["S3WebsiteHostedZoneIds", !Ref "AWS::Region", "HostedZoneId"]
