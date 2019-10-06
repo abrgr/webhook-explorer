@@ -16,3 +16,7 @@ pom.xml.asc
 .*.swo
 built-template.yml
 .m2
+out
+node_modules
+resources/public/js
+tmp

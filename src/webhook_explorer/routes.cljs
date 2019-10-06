@@ -19,8 +19,16 @@
              (secretary/dispatch! (str js/window.location.pathname js/window.location.search))))
         (.setEnabled true)))
 
+(defroute auth-path "/" [query-params]
+  (swap! app-state/nav assoc :page :auth)
+  (when (:failure query-params)
+    (swap! app-state/nav assoc-in [:page-state :auth :failure] true)))
+
+(defroute home-path "/home" []
+  (swap! app-state/nav assoc :page :home))
+
 (defn init! []
-  (defroute "/" []
-    (swap! app-state/nav assoc :page :home))
-  
+  (defroute "*" []
+    (secretary/dispatch! (auth-path)))
+
   (hook-browser-navigation!))

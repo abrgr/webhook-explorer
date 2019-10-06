@@ -17,7 +17,10 @@ services:
      - "${AWS_CONFIG_DIR}:/root/.aws"
     network_mode: "bridge"
   lein:
-    image: clojure:openjdk-8-lein-2.9.1-alpine
+    image: webhook-explorer/lein
+    build:
+      context: .
+      dockerfile: lein.dockerfile
     volumes:
       - ".:/usr/src/app"
       - "./.m2:/root/.m2"
