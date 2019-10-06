@@ -16,25 +16,13 @@ services:
      - ".:/var/opt"
      - "${AWS_CONFIG_DIR}:/root/.aws"
     network_mode: "bridge"
-  build:
-    image: aws-sam:0.6.0
-    entrypoint: "/root/.yarn/bin/yarn"
-    working_dir: "/var/opt"
-    environment:
-     - "YARN_CACHE_FOLDER=/yarn-cache"
+  lein:
+    image: clojure:openjdk-8-lein-2.9.1-alpine
     volumes:
-     - ".:/var/opt"
-     - "${AWS_CONFIG_DIR}:/root/.aws"
-     - "${YARN_CACHE_DIR}:/yarn-cache"
-    network_mode: "bridge"
-  shell:
-    image: aws-sam:0.6.0
-    entrypoint: "/bin/sh"
-    working_dir: "/var/opt"
-    environment:
-     - "YARN_CACHE_FOLDER=/yarn-cache"
-    volumes:
-     - ".:/var/opt"
-     - "${AWS_CONFIG_DIR}:/root/.aws"
-     - "${YARN_CACHE_DIR}:/yarn-cache"
-    network_mode: "bridge"
+      - ".:/usr/src/app"
+      - "./.m2:/root/.m2"
+      - "./.aws:/root/.aws:ro"
+    entrypoint: ["lein"]
+    working_dir: "/usr/src/app"
+    ports:
+      - "9500:9500"

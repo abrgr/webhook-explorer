@@ -1,0 +1,6 @@
+^{:open-url false
+  :hawk-options {:watcher :polling}
+  :css-dirs ["resources/public/styles"]}
+{:main webhook-explorer.core
+ :npm-deps {"amazon-cognito-auth-js" "1.3.2"}
+ :optimizations :none}

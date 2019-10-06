@@ -88,7 +88,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs10.x
-      Handler: src/webhook-handler.handler
+      Handler: lambdas/webhook-handler.handler
       MemorySize: 512
       Timeout: 10
       AutoPublishAlias: live
@@ -115,7 +115,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs10.x
-      Handler: src/custom-certificate-creator.handler
+      Handler: lambdas/custom-certificate-creator.handler
       MemorySize: 512
       Timeout: 600
       AutoPublishAlias: live
@@ -217,7 +217,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs10.x
-      Handler: src/custom-cognito-domain.handler
+      Handler: lambdas/custom-cognito-domain.handler
       MemorySize: 512
       Timeout: 600
       AutoPublishAlias: live
