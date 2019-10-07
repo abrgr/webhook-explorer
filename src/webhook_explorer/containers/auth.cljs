@@ -15,8 +15,9 @@
 (defn- with-user-handler [c]
   (set!
     (.-userhandler c)
-    #js {:onSuccess #(secretary/dispatch! (routes/home-path))
-         :onFailure #(secretary/dispatch! (routes/auth-path {:query-params {:failure true}}))})
+    #js {:onSuccess #(do (reset! app-state/auth {:cognito-auth %})
+                         (routes/nav-to-home))
+         :onFailure #(routes/nav-to-auth {:query-params {:failure true}})})
   c)
 
 (defn- sign-in [ca]

@@ -3,3 +3,5 @@
 
 (defonce nav (r/atom {:page :home
                       :params {}}))
+
+(defonce auth (r/atom {:cognito-auth nil}))

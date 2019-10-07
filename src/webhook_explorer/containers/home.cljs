@@ -4,4 +4,5 @@
 
 (defn component []
   [:div
-     [:div "hello world"]])
+     [:div "hello world"]
+     [:div (.stringify js/JSON (clj->js @app-state/auth))]])
