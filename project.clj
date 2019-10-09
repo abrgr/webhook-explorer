@@ -5,8 +5,9 @@
   :url "http://www.webhook-explorer.com"
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.18"]]
-  :dependencies [[reagent "0.8.1"]
-                 [cljs-http "0.1.46"]
+  :dependencies [[org.clojure/clojure "1.10.1"]
+                 [org.clojure/clojurescript "1.10.520"]
+                 [reagent "0.8.1"]
                  [clj-commons/secretary "1.2.4"]]
   :source-paths ["src"]
   :profiles {:dev
@@ -22,6 +23,7 @@
                                    :asset-path "js/out"
                                    :output-to "resources/public/js/dev-main.js"
                                    :npm-deps {amazon-cognito-auth-js "1.3.2"
+                                              "material-ui" "0.20.2"
                                               react "16.8.6"
                                               react-dom "16.8.6"}
                                    :install-deps true
