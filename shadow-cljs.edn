@@ -1,0 +1,13 @@
+{:lein true
+ :http {:port 9630
+        :host "0.0.0.0"}
+ :builds
+ {:dev {:target :browser
+        :output-dir "resources/public/js"
+        :asset-path "/js"
+        :modules {:main {:entries [webhook-explorer.core]}}
+        :devtools {:autoload true
+                   :watch-dir "public"
+                   :http-root "resources/public"
+                   :http-host "0.0.0.0"
+                   :http-port 9500}}}}

@@ -29,3 +29,15 @@ services:
     working_dir: "/usr/src/app"
     ports:
       - "9500:9500"
+      - "9630:9630"
+  npm:
+    image: webhook-explorer/lein
+    build:
+      context: .
+      dockerfile: lein.dockerfile
+    volumes:
+      - ".:/usr/src/app"
+      - "./.m2:/root/.m2"
+      - "./.aws:/root/.aws:ro"
+    entrypoint: ["npm"]
+    working_dir: "/usr/src/app"
