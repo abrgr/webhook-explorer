@@ -1,8 +1,10 @@
 (ns ^:figwheel-hooks webhook-explorer.core
   (:require [reagent.core :as r]
+            ["@material-ui/core/CssBaseline" :default CssBaseline]
             [webhook-explorer.shims]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.routes :as routes]
+            [webhook-explorer.containers.app-bar :as app-bar]
             [webhook-explorer.containers.home :as home]
             [webhook-explorer.containers.auth :as auth]))
 
@@ -12,9 +14,15 @@
     :home [home/component]
     [auth/component]))
 
+(defn- page []
+  [:<>
+    [:> CssBaseline]
+    [app-bar/component]
+    [current-page]])
+
 (defn- mount []
   (routes/init!)
-  (r/render [current-page]
+  (r/render [page]
             (js/document.getElementById "app")))
 
 (defn ^:after-load re-render []
