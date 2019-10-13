@@ -5,3 +5,8 @@
                       :params {}}))
 
 (defonce auth (r/atom {:cognito-auth nil}))
+
+(defn logged-in? []
+  (-> @auth
+      :cognito-auth
+      some?))

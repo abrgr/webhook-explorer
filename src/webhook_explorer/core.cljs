@@ -2,6 +2,7 @@
   (:require [reagent.core :as r]
             ["@material-ui/core/CssBaseline" :default CssBaseline]
             [webhook-explorer.shims]
+            [webhook-explorer.init :as init]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.routes :as routes]
             [webhook-explorer.containers.app-bar :as app-bar]
@@ -28,4 +29,4 @@
 (defn ^:after-load re-render []
   (mount))
 
-(defonce start-up (do (mount) true))
+(defonce start-up (do (init/fire-init) (mount) true))
