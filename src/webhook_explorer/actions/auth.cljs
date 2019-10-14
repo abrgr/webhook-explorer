@@ -27,10 +27,11 @@
   (.isUserSignedIn ca))
 
 (defn- current-user-data []
-  (->> ca
-       (.getSignInUserSession)
-       (.getIdToken)
-       (.-payload)))
+  (-> ca
+      (.getSignInUserSession)
+      (.getIdToken)
+      (.-payload)
+      (js->clj :keywordize-keys true)))
 
 (init/register-init
   0
