@@ -11,17 +11,36 @@
        (.parse js/JSON)
        (cognito-auth/CognitoAuth.)))
 
+(declare current-user-data)
+
 (defn- with-user-handler [c]
   (set!
     (.-userhandler c)
-    #js {:onSuccess #(do (reset! app-state/auth {:cognito-auth %})
+    #js {:onSuccess #(do (reset! app-state/auth {:user-data (current-user-data) :cognito-session %})
                          (routes/nav-to-home))
          :onFailure #(routes/nav-to-auth {:query-params {:failure true}})})
   c)
 
 (def ^:private ca (->> (make-cognito-auth) with-user-handler))
 
-(init/register-init (fn [] (.parseCognitoWebResponse ca js/window.location.href)))
+(defn- logged-in? []
+  (.isUserSignedIn ca))
+
+(defn- current-user-data []
+  (->> ca
+       (.getSignInUserSession)
+       (.getIdToken)
+       (.-payload)))
+
+(init/register-init
+  0
+  (fn []
+    (reset! app-state/auth {:user-data (current-user-data) :cognito-session (.getSignInUserSession ca)})))
+
+(init/register-init
+  2
+  (fn []
+    (.parseCognitoWebResponse ca js/window.location.href)))
 
 (defn sign-in []
   (.getSession ca))

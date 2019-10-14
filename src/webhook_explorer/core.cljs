@@ -22,7 +22,6 @@
     [current-page]])
 
 (defn- mount []
-  (routes/init!)
   (r/render [page]
             (js/document.getElementById "app")))
 

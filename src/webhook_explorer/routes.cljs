@@ -6,6 +6,7 @@
             [goog.events :as events]
             [goog.history.EventType :as EventType]
             [reagent.core :as reagent]
+            [webhook-explorer.init :as init]
             [webhook-explorer.app-state :as app-state]))
 
 (def ^:private hist (Html5History.))
@@ -39,3 +40,5 @@
     (secretary/dispatch! (auth-path)))
 
   (hook-browser-navigation!))
+
+(init/register-init 1 init!)

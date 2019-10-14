@@ -4,9 +4,7 @@
 (defonce nav (r/atom {:page :home
                       :params {}}))
 
-(defonce auth (r/atom {:cognito-auth nil}))
+(defonce auth (r/atom {:user-data nil :cognito-session nil}))
 
 (defn logged-in? []
-  (-> @auth
-      :cognito-auth
-      some?))
+  (some? (:cognito-session @auth)))

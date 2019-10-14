@@ -2,9 +2,10 @@
 
 (def ^:private init-routines (atom []))
 
-(defn register-init [f]
-  (swap! init-routines conj f))
+(defn register-init [pri f]
+  (swap! init-routines conj {:pri pri :f f}))
 
 (defn fire-init []
-  (doseq [i @init-routines] (i))
+  (doseq [{:keys [f]} (sort-by :pri @init-routines)]
+    (f))
   (reset! init-routines nil))

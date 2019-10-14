@@ -7,6 +7,7 @@
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Menu" :default MenuIcon]
             ["@material-ui/core/Typography" :default Typography]
+            [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.auth :as auth-actions]))
 
 (def ^:private styles
@@ -26,7 +27,8 @@
                           :aria-label "menu"}
             [:> MenuIcon]]
           [:> Typography {:variant "h6" :className (.-title s)} "Webhook Explorer"]
-          [:> Button {:color "inherit" :on-click #(auth-actions/sign-in)} "Login"]]])))
+          (when-not (app-state/logged-in?)
+            [:> Button {:color "inherit" :on-click #(auth-actions/sign-in)} "Login"])]])))
 
 (defn component []
   [:> -component])
