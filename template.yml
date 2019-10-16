@@ -206,6 +206,21 @@ Resources:
         - COGNITO
       CallbackURLs:
         - !Sub "https://${WebhookExplorerDomainName}/"
+      ReadAttributes:
+        - email
+        - email_verified
+        - family_name
+        - middle_name
+        - given_name
+        - locale
+        - name
+        - nickname
+        - picture
+        - preferred_username
+        - profile
+        - zoneinfo
+        - updated_at
+        - website
   WebhookExplorerCertificate:
     Type: 'Custom::CertificateCreator'
     Version: '1.0'
@@ -284,3 +299,51 @@ Resources:
           AliasTarget:
             DNSName: !Sub "s3-website-${AWS::Region}.amazonaws.com"
             HostedZoneId: !FindInMap ["S3WebsiteHostedZoneIds", !Ref "AWS::Region", "HostedZoneId"]
+  WebhookExplorerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          version: "1.0"
+          title: webhook-explorer-api
+        basePath: "/"
+        schemes:
+          - "https"
+        paths:
+          /reqs:
+            get:
+              responses: {}
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListRequestsHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+  ListRequestsHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/list-requests-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        ListRequests:
+          Type: Api
+          Properties:
+            Path: /reqs
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  ListRequestsHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListRequestsHandler
+      Principal: apigateway.amazonaws.com

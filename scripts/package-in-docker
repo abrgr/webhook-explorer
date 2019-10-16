@@ -1,0 +1,9 @@
+#!/bin/sh
+
+bucket="${1}"
+
+mkdir /build-project
+cp -r /project/lambdas /build-project
+cp /project/template.yml /build-project
+cd /build-project
+exec aws cloudformation package --template-file /build-project/template.yml --output-template-file /project/built-template.yml --s3-bucket "${bucket}"
