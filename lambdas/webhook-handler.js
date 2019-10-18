@@ -7,7 +7,7 @@ exports.handler = async function handler(event, context) {
   const now = new Date();
   const iso = now.toISOString();
   const ymd = iso.split('T')[0];
-  const key = `${ymd.replace(/-/g, '/')}/${iso}-${context.awsRequestId}`;
+  const key = `all/${ymd.replace(/-/g, '/')}/${iso}-${context.awsRequestId}`;
   await s3.putObject({
     Body: JSON.stringify(event),
     Bucket: bucket,
