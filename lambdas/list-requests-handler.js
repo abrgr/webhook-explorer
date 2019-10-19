@@ -6,7 +6,7 @@ const bucket = process.env.BUCKET_NAME;
 exports.handler = async function handler(event, context) {
   const { folder, ymd, token } = event.queryStringParameters || {};
 
-  const page = await nextListing(folder, ymd || currentPrefix(), token);
+  const page = await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token);
 
   return {
     isBase64Encoded: false,
@@ -20,7 +20,7 @@ function currentPrefix() {
   const now = new Date();
   const iso = now.toISOString();
   const ymd = iso.split('T')[0];
-  return `${ymd.replace(/-/g, '/')}/`;
+  return normalizePrefix(ymd.replace(/-/g, '/'));
 }
 
 async function nextListing(folder, prefix, token) {
@@ -45,16 +45,25 @@ async function nextListing(folder, prefix, token) {
 }
 
 async function getItemPage(folder, prefix, token) {
-  const { Contents, NextContinuationToken } = await s3List(`${folder}/${prefix}`, { ContinuationToken: token });
+  const { Contents, NextContinuationToken } = await s3List(`${folder}/${prefix}`, { ContinuationToken: token, MaxKeys: 3 });
   if ( isEmpty(Contents) ) {
     return null;
   }
 
+  const nextReq = NextContinuationToken
+                ? {
+                  folder,
+                  ymd: prefix,
+                  token: NextContinuationToken
+                } : {
+                  folder,
+                  ymd: await getNextPrefix(folder, prefix)
+                };
+
   return {
     folder,
-    prefix,
     items: Contents.map(c => c.Key),
-    nextToken: NextContinuationToken
+    nextReq: nextReq.ymd ? nextReq : null
   };
 }
 
@@ -65,9 +74,9 @@ async function getNextPrefix(folder, prevPrefix) {
     const ymPrefix = `${folder}/${[y, m].join('/')}/`;
     const { CommonPrefixes: daysForMonth } = await s3List(ymPrefix);
     const nextDay = !!d
-                  ? firstLessThan(daysForMonth.map(d => d.Prefix), `${ymPrefix}/${d}/`)
+                  ? firstLessThan(daysForMonth.map(d => d.Prefix), `${ymPrefix}${d}/`)
                   : get(last(daysForMonth), 'Prefix');
-    console.log('daysForMonth', { daysForMonth, folder, prevPrefix, nextDay, y, m });
+    console.log('daysForMonth', { daysForMonth, folder, prevPrefix, nextDay, y, m, d, flt: `${ymPrefix}${d}/` });
     if ( nextDay ) {
       return nextDay.slice(folder.length + 1); // remove the leading "<folder>/"
     }
@@ -77,7 +86,7 @@ async function getNextPrefix(folder, prevPrefix) {
     const yPrefix = `${folder}/${y}/`;
     const { CommonPrefixes: monthsForYear } = await s3List(yPrefix);
     const nextMonth = !!m
-                    ? firstLessThan(monthsForYear.map(m => m.Prefix), `${yPrefix}/${m}/`)
+                    ? firstLessThan(monthsForYear.map(m => m.Prefix), `${yPrefix}${m}/`)
                     : get(last(monthsForYear), 'Prefix');
     console.log('monthsForYear', { monthsForYear, folder, prevPrefix, nextMonth, y });
     if ( nextMonth ) {
@@ -110,21 +119,25 @@ async function s3List(prefix, opts) {
   return await s3.listObjectsV2(params).promise();
 }
 
-function firstLessThan(l, x) {
-  // assume l is sorted ascending
-  if ( isEmpty(l) ) {
+function normalizePrefix(ymd) {
+  if ( !ymd ) {
     return null;
   }
 
-  // TODO: nope.  binary search
-  const xIdx = l.indexOf(x);
-  const nextIdx = xIdx < 0
-                ? l.length - 1
-                : xIdx - 1;
-  if ( nextIdx < 0 || nextIdx >= l.length ) {
+  return ymd.endsWith('/') ? ymd : `${ymd}/`;
+}
+
+function firstLessThan(l, x) {
+  // assume l is sorted ascending
+  const lt = (l || []).filter(i => i < x);
+
+  console.log('FLT', { l, x, lt });
+
+  if ( isEmpty(lt) ) {
     return null;
   }
-  return l[nextIdx];
+
+  return last(lt);
 }
 
 function get(m, k) {
