@@ -45,7 +45,7 @@ async function nextListing(folder, prefix, token) {
 }
 
 async function getItemPage(folder, prefix, token) {
-  const { Contents, NextContinuationToken } = await s3List(`${folder}/${prefix}`, { ContinuationToken: token, MaxKeys: 3 });
+  const { Contents, NextContinuationToken } = await s3List(`${folder}/${prefix}`, { ContinuationToken: token });
   if ( isEmpty(Contents) ) {
     return null;
   }

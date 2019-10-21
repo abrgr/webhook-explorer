@@ -221,13 +221,20 @@ Resources:
         - zoneinfo
         - updated_at
         - website
-  WebhookExplorerCertificate:
+  WebhookExplorerAuthCertificate:
     Type: 'Custom::CertificateCreator'
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt CustomCertificateCreator.Arn
       HostedZoneId: !Ref WebhookExplorerHostedZoneId
       DomainName: !Ref WebhookExplorerAuthDomainName
+  WebhookExplorerCertificate:
+    Type: 'Custom::CertificateCreator'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt CustomCertificateCreator.Arn
+      HostedZoneId: !Ref WebhookExplorerHostedZoneId
+      DomainName: !Ref WebhookExplorerDomainName
   CustomCognitoDomainCreator:
     Type: AWS::Serverless::Function
     Properties:
@@ -255,7 +262,7 @@ Resources:
       ServiceToken: !GetAtt CustomCognitoDomainCreator.Arn
       UserPoolId: !Ref WebhookExplorerUserPool
       Domain: !Ref WebhookExplorerAuthDomainName
-      CertificateArn: !Ref WebhookExplorerCertificate
+      CertificateArn: !Ref WebhookExplorerAuthCertificate
   CognitoDomainDNS:
     Type: AWS::Route53::RecordSetGroup
     Properties: 
@@ -280,25 +287,6 @@ Resources:
           Value: !Ref AdminEmailAddress
         - Name: email_verified
           Value: true
-  WebhookExplorerBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref WebhookExplorerDomainName
-      AccessControl: PublicRead
-      WebsiteConfiguration:
-        ErrorDocument: index.html
-        IndexDocument: index.html
-  WebhookExplorerDNS:
-    Type: AWS::Route53::RecordSetGroup
-    Properties: 
-      Comment: "DNS for Webhook Explorer"
-      HostedZoneId: !Ref WebhookExplorerHostedZoneId
-      RecordSets:
-        - Name: !Ref WebhookExplorerDomainName
-          Type: "A"
-          AliasTarget:
-            DNSName: !Sub "s3-website-${AWS::Region}.amazonaws.com"
-            HostedZoneId: !FindInMap ["S3WebsiteHostedZoneIds", !Ref "AWS::Region", "HostedZoneId"]
   WebhookExplorerApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -347,3 +335,99 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref ListRequestsHandler
       Principal: apigateway.amazonaws.com
+  WebhookExplorerOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: Permit webhook explorer static asset serving
+  WebhookExplorerBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: WebhookExplorerOriginAccessIdentity
+    Properties:
+      Bucket: !Ref WebhookRequestBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${WebhookRequestBucket}/_web/*"
+            Principal:
+              CanonicalUser: !GetAtt WebhookExplorerOriginAccessIdentity.S3CanonicalUserId
+          - Action:
+              - "s3:ListBucket"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${WebhookRequestBucket}"
+            Condition:
+              StringEquals:
+                "s3:prefix": "_web/"
+            Principal:
+              CanonicalUser: !GetAtt WebhookExplorerOriginAccessIdentity.S3CanonicalUserId
+  WebhookExplorerDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - WebhookExplorerApi
+      - WebhookExplorerOriginAccessIdentity
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref WebhookExplorerDomainName
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: true
+          AllowedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          TargetOriginId: static
+          ViewerProtocolPolicy: redirect-to-https
+          MaxTTL: 60
+        CacheBehaviors:
+          - TargetOriginId: api
+            PathPattern: "/api/*"
+            AllowedMethods:
+              - HEAD
+              - DELETE
+              - POST
+              - GET
+              - OPTIONS
+              - PUT
+              - PATCH
+            Compress: true
+            ForwardedValues:
+              Headers:
+                - Accept
+                - Referer
+                - Authorization
+                - Content-Type
+              Cookies:
+                Forward: all
+              QueryString: true
+            ViewerProtocolPolicy: redirect-to-https
+            MaxTTL: 10
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: static
+            DomainName: !Sub "${WebhookRequestBucket}.s3.amazonaws.com"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${WebhookExplorerOriginAccessIdentity}"
+            OriginPath: /_web
+          - Id: api
+            DomainName: !Sub "${WebhookExplorerApi}.execute-api.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+            OriginPath: /prod
+        ViewerCertificate:
+          AcmCertificateArn: !Ref WebhookExplorerCertificate
+          SslSupportMethod: sni-only
+  WebhookExplorerDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties: 
+      Comment: "DNS for Webhook Explorer"
+      HostedZoneId: !Ref WebhookExplorerHostedZoneId
+      RecordSets: 
+        - Name: !Ref WebhookExplorerDomainName
+          Type: "A"
+          AliasTarget:
+            DNSName: !GetAtt WebhookExplorerDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2

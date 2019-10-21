@@ -12,11 +12,15 @@ exports.handler = async function handler(event, context) {
 
   try {
     if ( RequestType === 'Create' ) {
-      await handleCreate(event);
+      const response = await handleCreate(event);
+      await sendResponse(response, ResponseURL);
     } else if ( RequestType === 'Update' ) {
-      console.log('Ignoring update');
-    } else if ( RequestType === 'Delete' ) {
       await handleDelete(event);
+      const response = await handleCreate(event);
+      await sendResponse(response, ResponseURL);
+    } else if ( RequestType === 'Delete' ) {
+      const response = await handleDelete(event);
+      await sendResponse(response, ResponseURL);
     }
   } catch ( err ) {
     console.error('Failed', err);
@@ -34,7 +38,7 @@ exports.handler = async function handler(event, context) {
 
 async function handleDelete(event) {
   console.log('Handling delete...');
-  const { RequestId, StackId, LogicalResourceId, PhysicalResourceId, ResponseURL } = event;
+  const { RequestId, StackId, LogicalResourceId, PhysicalResourceId } = event;
   const { HostedZoneId } = event.ResourceProperties;
 
   const cnameRecord = await getCertCname(PhysicalResourceId);
@@ -60,13 +64,13 @@ async function handleDelete(event) {
     PhysicalResourceId
   };
 
-  await sendResponse(response, ResponseURL);
+  return response;
 }
 
 async function handleCreate(event) {
   console.log('Handling create...');
 
-  const { ResponseURL, RequestId, LogicalResourceId, StackId } = event;
+  const { RequestId, LogicalResourceId, StackId } = event;
   const { DomainName, HostedZoneId } = event.ResourceProperties;
 
   const CertificateArn = await createCert(HostedZoneId, DomainName);
@@ -79,7 +83,7 @@ async function handleCreate(event) {
     PhysicalResourceId: CertificateArn
   };
 
-  await sendResponse(response, ResponseURL);
+  return response;
 }
 
 async function sendResponse(response, ResponseURL) {
