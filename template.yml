@@ -149,6 +149,7 @@ Resources:
           - "REGIONAL"
   WebhookDomainMapping:
     Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: WebhookApiprodStage
     Properties:
       DomainName: !Ref WebhookDomain
       RestApiId: !Ref WebhookApi
