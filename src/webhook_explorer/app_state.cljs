@@ -7,7 +7,9 @@
 
 (defonce auth (r/atom {:user-data nil :cognito-session nil}))
 
-(defonce reqs (r/atom {:items [] :in-progress-req nil}))
+(defonce reqs (r/atom {:items []
+                       :in-progress-req nil
+                       :expanded-reqs #{}}))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))
