@@ -5,6 +5,7 @@
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
             ["@material-ui/core/Avatar" :default Avatar]
+            ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Card" :default Card]
             ["@material-ui/core/CardActions" :default CardActions]
             ["@material-ui/core/CardContent" :default CardContent]
@@ -15,6 +16,11 @@
             ["@material-ui/core/ExpansionPanelSummary" :default ExpansionPanelSummary]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/core/Tooltip" :default Tooltip]
+            ["@material-ui/core/Table" :default Table]
+            ["@material-ui/core/TableBody" :default TableBody]
+            ["@material-ui/core/TableCell" :default TableCell]
+            ["@material-ui/core/TableHead" :default TableHead]
+            ["@material-ui/core/TableRow" :default TableRow]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/icons/ExpandMore" :default ExpandMoreIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
@@ -29,6 +35,7 @@
               :minWidth "480px"
               :maxWidth "768px"
               :margin "25px auto"}
+       :card-action-btn {:margin (.spacing theme 1)}
        :date {:fontSize 14}
        :method {:width 60
                 :height 60
@@ -55,7 +62,7 @@
       [:> IconButton {:aria-label label}
         [:> icon icon-props]]]))
 
-(defn- req-card [{{:keys [id date path method]} :item :keys [styles favorited]}]
+(defn- req-card [{{:keys [id date path method headers]} :item :keys [styles favorited]}]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
@@ -72,9 +79,43 @@
     [:> CardContent {:className (obj/get styles "fix-card-content")}
       [:> ExpansionPanel {:elevation 0}
         [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-          "View Request Details"]
+          "Request Headers"]
         [:> ExpansionPanelDetails
-          [:div "Hello world"]]]]])
+          [:<>
+            [:> Table {:aria-label "headers"}
+              [:> TableHead
+                [:> TableRow
+                  [:> TableCell "Header"]
+                  [:> TableCell "Value"]]]
+              [:> TableBody
+                (for [[header value] headers]
+                  ^{:key header}
+                  [:> TableRow
+                    [:> TableCell header]
+                    [:> TableCell value]])]]]]]
+      [:> ExpansionPanel {:elevation 0}
+        [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+          "Request Body"]
+        [:> ExpansionPanelDetails
+          [:<>
+            [:> Table {:aria-label "headers"}
+              [:> TableHead
+                [:> TableRow
+                  [:> TableCell "Header"]
+                  [:> TableCell "Value"]]]
+              [:> TableBody
+                (for [[header value] headers]
+                  ^{:key header}
+                  [:> TableRow
+                    [:> TableCell header]
+                    [:> TableCell value]])]]]]]]
+    [:> CardActions
+      [:> Button {:className (obj/get styles "card-action-btn")
+                  :color "primary"}
+        "Copy as cURL"]
+      [:> Button {:className (obj/get styles "card-action-btn")
+                  :color "primary"}
+        "Run local"]]])
 
 (defn- -component [{:keys [styles]}]
   (let [reqs-state @app-state/reqs]
