@@ -11,20 +11,31 @@
                                 :path "/abc"
                                 :method "GET"
                                 :id "yoyo"
-                                :headers {
+                                :req-headers {
                                   "Accept" "*/*"
                                   "Host" "api.easybetes.com"
                                   "User-Agent" "curl/7.47.0"}
-                                :body "{\"a\": \"b\"}"}
+                                :req-body "{\"a\": \"b\"}"
+                                :res-headers {
+                                  "Content-Type" "application/edn"
+                                  "Host" "api.easybetes.com"
+                                  "User-Agent" "curl/7.47.0"}
+                                :res-body "{:abc 7}"}
                                {:date "2019-10-23"
                                 :path "/abc"
                                 :method "POST"
                                 :id "yoyo2"
-                                :headers {
+                                :req-headers {
                                   "Accept" "*/*"
+                                  "Content-Type" "application/json"
                                   "Host" "api.easybetes.com"
                                   "User-Agent" "curl/7.47.0"}
-                                :body "{\"a\": \"b\"}"}]
+                                :req-body "{\"a\": \"b\"}"
+                                :res-headers {
+                                  "Content-Type" "application/json"
+                                  "Host" "api.easybetes.com"
+                                  "User-Agent" "curl/7.47.0"}
+                                :res-body "{\"a\": \"b\"}"}]
                        :in-progress-req nil
                        :favorite-reqs #{"yoyo2"}}))
 

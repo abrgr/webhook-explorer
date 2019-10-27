@@ -19,3 +19,9 @@
         wrapper (fn [props wrapped]
                   [:> react-component (assoc props :wrapped wrapped)])]
     wrapper))
+
+(defn inject-css-link [href]
+  (let [el (.createElement js/document "link")]
+    (.setAttribute el "href" href)
+    (.setAttribute el "rel" "stylesheet")
+    (.appendChild (.-head js/document) el)))

@@ -4,6 +4,14 @@
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
+            [webhook-explorer.init :as init]
+            ["codemirror" :as CM]
+            ["react-codemirror" :as CodeMirror]
+            ["codemirror/mode/meta"]
+            ["codemirror/mode/javascript/javascript"]
+            ["codemirror/mode/xml/xml"]
+            ["codemirror/mode/clojure/clojure"]
+            ["codemirror/mode/yaml/yaml"]
             ["@material-ui/core/Avatar" :default Avatar]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Card" :default Card]
@@ -28,6 +36,11 @@
             ["@material-ui/icons/Share" :default ShareIcon]
             ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]))
 
+(defn- init! []
+  (styles/inject-css-link "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.css"))
+
+(init/register-init 10 init!)
+
 (def ^:private styled
   (styles/style-wrapper
     (fn [theme]
@@ -42,6 +55,9 @@
                 :margin 10}
        :fix-card-content {:marginBottom "-24px"}
        :hidden {:display "none"}
+       :code {:width "100%"
+              "& > .CodeMirror" {:height "auto"
+                                 :border "1px solid #eee"}}
        :blurred {:position "relative"
                  "&:after" {:content "\" \""
                             :position "absolute"
@@ -62,7 +78,40 @@
       [:> IconButton {:aria-label label}
         [:> icon icon-props]]]))
 
-(defn- req-card [{{:keys [id date path method headers]} :item :keys [styles favorited]}]
+(defn- editor [value content-type styles]
+  (let [mode (when-let [m (.findModeByMIME CM (or content-type "text/plain"))]
+               (obj/get m "mode"))]
+    [:> CodeMirror {:className (obj/get styles "code")
+                    :value value
+                    :options #js {:viewportMargin ##Inf
+                                  :mode mode}}]))
+
+(defn- headers-view [title headers]
+  [:> ExpansionPanel {:elevation 0}
+    [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+      title]
+    [:> ExpansionPanelDetails
+      [:<>
+        [:> Table {:aria-label "headers"}
+          [:> TableHead
+            [:> TableRow
+              [:> TableCell "Header"]
+              [:> TableCell "Value"]]]
+          [:> TableBody
+            (for [[header value] headers]
+              ^{:key header}
+              [:> TableRow
+                [:> TableCell header]
+                [:> TableCell value]])]]]]])
+
+(defn- body-view [title body content-type styles]
+  [:> ExpansionPanel {:elevation 0}
+    [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+      title]
+    [:> ExpansionPanelDetails
+      [editor body content-type styles]]])
+
+(defn- req-card [{{:keys [id date path method req-headers req-body res-headers res-body]} :item :keys [styles favorited]}]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
@@ -77,38 +126,10 @@
        :title path
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
-      [:> ExpansionPanel {:elevation 0}
-        [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-          "Request Headers"]
-        [:> ExpansionPanelDetails
-          [:<>
-            [:> Table {:aria-label "headers"}
-              [:> TableHead
-                [:> TableRow
-                  [:> TableCell "Header"]
-                  [:> TableCell "Value"]]]
-              [:> TableBody
-                (for [[header value] headers]
-                  ^{:key header}
-                  [:> TableRow
-                    [:> TableCell header]
-                    [:> TableCell value]])]]]]]
-      [:> ExpansionPanel {:elevation 0}
-        [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-          "Request Body"]
-        [:> ExpansionPanelDetails
-          [:<>
-            [:> Table {:aria-label "headers"}
-              [:> TableHead
-                [:> TableRow
-                  [:> TableCell "Header"]
-                  [:> TableCell "Value"]]]
-              [:> TableBody
-                (for [[header value] headers]
-                  ^{:key header}
-                  [:> TableRow
-                    [:> TableCell header]
-                    [:> TableCell value]])]]]]]]
+      [headers-view "Request Headers" req-headers]
+      [body-view "Request Body" req-body (get req-headers "Content-Type") styles]
+      [headers-view "Response Headers" res-headers]
+      [body-view "Response Body" res-body (get res-headers "Content-Type") styles]]
     [:> CardActions
       [:> Button {:className (obj/get styles "card-action-btn")
                   :color "primary"}
