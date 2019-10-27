@@ -7,9 +7,26 @@
 
 (defonce auth (r/atom {:user-data nil :cognito-session nil}))
 
-(defonce reqs (r/atom {:items []
+(defonce reqs (r/atom {:items [{:date "2019-10-24"
+                                :path "/abc"
+                                :method "GET"
+                                :id "yoyo"
+                                :headers {
+                                  "Accept" "*/*"
+                                  "Host" "api.easybetes.com"
+                                  "User-Agent" "curl/7.47.0"}
+                                :body "{\"a\": \"b\"}"}
+                               {:date "2019-10-23"
+                                :path "/abc"
+                                :method "POST"
+                                :id "yoyo2"
+                                :headers {
+                                  "Accept" "*/*"
+                                  "Host" "api.easybetes.com"
+                                  "User-Agent" "curl/7.47.0"}
+                                :body "{\"a\": \"b\"}"}]
                        :in-progress-req nil
-                       :expanded-reqs #{}}))
+                       :favorite-reqs #{"yoyo2"}}))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))

@@ -10,12 +10,17 @@
             ["@material-ui/core/CardContent" :default CardContent]
             ["@material-ui/core/CardHeader" :default CardHeader]
             ["@material-ui/core/Collapse" :default Collapse]
+            ["@material-ui/core/ExpansionPanel" :default ExpansionPanel]
+            ["@material-ui/core/ExpansionPanelDetails" :default ExpansionPanelDetails]
+            ["@material-ui/core/ExpansionPanelSummary" :default ExpansionPanelSummary]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Typography" :default Typography]
+            ["@material-ui/icons/ExpandMore" :default ExpandMoreIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
             ["@material-ui/icons/Folder" :default FolderIcon]
             ["@material-ui/icons/Share" :default ShareIcon]
-            ["@material-ui/icons/ExpandMore" :default ExpandMoreIcon]))
+            ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]))
 
 (def ^:private styled
   (styles/style-wrapper
@@ -28,41 +33,48 @@
        :method {:width 60
                 :height 60
                 :margin 10}
-       :expand {:transform "rotate(0deg)"
-                :marginLeft "auto"
-                :transition (-> theme
-                                (.-transitions)
-                                (.create "transform", #js {:duration (obj/getValueByKeys theme #js ["transitions" "duration" "shortest"])}))}
-       :expandOpen {:transform "rotate(180deg)"}})))
+       :fix-card-content {:marginBottom "-24px"}
+       :hidden {:display "none"}
+       :blurred {:position "relative"
+                 "&:after" {:content "\" \""
+                            :position "absolute"
+                            :z-index 1
+                            :bottom 0
+                            :left 0
+                            :pointer-events "none"
+                            :background-image "linear-gradient(to bottom, rgba(255,255,255, 0), rgba(255,255,255, 1) 90%)"
+                            :width "100%"
+                            :height "4em"}}
+       :previewed-card-content {:margin-top "-32px"}})))
 
-(defn- req-card [{{:keys [id date path method]} :item :keys [styles expanded]}]
-  [:> Card {:className (.-card styles)}
+(defn- action-btn
+  ([label icon]
+    (action-btn label icon nil))
+  ([label icon icon-props]
+    [:> Tooltip {:title label :aria-label label}
+      [:> IconButton {:aria-label label}
+        [:> icon icon-props]]]))
+
+(defn- req-card [{{:keys [id date path method]} :item :keys [styles favorited]}]
+  [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
                   [:> Avatar {:aria-label method
-                              :className (.-method styles)}
+                              :className (obj/get styles "method")}
                     method])
        :action (r/as-element [:div
-                               [:> IconButton {:aria-label "Favorite"}
-                                 [:> FavoriteIcon]]
-                               [:> IconButton {:aria-label "Save to folder"}
-                                 [:> FolderIcon]]
-                               [:> IconButton {:aria-label "Share"}
-                                 [:> ShareIcon]]])
+                               [action-btn "Favorite" FavoriteIcon (when favorited {:color "secondary"})]
+                               [action-btn "Save to folder" FolderIcon]
+                               [action-btn "Add to request collection" AddToCollectionIcon]
+                               [action-btn "Share" ShareIcon]])
        :title path
        :subheader date}]
-    [:> CardActions {:disableSpacing true}
-      [:> IconButton {:aria-label "View request"
-                      :aria-expanded expanded
-                      :on-click (partial reqs-actions/toggle-expand id)
-                      :className (str (.-expand styles) " " (if expanded (.-expandOpen styles) ""))}
-        [:> ExpandMoreIcon]]]
-    [:> Collapse {:in expanded
-                  :timeout "auto"
-                  :unmountOnExit true}
-      [:> CardContent
-        [:> Typography {:paragraph true}
-          "Hello world"]]]])
+    [:> CardContent {:className (obj/get styles "fix-card-content")}
+      [:> ExpansionPanel {:elevation 0}
+        [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+          "View Request Details"]
+        [:> ExpansionPanelDetails
+          [:div "Hello world"]]]]])
 
 (defn- -component [{:keys [styles]}]
   (let [reqs-state @app-state/reqs]
@@ -71,7 +83,7 @@
          ^{:key (:id item)}
          [req-card {:item item
                     :styles styles
-                    :expanded (-> reqs-state :expanded-reqs (contains? id))}])]))
+                    :favorited (-> reqs-state :favorite-reqs (contains? id))}])]))
 
 (defn component []
   [styled {} -component])
