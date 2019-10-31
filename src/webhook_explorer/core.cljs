@@ -16,7 +16,7 @@
     [auth/component]))
 
 (defn- page []
-  [:<>
+  [:div {:style #js {:display "flex" :flexDirection "column" :height "100%"}}
     [:> CssBaseline]
     [app-bar/component]
     [current-page]])

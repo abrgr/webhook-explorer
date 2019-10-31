@@ -37,6 +37,7 @@
                                   "User-Agent" "curl/7.47.0"}
                                 :res-body "{\"a\": \"b\"}"}]
                        :in-progress-req nil
+                       :next-req {}
                        :favorite-reqs #{"yoyo2"}}))
 
 (defn logged-in? []

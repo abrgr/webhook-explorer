@@ -1,5 +1,6 @@
 (ns webhook-explorer.containers.app-bar
   (:require [reagent.core :as r]
+            [goog.object :as obj]
             ["@material-ui/core/AppBar" :default AppBar]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Toolbar" :default Toolbar]
@@ -15,7 +16,8 @@
   (styles/style-wrapper
     (fn [theme]
       {:title {:flexGrow 1}
-       :menu-btn {:marginRight (.spacing theme 2)}})))
+       :menu-btn {:marginRight (.spacing theme 2)}
+       :app-bar-offset (js->clj (obj/getValueByKeys theme #js ["mixins" "toolbar"]) :keywordize-keys true)})))
 
 (defn- avatar []
   (let [{:keys [given-name family-name name pic-url]} (app-state/user-info)]
@@ -25,17 +27,19 @@
         (str (first given-name) (first family-name)))]))
 
 (defn- -component [{:keys [styles]}]
-  [:> AppBar {:position "static"}
-    [:> Toolbar nil
-      [:> IconButton {:edge "start"
-                      :className ""
-                      :color "inherit"
-                      :aria-label "menu"}
-        [:> MenuIcon]]
-      [:> Typography {:variant "h6" :className (.-title styles)} "Webhook Explorer"]
-      (if (app-state/logged-in?)
-        [avatar]
-        [:> Button {:color "inherit" :on-click #(auth-actions/sign-in)} "Login"])]])
+  [:<>
+    [:> AppBar {:position "fixed"}
+      [:> Toolbar nil
+        [:> IconButton {:edge "start"
+                        :className ""
+                        :color "inherit"
+                        :aria-label "menu"}
+          [:> MenuIcon]]
+        [:> Typography {:variant "h6" :className (.-title styles)} "Webhook Explorer"]
+        (if (app-state/logged-in?)
+          [avatar]
+          [:> Button {:color "inherit" :on-click #(auth-actions/sign-in)} "Login"])]]
+    [:div {:className (obj/get styles "app-bar-offset")}]])
 
 (defn component []
   [styled {} -component])
