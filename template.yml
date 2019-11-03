@@ -381,6 +381,8 @@ Resources:
             - OPTIONS
           TargetOriginId: static
           ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          DefaultTTL: 0
           MaxTTL: 60
         CacheBehaviors:
           - TargetOriginId: api
@@ -404,7 +406,9 @@ Resources:
                 Forward: all
               QueryString: true
             ViewerProtocolPolicy: redirect-to-https
-            MaxTTL: 10
+            MinTTL: 0
+            DefaultTTL: 0
+            MaxTTL: 60
         Enabled: true
         DefaultRootObject: index.html
         Origins:

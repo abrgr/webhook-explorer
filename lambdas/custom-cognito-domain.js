@@ -32,7 +32,7 @@ exports.handler = async function handler(event, context) {
       }).promise();
       physicalId = response.CloudFrontDomain;
     } else if ( RequestType === 'Delete' ) {
-      await deleteUserPoolDomain(cognitoIdentityServiceProvider, event.ResourceProperties.Domain);
+      await deleteUserPoolDomain(cognitoIdentityServiceProvider, Domain);
     }
 
     const response = {
