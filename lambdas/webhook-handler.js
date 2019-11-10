@@ -28,7 +28,7 @@ exports.handler = async function handler(event, context) {
 };
 
 function endOfToday(todayEpoch) {
-  const tomorrow = new Date(today);
+  const tomorrow = new Date(todayEpoch);
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0);
   tomorrow.setMinutes(0);
