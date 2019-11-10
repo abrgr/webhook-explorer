@@ -301,7 +301,7 @@ Resources:
         schemes:
           - "https"
         paths:
-          /reqs:
+          /api/reqs:
             get:
               responses: {}
               x-amazon-apigateway-integration:
@@ -321,7 +321,7 @@ Resources:
         ListRequests:
           Type: Api
           Properties:
-            Path: /reqs
+            Path: /api/reqs
             Method: get
             RestApiId: !Ref WebhookExplorerApi
       Environment:
