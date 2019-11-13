@@ -11,8 +11,24 @@ exports.handler = async function handler(event, context) {
   const ymd = iso.split('T')[0];
   const method = event.httpMethod;
   const path = encodeURIComponent(event.path);
-  const host = encodeURIComponent(event.host);
+  const headers = event.headers || {};
+  const host = encodeURIComponent(headers.Host || headers.host);
+  const body = event.body;
   const key = `all/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${method}:${host}:${path}:${context.awsRequestId}`;
+  const msg = {
+    host,
+    path,
+    method,
+    iso,
+    req: {
+      headers,
+      body
+    },
+    res: {
+      headers: {},
+      body: "OK"
+    }
+  };
   await s3.putObject({
     Body: JSON.stringify(event),
     Bucket: bucket,

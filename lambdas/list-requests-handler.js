@@ -1,10 +1,14 @@
+const path = require('path');
 const S3 = require('aws-sdk/clients/s3');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
+const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
   const { folder, ymd, token } = event.queryStringParameters || {};
+
+  console.log('ymd', { ymd, normalized: normalizePrefix(ymd), current: currentPrefix() });
 
   const page = await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token);
 
@@ -60,11 +64,37 @@ async function getItemPage(folder, prefix, token) {
                   ymd: await getNextPrefix(folder, prefix)
                 };
 
+  const items = await Promise.all(Contents.map(c => makeItem(c.Key)));
   return {
     folder,
-    items: Contents.map(c => c.Key),
+    items,
     nextReq: nextReq.ymd ? nextReq : null
   };
+}
+
+async function makeItem(key) {
+  const filename = path.basename(key);
+  const [, encodedIso, method, host, urlPath] = filename.split(':');
+
+  return {
+    dataUrl: await getSignedUrl('getObject', { Bucket: bucket, Key: key, Expires: ONE_HOUR_IN_SECONDS }),
+    date: decodeURIComponent(encodedIso),
+    path: urlPath,
+    host,
+    method
+  };
+}
+
+async function getSignedUrl(method, params) {
+  return new Promise((resolve, reject) => {
+    s3.getSignedUrl(method, params, (err, url) => {
+      if ( err ) {
+        return reject(err);
+      }
+
+      resolve(url);
+    });
+  });
 }
 
 async function getNextPrefix(folder, prevPrefix) {
