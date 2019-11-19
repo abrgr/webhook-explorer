@@ -7,7 +7,8 @@
                  [com.google.javascript/closure-compiler-unshaded "v20190325"]
                  [org.clojure/google-closure-library "0.0-20190213-2033d5d9"]
                  [reagent "0.8.1" :exclusions [cljsjs/react cljsjs/react-dom]]
-                 [clj-commons/secretary "1.2.4"]]
+                 [clj-commons/secretary "1.2.4"]
+                 [cljs-http "0.1.46"]]
   :source-paths ["src"]
   :profiles {:dev
               {:dependencies []}}

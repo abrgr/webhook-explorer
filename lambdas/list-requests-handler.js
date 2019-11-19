@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
@@ -7,15 +8,16 @@ const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
   const { folder, ymd, token } = event.queryStringParameters || {};
-
-  console.log('ymd', { ymd, normalized: normalizePrefix(ymd), current: currentPrefix() });
-
   const page = await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token);
 
   return {
     isBase64Encoded: false,
     statusCode: 200,
-    headers: {},
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,OPTIONS'
+    },
     body: JSON.stringify(page)
   };
 };
@@ -28,9 +30,7 @@ function currentPrefix() {
 }
 
 async function nextListing(folder, prefix, token) {
-  console.log('nextListing', { folder, prefix, token });
   if ( token ) {
-    console.log('Using token', { token });
     const nextPage = await getItemPage(folder, prefix, token);
     if ( nextPage ) {
       return nextPage;
@@ -38,13 +38,11 @@ async function nextListing(folder, prefix, token) {
   }
 
   const pageForPrefix = await getItemPage(folder, prefix);
-  console.log('pageForPrefix', { pageForPrefix, folder, prefix });
   if ( pageForPrefix ) {
     return pageForPrefix;
   }
 
   const nextPrefix = await getNextPrefix(folder, prefix);
-  console.log('nextPrefix', { nextPrefix, folder, prefix, token });
   return await getItemPage(folder, nextPrefix);
 }
 
@@ -74,13 +72,14 @@ async function getItemPage(folder, prefix, token) {
 
 async function makeItem(key) {
   const filename = path.basename(key);
-  const [, encodedIso, method, host, urlPath] = filename.split(':');
+  const [, encodedIso, method, encodedHost, encodedUrlPath] = filename.split(':');
 
   return {
+    id: crypto.createHash('sha256').update(key, 'utf8').digest().toString('hex'),
     dataUrl: await getSignedUrl('getObject', { Bucket: bucket, Key: key, Expires: ONE_HOUR_IN_SECONDS }),
     date: decodeURIComponent(encodedIso),
-    path: urlPath,
-    host,
+    path: decodeURIComponent(encodedUrlPath),
+    host: decodeURIComponent(encodedHost),
     method
   };
 }
@@ -106,7 +105,6 @@ async function getNextPrefix(folder, prevPrefix) {
     const nextDay = !!d
                   ? firstLessThan(daysForMonth.map(d => d.Prefix), `${ymPrefix}${d}/`)
                   : get(last(daysForMonth), 'Prefix');
-    console.log('daysForMonth', { daysForMonth, folder, prevPrefix, nextDay, y, m, d, flt: `${ymPrefix}${d}/` });
     if ( nextDay ) {
       return nextDay.slice(folder.length + 1); // remove the leading "<folder>/"
     }
@@ -118,7 +116,6 @@ async function getNextPrefix(folder, prevPrefix) {
     const nextMonth = !!m
                     ? firstLessThan(monthsForYear.map(m => m.Prefix), `${yPrefix}${m}/`)
                     : get(last(monthsForYear), 'Prefix');
-    console.log('monthsForYear', { monthsForYear, folder, prevPrefix, nextMonth, y });
     if ( nextMonth ) {
       return getNextPrefix(folder, nextMonth);
     }
@@ -128,7 +125,6 @@ async function getNextPrefix(folder, prevPrefix) {
   const nextYear = !!y
                  ? firstLessThan(years.map(m => m.Prefix), `${folder}/${y}/`)
                  : get(last(years), 'Prefix');
-  console.log('years', { years, folder, prevPrefix });
   if ( nextYear ) {
     return getNextPrefix(folder, nextYear);
   }
@@ -144,8 +140,6 @@ async function s3List(prefix, opts) {
     Prefix: prefix
   };
 
-  console.log('s3list', params);
-
   return await s3.listObjectsV2(params).promise();
 }
 
@@ -160,8 +154,6 @@ function normalizePrefix(ymd) {
 function firstLessThan(l, x) {
   // assume l is sorted ascending
   const lt = (l || []).filter(i => i < x);
-
-  console.log('FLT', { l, x, lt });
 
   if ( isEmpty(lt) ) {
     return null;

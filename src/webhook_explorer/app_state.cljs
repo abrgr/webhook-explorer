@@ -7,37 +7,39 @@
 
 (defonce auth (r/atom {:user-data nil :cognito-session nil}))
 
-(defonce reqs (r/atom {:items [{:date "2019-10-24"
-                                :path "/abc"
-                                :method "GET"
-                                :id "yoyo"
-                                :req-headers {
-                                  "Accept" "*/*"
-                                  "Host" "api.easybetes.com"
-                                  "User-Agent" "curl/7.47.0"}
-                                :req-body "{\"a\": \"b\"}"
-                                :res-headers {
-                                  "Content-Type" "application/edn"
-                                  "Host" "api.easybetes.com"
-                                  "User-Agent" "curl/7.47.0"}
-                                :res-body "{:abc 7}"}
-                               {:date "2019-10-23"
-                                :path "/abc"
-                                :method "POST"
-                                :id "yoyo2"
-                                :req-headers {
-                                  "Accept" "*/*"
-                                  "Content-Type" "application/json"
-                                  "Host" "api.easybetes.com"
-                                  "User-Agent" "curl/7.47.0"}
-                                :req-body "{\"a\": \"b\"}"
-                                :res-headers {
-                                  "Content-Type" "application/json"
-                                  "Host" "api.easybetes.com"
-                                  "User-Agent" "curl/7.47.0"}
-                                :res-body "{\"a\": \"b\"}"}]
+(def sample-items [{:date "2019-10-24"
+                    :path "/abc"
+                    :method "GET"
+                    :id "yoyo"
+                    :req-headers {
+                      "Accept" "*/*"
+                      "Host" "api.easybetes.com"
+                      "User-Agent" "curl/7.47.0"}
+                    :req-body "{\"a\": \"b\"}"
+                    :res-headers {
+                      "Content-Type" "application/edn"
+                      "Host" "api.easybetes.com"
+                      "User-Agent" "curl/7.47.0"}
+                    :res-body "{:abc 7}"}
+                   {:date "2019-10-23"
+                    :path "/abc"
+                    :method "POST"
+                    :id "yoyo2"
+                    :req-headers {
+                      "Accept" "*/*"
+                      "Content-Type" "application/json"
+                      "Host" "api.easybetes.com"
+                      "User-Agent" "curl/7.47.0"}
+                    :req-body "{\"a\": \"b\"}"
+                    :res-headers {
+                      "Content-Type" "application/json"
+                      "Host" "api.easybetes.com"
+                      "User-Agent" "curl/7.47.0"}
+                    :res-body "{\"a\": \"b\"}"}])
+
+(defonce reqs (r/atom {:items []
                        :in-progress-req nil
-                       :next-req {}
+                       :next-req {:folder "all"}
                        :favorite-reqs #{"yoyo2"}}))
 
 (defn logged-in? []

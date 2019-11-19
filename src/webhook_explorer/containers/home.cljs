@@ -163,7 +163,8 @@
 
 (defn- row-renderer [styles theme props]
   (r/as-element
-    (let [{:keys [items favorite-reqs]} @app-state/reqs
+    (let [{:keys [items favorite-reqs next-req]} @app-state/reqs
+          item-count (count items)
           idx (obj/get props "index")
           {:keys [id] :as item} (get items idx)
           key (obj/get props "key")
@@ -187,22 +188,24 @@
                 [:div {:style style
                        :className (obj/get styles "card-container")
                        :on-load measure}
-                  (if (nil? item)
-                    [:> CircularProgress]
-                    [req-card
-                      {:item item
-                       :styles styles
-                       :favorited (contains? favorite-reqs id)}
-                      start-animating])]))))])))
+                  (cond
+                    (and (= idx item-count) (some? next-req)) [:> CircularProgress]
+                    (>= idx item-count) [:div {:style {:height 50}} " "]
+                    :else [req-card
+                            {:item item
+                             :styles styles
+                             :favorited (contains? favorite-reqs id)}
+                            start-animating])]))))])))
 
 (defn- load-more-rows []
-  (js/Promise. (fn [resolve-promise] (resolve-promise))))
+  (.then (reqs-actions/load-next-items)
+    #(when (not= % :stop) (.clearAll cell-measure-cache))))
 
 (defn- -component [props]
   (let [styles (obj/get props "styles")
         theme (obj/get props "theme")
-        {:keys [items in-progress-req next-req favorite-reqs]} @app-state/reqs
-        row-count (if (some? next-req) (inc (count items)) (count items))]
+        {:keys [items in-progress-req next-req favorite-reqs] :as reqs-state} @app-state/reqs
+        row-count 999999] ;(if (some? next-req) (inc (count items)) (count items))]
     (r/as-element
       [:div {:className (obj/get styles "container")}
         [:> AutoSizer
