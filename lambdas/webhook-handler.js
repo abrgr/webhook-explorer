@@ -30,9 +30,10 @@ exports.handler = async function handler(event, context) {
     }
   };
   await s3.putObject({
-    Body: JSON.stringify(event),
+    Body: JSON.stringify(msg),
     Bucket: bucket,
-    Key: key
+    Key: key,
+    ContentType: 'application/json'
   }).promise();
 
   return {

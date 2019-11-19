@@ -2,7 +2,8 @@
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.promise-utils :as putil]
             [cljs-http.client :as http]
-            [clojure.core.async :as async]))
+            [clojure.core.async :as async]
+            [clojure.set :as s]))
 
 (defn- get-reqs [params]
   (if (nil? params)
@@ -17,10 +18,25 @@
           (fn [{prev-items :items :as reqs}]
             (merge
               reqs
-              {:items (->> items (concat prev-items) (into []))
+              {:items (->> items
+                           (map #(s/rename-keys % {:dataUrl :data-url}))
+                           (concat prev-items)
+                           (into []))
                :in-progress-req nil
                :next-req nextReq})))
         :done))))
+
+(defn- load-full-req [{:keys [id data-url]}]
+  (async/go
+    (let [{req-details :body} (async/<!
+                                (http/get data-url {:with-credentials? false}))]
+      (swap!
+        app-state/reqs
+        update
+        :items
+        (fn [items]
+          (->> items
+               (mapv #(if (= (:id %) id) (assoc % :details req-details) %))))))))
 
 (def ^:private req-chan (async/chan))
 

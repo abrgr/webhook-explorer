@@ -1,5 +1,6 @@
 (ns webhook-explorer.containers.home
-  (:require [reagent.core :as r]
+  (:require [clojure.core.async :as async]
+            [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.styles :as styles]
@@ -100,7 +101,8 @@
     [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
       title]
     [:> ExpansionPanelDetails
-      [:<>
+      (if (nil? headers)
+        [:> CircularProgress]
         [:> Table {:aria-label "headers"}
           [:> TableHead
             [:> TableRow
@@ -111,25 +113,27 @@
               ^{:key header}
               [:> TableRow
                 [:> TableCell header]
-                [:> TableCell value]])]]]]])
+                [:> TableCell value]])]])]])
 
 (defn- body-view [title body content-type styles on-resize]
   [:> ExpansionPanel {:elevation 0 :onChange on-resize}
     [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
       title]
     [:> ExpansionPanelDetails
-      [editor body content-type styles]]])
+      (if (nil? body)
+        [:> CircularProgress]
+        [editor body content-type styles])]])
 
 (defn- req-card
-  [{{:keys [id
+  [{:keys [styles favorited]
+    {:keys [id
             date
             path
-            method
-            req-headers
-            req-body
-            res-headers
-            res-body]}
-    :item :keys [styles favorited]}
+            method]
+     {req-headers :headers
+      req-body :body} :req
+     {res-headers :headers
+      res-body :body} :res} :item}
     on-resize]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
@@ -166,7 +170,7 @@
     (let [{:keys [items favorite-reqs next-req]} @app-state/reqs
           item-count (count items)
           idx (obj/get props "index")
-          {:keys [id] :as item} (get items idx)
+          {:keys [id details] :as item} (get items idx)
           key (obj/get props "key")
           style (obj/get props "style")
           parent (obj/get props "parent")]
@@ -183,7 +187,12 @@
                       (measure)
                       (when (pos? ms-remaining) (js/setTimeout (partial advance-animation (- ms-remaining 16)) 16)))
                     (start-animating []
-                      (advance-animation (obj/getValueByKeys theme #js ["transitions" "duration" "standard"])))]
+                      (advance-animation (obj/getValueByKeys theme #js ["transitions" "duration" "standard"])))
+                    (load-details []
+                      (async/go
+                        (async/<! (reqs-actions/load-full-req item))
+                        (async/<! (async/timeout 50))
+                        (measure)))]
               (r/as-element
                 [:div {:style style
                        :className (obj/get styles "card-container")
@@ -195,7 +204,9 @@
                             {:item item
                              :styles styles
                              :favorited (contains? favorite-reqs id)}
-                            start-animating])]))))])))
+                            (if (some? details)
+                              start-animating
+                              load-details)])]))))])))
 
 (defn- load-more-rows []
   (.then (reqs-actions/load-next-items)
@@ -205,7 +216,7 @@
   (let [styles (obj/get props "styles")
         theme (obj/get props "theme")
         {:keys [items in-progress-req next-req favorite-reqs] :as reqs-state} @app-state/reqs
-        row-count 999999] ;(if (some? next-req) (inc (count items)) (count items))]
+        row-count 999999] ; TODO: weird
     (r/as-element
       [:div {:className (obj/get styles "container")}
         [:> AutoSizer

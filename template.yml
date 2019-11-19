@@ -158,6 +158,11 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-webhook-reqs"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: ["GET"]
+            AllowedOrigins: ["*"]
+            MaxAge: 300
   WebhookDNS:
     Type: AWS::Route53::RecordSetGroup
     Properties: 
