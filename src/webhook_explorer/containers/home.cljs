@@ -130,9 +130,9 @@
 (defn- req-card
   [{:keys [styles favorited]
    {:keys [id
-            date
-            path
-            method]
+           date
+           path
+           method]
      {{req-headers :headers
         req-body :body} :req
        {res-headers :headers
@@ -188,13 +188,13 @@
           (let [measure (obj/get measurer "measure")]
             (letfn [(advance-animation [ms-remaining]
                       (measure)
-                      (when (pos? ms-remaining) (js/setTimeout (partial advance-animation (- ms-remaining 16)) 16)))
+                      (when (pos? ms-remaining) (js/requestAnimationFrame (partial advance-animation (- ms-remaining 16))))) ; TODO: set deadline instead of assuming 16ms/frame
                     (start-animating []
                       (advance-animation (obj/getValueByKeys theme #js ["transitions" "duration" "standard"])))
                     (load-details []
+                      (start-animating)
                       (async/go
                         (async/<! (reqs-actions/load-full-req item))
-                        (async/<! (async/timeout 50))
                         (on-row-updated idx)
                         (start-animating)))]
               (r/as-element
@@ -217,8 +217,7 @@
     #(when (not= % :stop) (.clearAll cell-measure-cache))))
 
 (defn- req-list []
-  (let [list-ref (r/atom nil)
-        row-count 999999] ; TODO: weird
+  (let [list-ref (r/atom nil)]
     (fn [{:keys [size styles theme]}]
       (let [{:keys [items next-req] :as reqs-state} @app-state/reqs]
         [:> InfiniteLoader {:isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
