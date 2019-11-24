@@ -97,7 +97,10 @@
                                   :mode mode}}]))
 
 (defn- headers-view [title headers on-resize]
-  [:> ExpansionPanel {:elevation 0 :TransitionProps #js {:onEntered on-resize :onExit on-resize}}
+  [:> ExpansionPanel {:elevation 0
+                      :TransitionProps #js {:onEntered on-resize
+                                            :onExit on-resize
+                                            :unmountOnExit true}}
     [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
       title]
     [:> ExpansionPanelDetails
@@ -126,14 +129,14 @@
 
 (defn- req-card
   [{:keys [styles favorited]
-    {:keys [id
+   {:keys [id
             date
             path
             method]
-     {req-headers :headers
-      req-body :body} :req
-     {res-headers :headers
-      res-body :body} :res} :item}
+     {{req-headers :headers
+        req-body :body} :req
+       {res-headers :headers
+        res-body :body} :res} :details} :item}
     on-resize]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
@@ -165,7 +168,7 @@
   (CellMeasurerCache. #js {:defaultHeight 431
                            :fixedWidth true}))
 
-(defn- row-renderer [styles theme props]
+(defn- row-renderer [styles theme on-row-updated props]
   (r/as-element
     (let [{:keys [items favorite-reqs next-req]} @app-state/reqs
           item-count (count items)
@@ -192,7 +195,8 @@
                       (async/go
                         (async/<! (reqs-actions/load-full-req item))
                         (async/<! (async/timeout 50))
-                        (measure)))]
+                        (on-row-updated idx)
+                        (start-animating)))]
               (r/as-element
                 [:div {:style style
                        :className (obj/get styles "card-container")
@@ -212,30 +216,38 @@
   (.then (reqs-actions/load-next-items)
     #(when (not= % :stop) (.clearAll cell-measure-cache))))
 
+(defn- req-list []
+  (let [list-ref (r/atom nil)
+        row-count 999999] ; TODO: weird
+    (fn [{:keys [size styles theme]}]
+      (let [{:keys [items next-req] :as reqs-state} @app-state/reqs]
+        [:> InfiniteLoader {:isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
+                            :loadMoreRows load-more-rows
+                            :rowCount (if (nil? next-req) (count items) (inc (count items)))
+                            :height (obj/get size "height")}
+          (fn [scroll-info]
+            (r/as-element
+              [:> List {:ref #(do (reset! list-ref %)
+                                  ((obj/get scroll-info "registerChild") %))
+                        :onRowsRendered (obj/get scroll-info "onRowsRendered")
+                        :rowRenderer (partial row-renderer styles theme #(when-not (nil? @list-ref) (.recomputeGridSize @list-ref %)))
+                        :height (obj/get size "height")
+                        :width (obj/get size "width")
+                        :rowCount (if (nil? next-req) (count items) (inc (count items)))
+                        :rowHeight (obj/get cell-measure-cache "rowHeight")
+                        :deferredMeasurementCache cell-measure-cache}]))]))))
+
 (defn- -component [props]
   (let [styles (obj/get props "styles")
-        theme (obj/get props "theme")
-        {:keys [items in-progress-req next-req favorite-reqs] :as reqs-state} @app-state/reqs
-        row-count 999999] ; TODO: weird
+        theme (obj/get props "theme")]
     (r/as-element
       [:div {:className (obj/get styles "container")}
         [:> AutoSizer
           (fn [size]
             (r/as-element
-              [:> InfiniteLoader {:isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
-                                  :loadMoreRows load-more-rows
-                                  :rowCount row-count
-                                  :height (obj/get size "height")}
-                (fn [scroll-info]
-                  (r/as-element
-                    [:> List {:ref (obj/get scroll-info "registerChild")
-                              :onRowsRendered (obj/get scroll-info "onRowsRendered")
-                              :rowRenderer (partial row-renderer styles theme)
-                              :height (obj/get size "height")
-                              :width (obj/get size "width")
-                              :rowCount row-count
-                              :rowHeight (obj/get cell-measure-cache "rowHeight")
-                              :deferredMeasurementCache cell-measure-cache}]))]))]])))
+              [req-list {:size size
+                         :styles styles
+                         :theme theme}]))]])))
 
 (def ^:private -component-with-styles-and-theme (with-theme -component))
 

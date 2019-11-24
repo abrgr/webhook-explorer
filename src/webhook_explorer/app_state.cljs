@@ -38,7 +38,6 @@
                     :res-body "{\"a\": \"b\"}"}])
 
 (defonce reqs (r/atom {:items []
-                       :in-progress-req nil
                        :next-req {:folder "all"}
                        :favorite-reqs #{"yoyo2"}}))
 
