@@ -96,6 +96,15 @@ async function getSignedUrl(method, params) {
   });
 }
 
+function removeFolderFromPrefix(folder, prefix) {
+  const prefixFolder = `${folder}/`;
+  if ( prefix.startsWith(prefixFolder) ) {
+    return prefix.slice(prefixFolder.length);
+  }
+
+  return prefix;
+}
+
 async function getNextPrefix(folder, prevPrefix) {
   const [y, m, d] = prevPrefix.split('/');
 
@@ -106,7 +115,7 @@ async function getNextPrefix(folder, prevPrefix) {
                   ? firstLessThan(daysForMonth.map(d => d.Prefix), `${ymPrefix}${d}/`)
                   : get(last(daysForMonth), 'Prefix');
     if ( nextDay ) {
-      return nextDay.slice(folder.length + 1); // remove the leading "<folder>/"
+      return removeFolderFromPrefix(folder, nextDay);
     }
   }
 
@@ -117,7 +126,7 @@ async function getNextPrefix(folder, prevPrefix) {
                     ? firstLessThan(monthsForYear.map(m => m.Prefix), `${yPrefix}${m}/`)
                     : get(last(monthsForYear), 'Prefix');
     if ( nextMonth ) {
-      return getNextPrefix(folder, nextMonth);
+      return getNextPrefix(folder, removeFolderFromPrefix(folder, nextMonth));
     }
   }
 
@@ -126,7 +135,7 @@ async function getNextPrefix(folder, prevPrefix) {
                  ? firstLessThan(years.map(m => m.Prefix), `${folder}/${y}/`)
                  : get(last(years), 'Prefix');
   if ( nextYear ) {
-    return getNextPrefix(folder, nextYear);
+    return getNextPrefix(folder, removeFolderFromPrefix(folder, nextYear));
   }
 
   return null;
