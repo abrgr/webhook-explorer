@@ -3,16 +3,10 @@
             [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.app-state :as app-state]
+            [webhook-explorer.containers.req-editor :as req-editor]
+            [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
-            [webhook-explorer.init :as init]
-            ["codemirror" :as CM]
-            ["react-codemirror" :as CodeMirror]
-            ["codemirror/mode/meta"]
-            ["codemirror/mode/javascript/javascript"]
-            ["codemirror/mode/xml/xml"]
-            ["codemirror/mode/clojure/clojure"]
-            ["codemirror/mode/yaml/yaml"]
             ["react-virtualized/dist/commonjs/AutoSizer" :default AutoSizer]
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
             ["react-virtualized/dist/commonjs/List" :default List]
@@ -24,29 +18,15 @@
             ["@material-ui/core/CardContent" :default CardContent]
             ["@material-ui/core/CardHeader" :default CardHeader]
             ["@material-ui/core/Collapse" :default Collapse]
-            ["@material-ui/core/ExpansionPanel" :default ExpansionPanel]
-            ["@material-ui/core/ExpansionPanelDetails" :default ExpansionPanelDetails]
-            ["@material-ui/core/ExpansionPanelSummary" :default ExpansionPanelSummary]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Tooltip" :default Tooltip]
-            ["@material-ui/core/Table" :default Table]
-            ["@material-ui/core/TableBody" :default TableBody]
-            ["@material-ui/core/TableCell" :default TableCell]
-            ["@material-ui/core/TableHead" :default TableHead]
-            ["@material-ui/core/TableRow" :default TableRow]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
-            ["@material-ui/icons/ExpandMore" :default ExpandMoreIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
             ["@material-ui/icons/Folder" :default FolderIcon]
             ["@material-ui/icons/Share" :default ShareIcon]
             ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]))
-
-(defn- init! []
-  (styles/inject-css-link "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.css"))
-
-(init/register-init 10 init!)
 
 (def ^:private styled
   (styles/style-wrapper
@@ -88,45 +68,6 @@
       [:> IconButton {:aria-label label}
         [:> icon icon-props]]]))
 
-(defn- editor [value content-type styles]
-  (let [mode (when-let [m (.findModeByMIME CM (or content-type "text/plain"))]
-               (obj/get m "mode"))]
-    [:> CodeMirror {:className (obj/get styles "code")
-                    :value value
-                    :options #js {:viewportMargin ##Inf
-                                  :mode mode}}]))
-
-(defn- headers-view [title headers on-resize]
-  [:> ExpansionPanel {:elevation 0
-                      :TransitionProps #js {:onEntered on-resize
-                                            :onExit on-resize
-                                            :unmountOnExit true}}
-    [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-      title]
-    [:> ExpansionPanelDetails
-      (if (nil? headers)
-        [:> CircularProgress]
-        [:> Table {:aria-label "headers"}
-          [:> TableHead
-            [:> TableRow
-              [:> TableCell "Header"]
-              [:> TableCell "Value"]]]
-          [:> TableBody
-            (for [[header value] headers]
-              ^{:key header}
-              [:> TableRow
-                [:> TableCell header]
-                [:> TableCell value]])]])]])
-
-(defn- body-view [title body content-type styles on-resize]
-  [:> ExpansionPanel {:elevation 0 :onChange on-resize}
-    [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-      title]
-    [:> ExpansionPanelDetails
-      (if (nil? body)
-        [:> CircularProgress]
-        [editor body content-type styles])]])
-
 (defn- req-card
   [{:keys [styles favorited]
    {:keys [id
@@ -136,8 +77,9 @@
      {{req-headers :headers
         req-body :body} :req
        {res-headers :headers
-        res-body :body} :res} :details} :item}
-    on-resize]
+        res-body :body} :res} :details
+     :as item} :item}
+    on-visibility-toggled]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
@@ -152,16 +94,18 @@
        :title path
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
-      [headers-view "Request Headers" req-headers on-resize]
-      [body-view "Request Body" req-body (get req-headers "Content-Type") styles on-resize]
-      [headers-view "Response Headers" res-headers on-resize]
-      [body-view "Response Body" res-body (get res-headers "Content-Type") styles on-resize]]
+      [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
+      [req-parts/body-view "Request Body" req-body (get req-headers "Content-Type") on-visibility-toggled]
+      [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
+      [req-parts/body-view "Response Body" res-body (get res-headers "Content-Type") on-visibility-toggled]]
     [:> CardActions
       [:> Button {:className (obj/get styles "card-action-btn")
-                  :color "primary"}
+                  :color "primary"
+                  :onClick #(reqs-actions/select-item :curl item)}
         "Copy as cURL"]
       [:> Button {:className (obj/get styles "card-action-btn")
-                  :color "primary"}
+                  :color "primary"
+                  :onClick #(reqs-actions/select-item :local item)}
         "Run local"]]])
 
 (def ^:private cell-measure-cache
@@ -240,13 +184,15 @@
   (let [styles (obj/get props "styles")
         theme (obj/get props "theme")]
     (r/as-element
-      [:div {:className (obj/get styles "container")}
-        [:> AutoSizer
-          (fn [size]
-            (r/as-element
-              [req-list {:size size
-                         :styles styles
-                         :theme theme}]))]])))
+      [:<>
+        [req-editor/component]
+        [:div {:className (obj/get styles "container")}
+          [:> AutoSizer
+            (fn [size]
+              (r/as-element
+                [req-list {:size size
+                           :styles styles
+                           :theme theme}]))]]])))
 
 (def ^:private -component-with-styles-and-theme (with-theme -component))
 

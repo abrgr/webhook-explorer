@@ -52,3 +52,18 @@
         p (putil/chan->promise resp-chan)]
     (async/put! req-chan resp-chan)
     p))
+
+(defn select-item [type item]
+  (swap!
+    app-state/reqs
+    assoc
+    :selected-item
+    {:type type
+     :item item}))
+
+(defn unselect-item []
+  (swap!
+    app-state/reqs
+    assoc
+    :selected-item
+    nil))
