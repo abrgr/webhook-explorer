@@ -95,9 +95,9 @@
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
       [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
-      [req-parts/body-view "Request Body" req-body (get req-headers "Content-Type") on-visibility-toggled]
+      [req-parts/body-view "Request Body" req-body req-headers on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
-      [req-parts/body-view "Response Body" res-body (get res-headers "Content-Type") on-visibility-toggled]]
+      [req-parts/body-view "Response Body" res-body res-headers on-visibility-toggled]]
     [:> CardActions
       [:> Button {:className (obj/get styles "card-action-btn")
                   :color "primary"

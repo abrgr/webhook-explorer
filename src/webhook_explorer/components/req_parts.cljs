@@ -47,7 +47,7 @@
 
 (defn headers-view
   ([title headers]
-    [headers-view headers (constantly nil)])
+    [headers-view title headers (constantly nil)])
   ([title headers on-visibility-toggled]
     [:> ExpansionPanel {:elevation 0
                         :TransitionProps #js {:onEntered on-visibility-toggled
@@ -71,14 +71,15 @@
                   [:> TableCell value]])]])]]))
 
 (defn body-view
-  ([title body content-type]
-    [body-view title body content-type (constantly nil)])
-  ([title body content-type on-visibility-toggled]
-    [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}
-      [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-        title]
-      [:> ExpansionPanelDetails
-        (if (nil? body)
-          [:> CircularProgress]
-          [styled-editor body content-type])]]))
+  ([title body headers]
+    [body-view title body headers (constantly nil)])
+  ([title body headers on-visibility-toggled]
+    (let [content-type (get headers "Content-Type")]
+      [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}
+        [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+          title]
+        [:> ExpansionPanelDetails
+          (if (nil? body)
+            [:> CircularProgress]
+            [styled-editor body content-type])]])))
 
