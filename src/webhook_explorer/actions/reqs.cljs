@@ -54,12 +54,21 @@
     p))
 
 (defn select-item [type item]
-  (swap!
-    app-state/reqs
-    assoc
-    :selected-item
-    {:type type
-     :item item}))
+  (async/go
+    (let [item' (if (:details item)
+                  item
+                  (->> item
+                       load-full-req
+                       async/<!
+                       :items
+                       (filter #(= (:id %) (:id item)))
+                       first))]
+      (swap!
+        app-state/reqs
+        assoc
+        :selected-item
+        {:type type
+         :item item'}))))
 
 (defn unselect-item []
   (swap!
