@@ -21,7 +21,9 @@
           :curl {:title "cURL"
                  :desc "Generate a cURL command"
                  :action-name "Copy"
-                 :action (fn [])}
+                 :action (fn []
+                           (let [{{:keys [type item]} :selected-item} @app-state/reqs]
+                             (println item)))}
           :local {:title "Execute request"
                   :desc "Execute request from the browser"
                   :action-name "Execute"
@@ -34,8 +36,8 @@
       [:> DialogTitle title]
       [:> DialogContent
         [:> DialogContentText desc]
-        [req-parts/headers-view "Request Headers" headers]
-        [req-parts/body-view "Request Body" body headers]]
+        [req-parts/editable-headers-view "Request Headers" headers #(reqs-actions/update-selected-item-in [:details :req :headers %1] %2)]
+        [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:details :req :body] %)]]
       [:> DialogActions
         [:> Button {:onClick action :color "primary"} action-name]
         [:> Button {:onClick on-close :color "secondary"} "Cancel"]]]))

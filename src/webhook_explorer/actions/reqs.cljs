@@ -70,6 +70,13 @@
         {:type type
          :item item'}))))
 
+(defn update-selected-item-in [item-ks value]
+  (swap!
+    app-state/reqs
+    assoc-in
+    (concat [:selected-item :item] item-ks)
+    value))
+
 (defn unselect-item []
   (swap!
     app-state/reqs
