@@ -3,17 +3,20 @@
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.reqs :as reqs-actions]
             [webhook-explorer.components.req-parts :as req-parts]
+            [goog.object :as obj]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Dialog" :default Dialog]
             ["@material-ui/core/DialogActions" :default DialogActions]
             ["@material-ui/core/DialogContent" :default DialogContent]
             ["@material-ui/core/DialogContentText" :default DialogContentText]
-            ["@material-ui/core/DialogTitle" :default DialogTitle]))
+            ["@material-ui/core/DialogTitle" :default DialogTitle]
+            ["@material-ui/core/TextField" :default TextField]))
 
 (defn component []
   (let [{{:keys [type item]} :selected-item} @app-state/reqs
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
+        non-host-headers (->> headers (filter (comp not #{:Host} first)) (into {}))
         open (some? type)
         on-close reqs-actions/unselect-item
         {:keys [title desc action-name action]}
@@ -36,7 +39,11 @@
       [:> DialogTitle title]
       [:> DialogContent
         [:> DialogContentText desc]
-        [req-parts/editable-headers-view "Request Headers" headers #(reqs-actions/update-selected-item-in [:details :req :headers %1] %2)]
+        [:> TextField {:fullWidth true
+                       :label "Host"
+                       :value (get headers :Host)
+                       :onChange #(reqs-actions/update-selected-item-in [:details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]
+        [req-parts/editable-headers-view "Request Headers" non-host-headers #(reqs-actions/update-selected-item-in [:details :req :headers %1] %2)]
         [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:details :req :body] %)]]
       [:> DialogActions
         [:> Button {:onClick action :color "primary"} action-name]
