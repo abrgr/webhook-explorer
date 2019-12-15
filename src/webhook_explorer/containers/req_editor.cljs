@@ -6,6 +6,7 @@
             [webhook-explorer.actions.reqs :as reqs-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [goog.object :as obj]
+            ["@material-ui/core/Snackbar" :default Snackbar]
             ["@material-ui/core/InputLabel" :default InputLabel]
             ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/core/FormControlLabel" :default FormControlLabel]
@@ -21,7 +22,7 @@
             ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/core/Tooltip" :default Tooltip]))
 
-(defn component []
+(defn- dialog []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
         {:keys [method path is-secure]} item
         headers (get-in item [:details :req :headers])
@@ -43,12 +44,12 @@
         [:> FormControl {:fullWidth true
                          :margin "normal"}
           [:> FormControlLabel {:label "Secure"
-                                :control (r/as-element [:> Switch {:checked is-secure :onChange #(reqs-actions/update-selected-item-in [:is-secure] (obj/getValueByKeys % #js ["target" "checked"]))}])}]]
+                                :control (r/as-element [:> Switch {:checked is-secure :onChange #(reqs-actions/update-selected-item-in [:item :is-secure] (obj/getValueByKeys % #js ["target" "checked"]))}])}]]
         [:> FormControl {:fullWidth true
                          :margin "normal"}
           [:> InputLabel "Method"]
           [:> Select {:value method
-                      :onChange #(reqs-actions/update-selected-item-in [:method] (obj/getValueByKeys % #js ["target" "value"]))}
+                      :onChange #(reqs-actions/update-selected-item-in [:item :method] (obj/getValueByKeys % #js ["target" "value"]))}
             [:> MenuItem {:value "GET"} "GET"]
             [:> MenuItem {:value "POST"} "POST"]
             [:> MenuItem {:value "PUT"} "PUT"]
@@ -60,15 +61,15 @@
           [:> TextField {:fullWidth true
                          :label "Host"
                          :value host
-                         :onChange #(reqs-actions/update-selected-item-in [:details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]]
+                         :onChange #(reqs-actions/update-selected-item-in [:item :details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]]
         [:> FormControl {:fullWidth true
                          :margin "normal"}
           [:> TextField {:fullWidth true
                          :label "Path"
                          :value path
-                         :onChange #(reqs-actions/update-selected-item-in [:path] (obj/getValueByKeys % #js ["target" "value"]))}]]
-        [req-parts/editable-headers-view "Request Headers" non-host-headers #(reqs-actions/update-selected-item-in [:details :req :headers %1] %2)]
-        [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:details :req :body] %)]]
+                         :onChange #(reqs-actions/update-selected-item-in [:item :path] (obj/getValueByKeys % #js ["target" "value"]))}]]
+        [req-parts/editable-headers-view "Request Headers" non-host-headers #(reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2)]
+        [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]]
       [:> DialogActions
         [:> Tooltip {:title "Change host to 'localhost'"
                      :disableHoverListener allow-local-req
@@ -85,3 +86,17 @@
         [:> Button {:onClick on-close
                     :color "secondary"}
                   "Cancel"]]]))
+
+(defn- notification []
+  (let [{{:keys [notification]} :selected-item} @app-state/reqs
+        open (some? notification)]
+    [:> Snackbar
+      {:open open
+       :autoHideDuration 3000
+       :onClose #(reqs-actions/update-selected-item-in [:notification] nil)
+       :message (r/as-element [:span notification])}]))
+
+(defn component []
+  [:<>
+    [notification]
+    [dialog]])
