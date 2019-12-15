@@ -22,7 +22,9 @@
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Typography" :default Typography]
+            ["@material-ui/core/Fab" :default FloatingActionButton]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
+            ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
             ["@material-ui/icons/Folder" :default FolderIcon]
             ["@material-ui/icons/Share" :default ShareIcon]
@@ -58,7 +60,10 @@
                             :background-image "linear-gradient(to bottom, rgba(255,255,255, 0), rgba(255,255,255, 1) 90%)"
                             :width "100%"
                             :height "4em"}}
-       :previewed-card-content {:margin-top "-32px"}})))
+       :previewed-card-content {:margin-top "-32px"}
+       :send-btn {:margin-right 15
+                  :margin-bottom 15
+                  :margin-left "auto"}})))
 
 (defn- action-btn
   ([label icon]
@@ -99,14 +104,11 @@
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
       [req-parts/body-view "Response Body" res-body res-headers on-visibility-toggled]]
     [:> CardActions
-      [:> Button {:className (obj/get styles "card-action-btn")
-                  :color "primary"
-                  :onClick #(reqs-actions/select-item :curl item)}
-        "Copy as cURL"]
-      [:> Button {:className (obj/get styles "card-action-btn")
-                  :color "primary"
-                  :onClick #(reqs-actions/select-item :local item)}
-        "Run local"]]])
+      [:> FloatingActionButton {:color "primary"
+                                :className (obj/get styles "send-btn")
+                                :aria-label "execute"
+                                :onClick #(reqs-actions/select-item item)}
+        [:> SendIcon]]]])
 
 (def ^:private cell-measure-cache
   (CellMeasurerCache. #js {:defaultHeight 431

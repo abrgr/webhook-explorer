@@ -53,7 +53,7 @@
     (async/put! req-chan resp-chan)
     p))
 
-(defn select-item [type item]
+(defn select-item [item]
   (async/go
     (let [item' (if (:details item)
                   item
@@ -67,8 +67,35 @@
         app-state/reqs
         assoc
         :selected-item
-        {:type type
-         :item item'}))))
+        {:item item'}))))
+
+(defn copy-selected-as-curl [])
+
+(defn send-selected-as-local-request []
+  (let [{{:keys [item]} :selected-item} @app-state/reqs
+        {:keys [method path is-secure]} item
+        headers (get-in item [:details :req :headers])
+        url (str "http" (when is-secure "s") "://" (get headers :Host) path)]
+    (async/go
+      (swap!
+        app-state/reqs
+        assoc-in
+        [:selected-item :in-progress]
+        true)
+      (let [res (async/<! (http/request {:method method
+                                         :url url
+                                         :headers (->> headers
+                                                       (map #(vector (name (first %)) (second %)))
+                                                       (into {}))
+                                         :with-credentials? false}))]
+        (swap!
+          app-state/reqs
+          update
+          :selected-item
+          #(merge
+             %
+             {:in-progress false
+              :res res}))))))
 
 (defn update-selected-item-in [item-ks value]
   (swap!
