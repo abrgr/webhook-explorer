@@ -14,10 +14,14 @@ exports.handler = async function handler(event, context) {
   const headers = event.headers || {};
   const host = encodeURIComponent(headers.Host || headers.host);
   const body = event.body;
+  const protocol = (headers['X-Forwarded-Proto'] || headers['x-forwarded-proto'] || '').toLowerCase();
+  const qs = event.queryStringParameters || {};
   const key = `all/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${method}:${host}:${path}:${context.awsRequestId}`;
   const msg = {
     host,
+    protocol,
     path,
+    qs,
     method,
     iso,
     req: {

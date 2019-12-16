@@ -9,11 +9,15 @@ const ONE_HOUR_IN_SECONDS = 60 * 60;
 exports.handler = async function handler(event, context) {
   const { folder, ymd, token } = event.queryStringParameters || {};
   const page = await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token);
+  const cacheSeconds = (ymd || token)
+                     ? 300
+                     : 5;
 
   return {
     isBase64Encoded: false,
     statusCode: 200,
     headers: {
+      'Cache-Control': `max-age=${cacheSeconds}`,
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
       'Access-Control-Allow-Methods': 'GET,OPTIONS'
