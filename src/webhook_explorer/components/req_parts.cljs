@@ -4,6 +4,7 @@
             [webhook-explorer.styles :as styles]
             [goog.object :as obj]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Delete" :default DeleteIcon]
             ["@material-ui/core/ExpansionPanel" :default ExpansionPanel]
             ["@material-ui/core/ExpansionPanelSummary" :default ExpansionPanelSummary]
@@ -16,6 +17,7 @@
             ["@material-ui/core/TableCell" :default TableCell]
             ["@material-ui/core/TableHead" :default TableHead]
             ["@material-ui/core/TableRow" :default TableRow]
+            ["@material-ui/core/TableFooter" :default TableFooter]
             ["codemirror" :as CM]
             ["react-codemirror" :as CodeMirror]
             ["codemirror/mode/meta"]
@@ -49,39 +51,56 @@
 (defn- styled-editor [value content-type on-change]
   [styled {:value value :content-type content-type :onChange on-change} editor])
 
-(defn base-headers-view
-  ([title headers show-delete on-visibility-toggled header-value-component]
-    [base-headers-view title headers show-delete on-visibility-toggled header-value-component {}])
-  ([title headers show-delete on-visibility-toggled header-value-component on-header-change]
-    [:> ExpansionPanel {:elevation 0
-                        :TransitionProps #js {:onEntered on-visibility-toggled
-                                              :onExit on-visibility-toggled
-                                              :unmountOnExit true}}
-      [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-        title]
-      [:> ExpansionPanelDetails
-        (if (nil? headers)
-          [:> CircularProgress]
-          [:> Table {:aria-label "headers"}
-            [:> TableHead
-              [:> TableRow
-                (when show-delete
-                  [:> TableCell ""])
-                [:> TableCell "Header"]
-                [:> TableCell "Value"]]]
-            [:> TableBody
-              (for [[header value] headers]
-                ^{:key header}
-                [:> TableRow
-                  (when show-delete
-                    [:> TableCell
-                      [:> IconButton {:aria-label "delete"
-                                      :onClick #(on-header-change header nil)}
-                        [:> DeleteIcon {:fontSize "small"}]]])
-                  [:> TableCell header]
-                  [:> TableCell [header-value-component {:value value :header header :on-header-change on-header-change}]]])]])]]))
+(defn base-kv-view
+  ([title k-title v-title m editable on-visibility-toggled value-component]
+    [base-kv-view title k-title v-title m editable on-visibility-toggled value-component {}])
+  ([title k-title v-title m editable on-visibility-toggled value-component on-change]
+    (let [new-kv (r/atom {:new-k "" :new-v ""})]
+      (fn [title k-title v-title m editable on-visibility-toggled value-component on-change]
+        (let [{:keys [new-k new-v]} @new-kv]
+          [:> ExpansionPanel {:elevation 0
+                              :TransitionProps #js {:onEntered on-visibility-toggled
+                                                    :onExit on-visibility-toggled
+                                                    :unmountOnExit true}}
+            [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+              title]
+            [:> ExpansionPanelDetails
+              (if (nil? m)
+                [:> CircularProgress]
+                [:> Table {:aria-label title}
+                  [:> TableHead
+                    [:> TableRow
+                      (when editable
+                        [:> TableCell ""])
+                      [:> TableCell k-title]
+                      [:> TableCell v-title]]]
+                  [:> TableBody
+                    (for [[k v] m]
+                      ^{:key k}
+                      [:> TableRow
+                        (when editable
+                          [:> TableCell
+                            [:> IconButton {:aria-label "delete"
+                                            :onClick #(on-change k nil)}
+                              [:> DeleteIcon {:fontSize "small"}]]])
+                        [:> TableCell k]
+                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]])]
+                  (when editable
+                    [:> TableFooter
+                      [:> TableRow
+                        [:> TableCell
+                          [:> IconButton {:aria-label "add"
+                                          :onClick #(do (on-change (keyword new-k) new-v)
+                                                        (reset! new-kv {:new-k "" :new-v ""}))}
+                            [:> AddIcon {:fontSize "small"}]]]
+                        [:> TableCell
+                          [:> TextField {:value new-k
+                                         :onChange #(swap! new-kv assoc :new-k (obj/getValueByKeys % #js ["target" "value"]))}]]
+                        [:> TableCell
+                          [:> TextField {:value new-v
+                                         :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]]])])]])))))
 
-(defn- base-header-value [{:keys [value]}]
+(defn- base-value [{:keys [value]}]
   value)
 
 (defn- nop [] nil)
@@ -90,15 +109,15 @@
   ([title headers]
     [headers-view title headers nop])
   ([title headers on-visibility-toggled]
-    [base-headers-view title headers false on-visibility-toggled base-header-value]))
+    [base-kv-view title "Header" "Value" headers false on-visibility-toggled base-value]))
 
-(defn- editable-header-value [{:keys [header value on-header-change]}]
-  ^{:key header}
+(defn- editable-value [{:keys [key value on-change]}]
+  ^{:key key}
   [:> TextField {:value value
-                 :onChange #(on-header-change header (obj/getValueByKeys % #js ["target" "value"]))}])
+                 :onChange #(on-change key (obj/getValueByKeys % #js ["target" "value"]))}])
 
 (defn editable-headers-view [title headers on-header-change]
-  [base-headers-view title headers true nop editable-header-value on-header-change])
+  [base-kv-view title "Header" "Value" headers true nop editable-value on-header-change])
 
 (defn base-body-view [title body headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]
