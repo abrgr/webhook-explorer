@@ -76,7 +76,11 @@
               #(if (nil? %2)
                  (reqs-actions/update-selected-item-in [:item :details :req :headers] (dissoc headers %1))
                  (reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2))]
-            [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]]
+            [req-parts/editable-body-view
+              "Request Body"
+              body
+              headers
+              #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]]
           [:> DialogActions
             [:> Tooltip {:title "Change host to 'localhost'"
                          :disableHoverListener allow-local-req
