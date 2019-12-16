@@ -24,8 +24,10 @@
 
 (defn- dialog []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
-        {:keys [host method path]} item
+        {:keys [method path]} item
+        host (get-in item [:details :host])
         protocol (get-in item [:details :protocol])
+        qs (get-in item [:details :qs])
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
         non-host-headers (->> headers (filter (comp not #{:Host} first)) (into {}))
@@ -69,13 +71,19 @@
               [:> TextField {:fullWidth true
                              :label "Host"
                              :value host
-                             :onChange #(reqs-actions/update-selected-item-in [:item :details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]]
+                             :onChange #(reqs-actions/update-selected-item-in [:item :details :host] (obj/getValueByKeys % #js ["target" "value"]))}]]
             [:> FormControl {:fullWidth true
                              :margin "normal"}
               [:> TextField {:fullWidth true
                              :label "Path"
                              :value path
                              :onChange #(reqs-actions/update-selected-item-in [:item :path] (obj/getValueByKeys % #js ["target" "value"]))}]]
+            [req-parts/editable-qs-view
+              "Query Params"
+              qs
+              #(if (nil? %2)
+                 (reqs-actions/update-selected-item-in [:item :details :qs] (dissoc qs %1))
+                 (reqs-actions/update-selected-item-in [:item :details :qs %1] %2))]
             [req-parts/editable-headers-view
               "Request Headers"
               non-host-headers

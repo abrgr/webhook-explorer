@@ -119,6 +119,9 @@
 (defn editable-headers-view [title headers on-header-change]
   [base-kv-view title "Header" "Value" headers true nop editable-value on-header-change])
 
+(defn editable-qs-view [title qs on-qs-change]
+  [base-kv-view title "Key" "Value" qs true nop editable-value on-qs-change])
+
 (defn base-body-view [title body headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]
     [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}

@@ -73,10 +73,23 @@
 (defn- selected-req []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
         {:keys [method path]} item
+        host (get-in item [:details :host])
         protocol (get-in item [:details :protocol])
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
-        url (str protocol "://" (get headers :Host) path)]
+        q-params (get-in item [:details :qs])
+        q (if (empty? q-params)
+              ""
+              (->> q-params
+                   (map (fn [[k v]]
+                          (str
+                            (js/encodeURIComponent (name k))
+                            "="
+                            (js/encodeURIComponent (name v)))))
+                   (interpose "&")
+                   (apply str)
+                   (str "?")))
+        url (str protocol "://" host path q)]
       {:method method
        :url url
        :headers (->> headers
@@ -120,7 +133,7 @@
         assoc-in
         [:selected-item :in-progress]
         true)
-      (let [res (async/<! (http/request (assoc selected-req
+      (let [res (async/<! (http/request (assoc opts
                                                :with-credentials?
                                                false)))]
         (swap!
