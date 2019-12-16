@@ -72,10 +72,11 @@
 
 (defn- selected-req []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
-        {:keys [method path is-secure]} item
+        {:keys [method path]} item
+        protocol (get-in item [:details :protocol])
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
-        url (str "http" (when is-secure "s") "://" (get headers :Host) path)]
+        url (str protocol "://" (get headers :Host) path)]
       {:method method
        :url url
        :headers (->> headers

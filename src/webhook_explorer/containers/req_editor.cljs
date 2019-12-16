@@ -24,11 +24,11 @@
 
 (defn- dialog []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
-        {:keys [method path is-secure]} item
+        {:keys [host method path]} item
+        protocol (get-in item [:details :protocol])
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
         non-host-headers (->> headers (filter (comp not #{:Host} first)) (into {}))
-        host (get headers :Host)
         open (some? item)
         on-close reqs-actions/unselect-item
         allow-local-req (and (some? host)
@@ -46,7 +46,13 @@
             [:> FormControl {:fullWidth true
                              :margin "normal"}
               [:> FormControlLabel {:label "Secure"
-                                    :control (r/as-element [:> Switch {:checked is-secure :onChange #(reqs-actions/update-selected-item-in [:item :is-secure] (obj/getValueByKeys % #js ["target" "checked"]))}])}]]
+                                    :control (r/as-element
+                                               [:> Switch {:checked (= protocol "https")
+                                                           :onChange #(reqs-actions/update-selected-item-in
+                                                                        [:item :details :protocol]
+                                                                        (if (obj/getValueByKeys % #js ["target" "checked"])
+                                                                          "https"
+                                                                          "http"))}])}]]
             [:> FormControl {:fullWidth true
                              :margin "normal"}
               [:> InputLabel "Method"]
