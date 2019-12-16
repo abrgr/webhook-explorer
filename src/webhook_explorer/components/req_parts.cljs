@@ -119,6 +119,9 @@
 (defn editable-headers-view [title headers on-header-change]
   [base-kv-view title "Header" "Value" headers true nop editable-value on-header-change])
 
+(defn qs-view [title qs on-visibility-toggled]
+  [base-kv-view title "Key" "Value" qs false on-visibility-toggled base-value])
+
 (defn editable-qs-view [title qs on-qs-change]
   [base-kv-view title "Key" "Value" qs true nop editable-value on-qs-change])
 

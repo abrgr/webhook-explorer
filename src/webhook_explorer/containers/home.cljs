@@ -80,7 +80,8 @@
            host
            path
            method]
-     {{req-headers :headers
+     {:keys [qs]
+      {req-headers :headers
         req-body :body} :req
        {res-headers :headers
         res-body :body} :res} :details
@@ -100,6 +101,7 @@
        :title (str host path)
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
+      [req-parts/qs-view "Query Parameters" qs on-visibility-toggled]
       [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
       [req-parts/body-view "Request Body" req-body req-headers on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
