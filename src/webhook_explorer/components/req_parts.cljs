@@ -52,9 +52,7 @@
 (defn base-headers-view
   ([title headers show-delete on-visibility-toggled header-value-component]
     [base-headers-view title headers show-delete on-visibility-toggled header-value-component {}])
-  ; TODO: extra-header-value-props is stupid. if editable-headers-view passes header-value-component
-  ;       as a partial or lambda, react blows away the dom nodes.  need to figure this out
-  ([title headers show-delete on-visibility-toggled header-value-component extra-header-value-props]
+  ([title headers show-delete on-visibility-toggled header-value-component on-header-change]
     [:> ExpansionPanel {:elevation 0
                         :TransitionProps #js {:onEntered on-visibility-toggled
                                               :onExit on-visibility-toggled
@@ -77,10 +75,11 @@
                 [:> TableRow
                   (when show-delete
                     [:> TableCell
-                      [:> IconButton {:aria-label "delete"}
+                      [:> IconButton {:aria-label "delete"
+                                      :onClick #(on-header-change header nil)}
                         [:> DeleteIcon {:fontSize "small"}]]])
                   [:> TableCell header]
-                  [:> TableCell [header-value-component (merge extra-header-value-props {:value value :header header})]]])]])]]))
+                  [:> TableCell [header-value-component {:value value :header header :on-header-change on-header-change}]]])]])]]))
 
 (defn- base-header-value [{:keys [value]}]
   value)
@@ -99,7 +98,7 @@
                  :onChange #(on-header-change header (obj/getValueByKeys % #js ["target" "value"]))}])
 
 (defn editable-headers-view [title headers on-header-change]
-  [base-headers-view title headers true nop editable-header-value {:on-header-change on-header-change}])
+  [base-headers-view title headers true nop editable-header-value on-header-change])
 
 (defn base-body-view [title body headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]

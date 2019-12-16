@@ -38,54 +38,60 @@
                 :onClose on-close
                 :fullWidth true
                 :PaperProps #js {:style #js {"height" "75%"}}}
-      [:> DialogTitle "Send Request"]
-      [:> DialogContent
-        [:> DialogContentText "Execute locally from the browser or copy as curl"]
-        [:> FormControl {:fullWidth true
-                         :margin "normal"}
-          [:> FormControlLabel {:label "Secure"
-                                :control (r/as-element [:> Switch {:checked is-secure :onChange #(reqs-actions/update-selected-item-in [:item :is-secure] (obj/getValueByKeys % #js ["target" "checked"]))}])}]]
-        [:> FormControl {:fullWidth true
-                         :margin "normal"}
-          [:> InputLabel "Method"]
-          [:> Select {:value method
-                      :onChange #(reqs-actions/update-selected-item-in [:item :method] (obj/getValueByKeys % #js ["target" "value"]))}
-            [:> MenuItem {:value "GET"} "GET"]
-            [:> MenuItem {:value "POST"} "POST"]
-            [:> MenuItem {:value "PUT"} "PUT"]
-            [:> MenuItem {:value "PATCH"} "PATCH"]
-            [:> MenuItem {:value "DELETE"} "DELETE"]
-            [:> MenuItem {:value "OPTIONS"} "OPTIONS"]]]
-        [:> FormControl {:fullWidth true
-                         :margin "normal"}
-          [:> TextField {:fullWidth true
-                         :label "Host"
-                         :value host
-                         :onChange #(reqs-actions/update-selected-item-in [:item :details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]]
-        [:> FormControl {:fullWidth true
-                         :margin "normal"}
-          [:> TextField {:fullWidth true
-                         :label "Path"
-                         :value path
-                         :onChange #(reqs-actions/update-selected-item-in [:item :path] (obj/getValueByKeys % #js ["target" "value"]))}]]
-        [req-parts/editable-headers-view "Request Headers" non-host-headers #(reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2)]
-        [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]]
-      [:> DialogActions
-        [:> Tooltip {:title "Change host to 'localhost'"
-                     :disableHoverListener allow-local-req
-                     :arrow true
-                     :placement "top"}
-          [:span
-            [:> Button {:onClick reqs-actions/send-selected-as-local-request
-                        :color "primary"
-                        :disabled (not allow-local-req)}
-                      "Send local request"]]]
-        [:> Button {:onClick reqs-actions/copy-selected-as-curl
-                    :color "primary"}
-                  "Copy as curl"]
-        [:> Button {:onClick on-close
-                    :color "secondary"}
-                  "Cancel"]]]))
+      (when open
+        [:<>
+          [:> DialogTitle "Send Request"]
+          [:> DialogContent
+            [:> DialogContentText "Execute locally from the browser or copy as curl"]
+            [:> FormControl {:fullWidth true
+                             :margin "normal"}
+              [:> FormControlLabel {:label "Secure"
+                                    :control (r/as-element [:> Switch {:checked is-secure :onChange #(reqs-actions/update-selected-item-in [:item :is-secure] (obj/getValueByKeys % #js ["target" "checked"]))}])}]]
+            [:> FormControl {:fullWidth true
+                             :margin "normal"}
+              [:> InputLabel "Method"]
+              [:> Select {:value method
+                          :onChange #(reqs-actions/update-selected-item-in [:item :method] (obj/getValueByKeys % #js ["target" "value"]))}
+                [:> MenuItem {:value "GET"} "GET"]
+                [:> MenuItem {:value "POST"} "POST"]
+                [:> MenuItem {:value "PUT"} "PUT"]
+                [:> MenuItem {:value "PATCH"} "PATCH"]
+                [:> MenuItem {:value "DELETE"} "DELETE"]
+                [:> MenuItem {:value "OPTIONS"} "OPTIONS"]]]
+            [:> FormControl {:fullWidth true
+                             :margin "normal"}
+              [:> TextField {:fullWidth true
+                             :label "Host"
+                             :value host
+                             :onChange #(reqs-actions/update-selected-item-in [:item :details :req :headers :Host] (obj/getValueByKeys % #js ["target" "value"]))}]]
+            [:> FormControl {:fullWidth true
+                             :margin "normal"}
+              [:> TextField {:fullWidth true
+                             :label "Path"
+                             :value path
+                             :onChange #(reqs-actions/update-selected-item-in [:item :path] (obj/getValueByKeys % #js ["target" "value"]))}]]
+            [req-parts/editable-headers-view
+              "Request Headers"
+              non-host-headers
+              #(if (nil? %2)
+                 (reqs-actions/update-selected-item-in [:item :details :req :headers] (dissoc headers %1))
+                 (reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2))]
+            [req-parts/editable-body-view "Request Body" body headers #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]]
+          [:> DialogActions
+            [:> Tooltip {:title "Change host to 'localhost'"
+                         :disableHoverListener allow-local-req
+                         :placement "top"}
+              [:span
+                [:> Button {:onClick reqs-actions/send-selected-as-local-request
+                            :color "primary"
+                            :disabled (not allow-local-req)}
+                          "Send local request"]]]
+            [:> Button {:onClick reqs-actions/copy-selected-as-curl
+                        :color "primary"}
+                      "Copy as curl"]
+            [:> Button {:onClick on-close
+                        :color "secondary"}
+                      "Cancel"]]])]))
 
 (defn- notification []
   (let [{{:keys [notification]} :selected-item} @app-state/reqs

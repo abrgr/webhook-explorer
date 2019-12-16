@@ -99,7 +99,6 @@
          (when (some? body)
            (str "--data '" body "'"
                 " "))
-         nil
          "'" url "'")))
 
 (defn copy-selected-as-curl []

@@ -77,6 +77,7 @@
   [{:keys [styles favorited]
    {:keys [id
            date
+           host
            path
            method]
      {{req-headers :headers
@@ -96,7 +97,7 @@
                                [action-btn "Save to folder" FolderIcon]
                                [action-btn "Add to request collection" AddToCollectionIcon]
                                [action-btn "Share" ShareIcon]])
-       :title path
+       :title (str host path)
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
       [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
