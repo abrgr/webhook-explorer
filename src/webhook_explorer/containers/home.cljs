@@ -26,7 +26,7 @@
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
-            ["@material-ui/icons/Folder" :default FolderIcon]
+            ["@material-ui/icons/Label" :default TagIcon]
             ["@material-ui/icons/Share" :default ShareIcon]
             ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]))
 
@@ -95,7 +95,7 @@
                     method])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon (when favorited {:color "secondary"})]
-                               [action-btn "Save to folder" FolderIcon]
+                               [action-btn "Tag" TagIcon]
                                [action-btn "Add to request collection" AddToCollectionIcon]
                                [action-btn "Share" ShareIcon]])
        :title (str host path)
