@@ -131,7 +131,7 @@
       [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
         title]
       [:> ExpansionPanelDetails
-        (if (nil? body)
+        (if (and (nil? body) (nil? headers))
           [:> CircularProgress]
           [styled-editor body content-type on-change])]]))
 
