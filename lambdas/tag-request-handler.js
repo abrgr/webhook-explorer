@@ -6,6 +6,7 @@ const {
   response,
   getUserFromEvent,
   getTagForFavorite,
+  getPrivateTag,
   isValidUserSpecifiedTag,
   isUserAuthorizedToWriteFolder
 } = require('./common');
@@ -16,9 +17,11 @@ const bucket = process.env.BUCKET_NAME;
 exports.handler = async function handler(event, context) {
   const { uid } = getUserFromEvent(event);
   const isFav = event.queryStringParameters['fav'];
+  const isPublic = event.queryStringParameters['pub'];
+  const userProvidedTag = event.queryStringParameters['tag'];
   const tag = isFav
             ? getTagForFavorite(uid)
-            : event.queryStringParameters['tag'];
+            : (isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag));
 
   if ( !isFav && !isValidUserSpecifiedTag(tag) ) {
     console.error('Invalid user-specified tag', { tag, event });

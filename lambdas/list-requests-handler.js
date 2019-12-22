@@ -8,10 +8,16 @@ const bucket = process.env.BUCKET_NAME;
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
-  const { folder, ymd, token } = event.queryStringParameters || {};
+  const { folder, fav, tag, ymd, token } = event.queryStringParameters || {};
   const { uid } = getUserFromEvent(event);
+  const resolvedTag = fav
+                    ? getTagForFavorite(uid)
+                    : tag;
+  const resolvedFolder = resolvedTag
+                       ? folderForTag(resolvedTag)
+                       : folder;
 
-  if ( !isUserAuthorizedToReadFolder(uid, folder) ) {
+  if ( !isUserAuthorizedToReadFolder(uid, resolvedFolder) ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
   }
 

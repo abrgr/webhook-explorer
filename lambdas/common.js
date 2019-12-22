@@ -8,6 +8,7 @@ module.exports = {
   response,
   getUserFromEvent,
   getTagForFavorite,
+  getPrivateTag,
   isValidUserSpecifiedTag,
   isUserAuthorizedToReadFolder,
   isUserAuthorizedToWriteFolder
@@ -43,14 +44,14 @@ function isUserAuthorizedToReadFolder(uid, folder) {
 }
 
 function isUserAuthorizedToWriteFolder(uid, folder) {
-  // folders either look like "all", "tags/public-tag", or "tags/uid/private-tag"
+  // folders either look like "all", "tags/public-tag", or "tags/*uid*/private-tag"
   const folderParts = folder.split('/');
   if ( folderParts.length < 3 ) {
     return true;
   }
 
-  const folderUid = decodeURIComponent(folderParts[1]);
-  return folderUid === uid;
+  const folderUid = folderParts[1];
+  return folderUid === encodeUidForTagFolder(uid);
 }
 
 
@@ -83,7 +84,15 @@ function replaceKeyTag(newTag, sourceKey) {
 }
 
 function getTagForFavorite(uid) {
-  return `${encodeURIComponent(uid)}/*fav*`;
+  return getPrivateTag(uid, '*fav*');
+}
+
+function getPrivateTag(uid, tag) {
+  return `${encodeUidForTagFolder(uid)}/${tag}`;
+}
+
+function encodeUidForTagFolder(uid) {
+  return `*${encodeURIComponent(uid)}*`;
 }
 
 function isValidUserSpecifiedTag(tag) {
