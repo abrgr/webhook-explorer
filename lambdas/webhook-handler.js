@@ -1,4 +1,5 @@
 const S3 = require('aws-sdk/clients/s3');
+const { keyForParts, response } = require('./common');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
@@ -6,17 +7,14 @@ const bucket = process.env.BUCKET_NAME;
 exports.handler = async function handler(event, context) {
   const now = new Date();
   const iso = now.toISOString();
-  const epoch = now.getTime();
-  const sort = ('' + (endOfToday(epoch) - epoch)).padStart(8, '0');
-  const ymd = iso.split('T')[0];
   const method = event.httpMethod;
-  const path = encodeURIComponent(event.path);
+  const path = event.path;
   const headers = event.headers || {};
-  const host = encodeURIComponent(headers.Host || headers.host);
+  const host = headers.Host || headers.host;
   const body = event.body;
   const protocol = (headers['X-Forwarded-Proto'] || headers['x-forwarded-proto'] || '').toLowerCase();
   const qs = event.queryStringParameters || {};
-  const key = `all/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${method}:${host}:${path}:${context.awsRequestId}`;
+  const key = keyForParts('all', iso, method, host, path, context.awsRequestId);
   const msg = {
     host,
     protocol,
@@ -40,20 +38,5 @@ exports.handler = async function handler(event, context) {
     ContentType: 'application/json'
   }).promise();
 
-  return {
-    isBase64Encoded: false,
-    statusCode: 200,
-    headers: {},
-    body: "OK"
-  };
+  return response(200, {}, "OK");
 };
-
-function endOfToday(todayEpoch) {
-  const tomorrow = new Date(todayEpoch);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0);
-  tomorrow.setMinutes(0);
-  tomorrow.setSeconds(0);
-  tomorrow.setMilliseconds(0);
-  return tomorrow.getTime();
-}

@@ -1,6 +1,7 @@
 const path = require('path');
 const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
+const { response } = require('./common');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
@@ -13,17 +14,7 @@ exports.handler = async function handler(event, context) {
                      ? 300
                      : 5;
 
-  return {
-    isBase64Encoded: false,
-    statusCode: 200,
-    headers: {
-      'Cache-Control': `max-age=${cacheSeconds}`,
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,OPTIONS'
-    },
-    body: JSON.stringify(page)
-  };
+  return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify(page));
 };
 
 function currentPrefix() {
