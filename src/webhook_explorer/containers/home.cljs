@@ -66,11 +66,12 @@
                   :margin-left "auto"}})))
 
 (defn- action-btn
-  ([label icon]
-    (action-btn label icon nil))
-  ([label icon icon-props]
+  ([label icon on-click]
+    (action-btn label icon on-click nil))
+  ([label icon on-click icon-props]
     [:> Tooltip {:title label :aria-label label}
-      [:> IconButton {:aria-label label}
+      [:> IconButton {:aria-label label
+                      :onClick on-click}
         [:> icon icon-props]]]))
 
 (defn- req-card
@@ -94,10 +95,10 @@
                               :className (obj/get styles "method")}
                     method])
        :action (r/as-element [:div
-                               [action-btn "Favorite" FavoriteIcon (when favorited {:color "secondary"})]
-                               [action-btn "Tag" TagIcon]
-                               [action-btn "Add to request collection" AddToCollectionIcon]
-                               [action-btn "Share" ShareIcon]])
+                               [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
+                               [action-btn "Tag" TagIcon #()]
+                               [action-btn "Add to request collection" AddToCollectionIcon #()]
+                               [action-btn "Share" ShareIcon #()]])
        :title (str host path)
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}

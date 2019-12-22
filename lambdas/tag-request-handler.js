@@ -1,28 +1,33 @@
 const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
-const { keyForParts, replaceKeyTag, response } = require('./common');
+const { keyForParts, replaceKeyTag, folderForTag, response } = require('./common');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 
 exports.handler = async function handler(event, context) {
-  const tag = event.queryStringParameters['tag'];
+  const isFav = event.queryStringParameters['fav'];
+  const tag = isFav
+            ? 'fav' // TODO: get user name
+            : event.queryStringParameters['tag'];
   const req = JSON.parse(event.body);
   const {
     sourceKey,
-    host,
-    protocol,
-    path,
-    qs,
-    method,
-    iso,
     req: {
-      headers: reqHeaders,
-      body: reqBody
-    },
-    res: {
-      headers: resHeaders,
-      body: resBody
+      host,
+      protocol,
+      path,
+      qs,
+      method,
+      iso,
+      req: {
+        headers: reqHeaders,
+        body: reqBody
+      },
+      res: {
+        headers: resHeaders,
+        body: resBody
+      }
     }
   } = req;
   const msg = {

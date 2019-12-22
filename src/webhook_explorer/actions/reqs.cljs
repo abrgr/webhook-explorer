@@ -6,12 +6,15 @@
             [clojure.set :as s]
             ["copy-to-clipboard" :as copy-to-clipboard]))
 
+(defn- make-url [path]
+  (str "https://webhook-explorer.easybetes.com" path))
+
 (defn- get-reqs [params]
   (if (nil? params)
     (async/to-chan [:stop])
     (async/go
       (let [{{:keys [items nextReq]} :body} (async/<! (http/get
-                                                        "https://webhook-explorer.easybetes.com/api/reqs"
+                                                        (make-url "/api/reqs")
                                                         {:with-credentials? false
                                                          :query-params params}))]
         (swap!
@@ -23,11 +26,10 @@
                            (map #(s/rename-keys % {:dataUrl :data-url}))
                            (concat prev-items)
                            (into []))
-               :in-progress-req nil
                :next-req nextReq})))
         :done))))
 
-(defn- load-full-req [{:keys [id data-url]}]
+(defn- load-full-req [{:keys [id data-url] :as item}]
   (async/go
     (let [{req-details :body} (async/<!
                                 (http/get data-url {:with-credentials? false}))]
@@ -37,7 +39,8 @@
         :items
         (fn [items]
           (->> items
-               (mapv #(if (= (:id %) id) (assoc % :details req-details) %))))))))
+               (mapv #(if (= (:id %) id) (assoc % :details req-details) %)))))
+      (assoc item :details req-details))))
 
 (def ^:private req-chan (async/chan))
 
@@ -54,21 +57,23 @@
     (async/put! req-chan resp-chan)
     p))
 
-(defn select-item [item]
+(defn with-full-item [item f]
   (async/go
     (let [item' (if (:details item)
                   item
                   (->> item
                        load-full-req
-                       async/<!
-                       :items
-                       (filter #(= (:id %) (:id item)))
-                       first))]
-      (swap!
-        app-state/reqs
-        assoc
-        :selected-item
-        {:item item'}))))
+                       async/<!))]
+      (f item'))))
+
+(defn select-item [item]
+  (with-full-item
+    item
+    #(swap!
+       app-state/reqs
+       assoc
+       :selected-item
+       {:item %})))
 
 (defn- selected-req []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
@@ -158,3 +163,31 @@
     assoc
     :selected-item
     nil))
+
+(defn tag-req [item opts]
+  (with-full-item
+    item
+    #(async/go
+       (let [{:keys [date path host method]
+              {:keys [protocol qs iso]
+               {req-headers :headers
+                req-body :body} :req
+               {res-headers :headers
+                res-body :body} :res} :details} %
+             {:keys [success]} (async/<!
+                                 (http/post
+                                   (make-url "/api/tag-req")
+                                   {:with-credentials? false
+                                    :query-params opts
+                                    :json-params
+                                    {:req {:host host
+                                           :protocol protocol
+                                           :path path
+                                           :qs qs
+                                           :method method
+                                           :iso iso
+                                           :req {:headers req-headers
+                                                 :body req-body}
+                                           :res {:headers res-headers
+                                                 :body res-body}}}}))]
+         success))))
