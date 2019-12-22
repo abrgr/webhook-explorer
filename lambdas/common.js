@@ -1,10 +1,58 @@
+const EXPECTED_AUD = process.env.EXPECTED_AUD;
+
 module.exports = {
   endOfToday,
   keyForParts,
   replaceKeyTag,
   folderForTag,
-  response
+  response,
+  getUserFromEvent,
+  getTagForFavorite,
+  isValidUserSpecifiedTag,
+  isUserAuthorizedToReadFolder,
+  isUserAuthorizedToWriteFolder
 };
+
+function getUserFromEvent(event) {
+  const {
+    requestContext: {
+      authorizer: {
+        claims: {
+          aud,
+          "cognito:username": uid,
+          email
+        }
+      }
+    }
+  } = event;
+
+  if ( aud !== EXPECTED_AUD ) {
+    console.error('Bad authorizer audience', { event });
+    throw new Error('Unauthorized');
+  }
+
+  return {
+    email,
+    uid
+  };
+}
+
+function isUserAuthorizedToReadFolder(uid, folder) {
+  // TODO: || isAdmin(uid);
+  return isUserAuthorizedToWriteFolder(uid, folder);
+}
+
+function isUserAuthorizedToWriteFolder(uid, folder) {
+  // folders either look like "all", "tags/public-tag", or "tags/uid/private-tag"
+  const folderParts = folder.split('/');
+  if ( folderParts.length < 3 ) {
+    return true;
+  }
+
+  const folderUid = decodeURIComponent(folderParts[1]);
+  return folderUid === uid;
+}
+
 
 function endOfToday(todayEpoch) {
   const tomorrow = new Date(todayEpoch);
@@ -25,13 +73,21 @@ function keyForParts(folder, iso, method, host, path, reqId) {
 }
 
 function folderForTag(tag) {
-  return `tags/${tag.replace(/[\/]/g, '$')}`;
+  return `tags/${tag}`;
 }
 
 function replaceKeyTag(newTag, sourceKey) {
   const [id, sort, d, m, y] = sourceKey.split('/').reverse();
   const key = `${folderForTag(tag)}/${y}/${m}/${d}/${sort}/${id}`;
   return key;
+}
+
+function getTagForFavorite(uid) {
+  return `${encodeURIComponent(uid)}/*fav*`;
+}
+
+function isValidUserSpecifiedTag(tag) {
+  return !/[*\/]/.exec(tag);
 }
 
 function response(statusCode, headers, body) {

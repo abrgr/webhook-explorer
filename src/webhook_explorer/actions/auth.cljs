@@ -23,8 +23,18 @@
 
 (def ^:private ca (->> (make-cognito-auth) with-user-handler))
 
+(defn- unexpired? []
+  (-> ca
+      (.getSignInUserSession)
+      (.getIdToken)
+      (.getExpiration)
+      (* 1000)
+      (> (js/Date.now))))
+
 (defn- logged-in? []
-  (.isUserSignedIn ca))
+  (and
+    (.isUserSignedIn ca)
+    (unexpired?)))
 
 (defn- current-user-data []
   (-> ca
@@ -36,7 +46,8 @@
 (init/register-init
   0
   (fn []
-    (reset! app-state/auth {:user-data (current-user-data) :cognito-session (.getSignInUserSession ca)})))
+    (when (logged-in?)
+      (reset! app-state/auth {:user-data (current-user-data) :cognito-session (.getSignInUserSession ca)}))))
 
 (init/register-init
   2
@@ -45,3 +56,9 @@
 
 (defn sign-in []
   (.getSession ca))
+
+(defn auth-header []
+  (-> ca
+      (.getSignInUserSession)
+      (.getIdToken)
+      (.getJwtToken)))

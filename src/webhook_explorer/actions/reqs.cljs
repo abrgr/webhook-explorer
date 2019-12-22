@@ -1,6 +1,7 @@
 (ns webhook-explorer.actions.reqs
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.promise-utils :as putil]
+            [webhook-explorer.actions.auth :as auth-actions]
             [cljs-http.client :as http]
             [clojure.core.async :as async]
             [clojure.set :as s]
@@ -8,7 +9,7 @@
 
 (defn- make-url [path]
   (str "https://webhook-explorer.easybetes.com" path))
-
+    
 (defn- get-reqs [params]
   (if (nil? params)
     (async/to-chan [:stop])
@@ -16,6 +17,7 @@
       (let [{{:keys [items nextReq]} :body} (async/<! (http/get
                                                         (make-url "/api/reqs")
                                                         {:with-credentials? false
+                                                         :headers {"Authorization" (auth-actions/auth-header)}
                                                          :query-params params}))]
         (swap!
           app-state/reqs 
@@ -178,6 +180,7 @@
                                  (http/post
                                    (make-url "/api/tag-req")
                                    {:with-credentials? false
+                                    :headers {"Authorization" (auth-actions/auth-header)}
                                     :query-params opts
                                     :json-params
                                     {:req {:host host

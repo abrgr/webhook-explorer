@@ -1,7 +1,7 @@
 const path = require('path');
 const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
-const { response } = require('./common');
+const { response, getUserFromEvent, isUserAuthorizedToReadFolder } = require('./common');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
@@ -9,6 +9,12 @@ const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
   const { folder, ymd, token } = event.queryStringParameters || {};
+  const { uid } = getUserFromEvent(event);
+
+  if ( !isUserAuthorizedToReadFolder(uid, folder) ) {
+    return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
+  }
+
   const page = await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token);
   const cacheSeconds = (ymd || token)
                      ? 300
