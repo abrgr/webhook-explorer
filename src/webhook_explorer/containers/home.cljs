@@ -1,5 +1,6 @@
 (ns webhook-explorer.containers.home
   (:require [clojure.core.async :as async]
+            [clojure.string :as string]
             [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.app-state :as app-state]
@@ -23,7 +24,11 @@
             ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Fab" :default FloatingActionButton]
+            ["@material-ui/core/TextField" :default TextField]
+            ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
+            ["@material-ui/core/Menu" :default Menu]
+            ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
             ["@material-ui/icons/Label" :default TagIcon]
@@ -74,20 +79,61 @@
                       :onClick on-click}
         [:> icon icon-props]]]))
 
+(defn- filter-tags [input tags]
+  (if (zero? (count input))
+    tags
+    (filter
+      #(string/includes? (string/lower-case %) (string/lower-case input))
+      tags)))
+
+(defn- tag-selector []
+  (let [tag-anchor-el (r/atom nil)
+        input-tag (r/atom "")]
+    (fn []
+      (let [entered-tag @input-tag
+            el @tag-anchor-el
+            tags @app-state/tags
+            private-tags (filter-tags entered-tag (:user tags))
+            public-tags (filter-tags entered-tag (get-in tags [:public :writable]))]
+        [:<>
+          [action-btn "Tag" TagIcon #(reset! tag-anchor-el (obj/get % "currentTarget"))]
+          [:> Menu {:anchorEl el
+                    :open (some? el)
+                    :onClose #(reset! tag-anchor-el nil)
+                    :getContentAnchorEl nil
+                    :anchorOrigin #js {:vertical "bottom"
+                                       :horizontal "left"}}
+            [:> MenuItem {}
+              [:> TextField {:fullWidth true
+                             :label "Tag"
+                             :value entered-tag
+                             :onKeyDown #(when-not (string/starts-with? (obj/get % "key") "Arrow")
+                                           (.stopPropagation %))
+                             :onChange #(reset! input-tag (obj/getValueByKeys % #js ["target" "value"]))}]]
+            (when (not-empty private-tags)
+              [:> ListSubheader "Private tags"])
+            (for [tag private-tags]
+              ^{:key tag}
+              [:> MenuItem {:onClick #()} tag])
+            (when (not-empty public-tags)
+              [:> ListSubheader "Public tags"])
+            (for [tag public-tags]
+              ^{:key tag}
+              [:> MenuItem {:onClick #()} tag])]]))))
+
 (defn- req-card
-  [{:keys [styles favorited]
-   {:keys [id
-           date
-           host
-           path
-           method]
-     {:keys [qs]
-      {req-headers :headers
-        req-body :body} :req
-       {res-headers :headers
-        res-body :body} :res} :details
-     :as item} :item}
-    on-visibility-toggled]
+  [{:keys [styles favorited on-visibility-toggled]
+    {:keys [id
+            date
+            host
+            path
+            method]
+    {:keys [qs]
+     {req-headers :headers
+       req-body :body} :req
+      {res-headers :headers
+       res-body :body} :res} :details
+    :as item} :item}]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
@@ -96,7 +142,7 @@
                     method])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
-                               [action-btn "Tag" TagIcon #()]
+                               [tag-selector]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)
@@ -157,10 +203,10 @@
                     :else [req-card
                             {:item item
                              :styles styles
-                             :favorited (contains? favorite-reqs id)}
-                            (if (some? details)
-                              start-animating
-                              load-details)])]))))])))
+                             :favorited (contains? favorite-reqs id)
+                             :on-visibility-toggled (if (some? details)
+                                                      start-animating
+                                                      load-details)}])]))))])))
 
 (defn- load-more-rows []
   (.then (reqs-actions/load-next-items)
@@ -171,6 +217,8 @@
     (fn [{:keys [size styles theme]}]
       (let [{:keys [items next-req] :as reqs-state} @app-state/reqs]
         [:> InfiniteLoader {:isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
+                            :threshold 5
+                            :minimumBatchSize 10
                             :loadMoreRows load-more-rows
                             :rowCount (if (nil? next-req) (count items) (inc (count items)))
                             :height (obj/get size "height")}

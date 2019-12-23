@@ -2,22 +2,20 @@
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.promise-utils :as putil]
             [webhook-explorer.actions.auth :as auth-actions]
+            [webhook-explorer.http-utils :as http-utils]
             [cljs-http.client :as http]
             [clojure.core.async :as async]
             [clojure.set :as s]
             ["copy-to-clipboard" :as copy-to-clipboard]))
-
-(defn- make-url [path]
-  (str "https://webhook-explorer.easybetes.com" path))
     
 (defn- get-reqs [params]
   (if (nil? params)
     (async/to-chan [:stop])
     (async/go
       (let [{{:keys [items nextReq]} :body} (async/<! (http/get
-                                                        (make-url "/api/reqs")
+                                                        (http-utils/make-url "/api/reqs")
                                                         {:with-credentials? false
-                                                         :headers {"Authorization" (auth-actions/auth-header)}
+                                                         :headers (http-utils/auth-headers)
                                                          :query-params params}))]
         (swap!
           app-state/reqs 
@@ -178,9 +176,9 @@
                 res-body :body} :res} :details} %
              {:keys [success]} (async/<!
                                  (http/post
-                                   (make-url "/api/tag-req")
+                                   (http-utils/make-url "/api/tag-req")
                                    {:with-credentials? false
-                                    :headers {"Authorization" (auth-actions/auth-header)}
+                                    :headers (http-utils/auth-headers)
                                     :query-params opts
                                     :json-params
                                     {:req {:host host

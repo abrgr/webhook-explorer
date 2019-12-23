@@ -18,9 +18,7 @@ exports.handler = async function handler(event, context) {
 
   const { CommonPrefixes: userFolders } = await s3List(folderForTag(getPrivateTag(uid, '')));
   const { CommonPrefixes: allTopLevelFolders } = await s3List(folderForTag(''));
-  console.log('1', JSON.stringify({ userFolders, allTopLevelFolders }));
   const publicTags = allTopLevelFolders.map(finalPathPartForPrefix).filter(isValidUserSpecifiedTag);
-  console.log('2', JSON.stringify({ publicTags }));
 
   const result = {
     userTags: userFolders.map(finalPathPartForPrefix).filter(isValidUserSpecifiedTag),

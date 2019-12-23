@@ -1,6 +1,7 @@
 (ns ^:figwheel-hooks webhook-explorer.core
   (:require [reagent.core :as r]
             ["@material-ui/core/CssBaseline" :default CssBaseline]
+            [webhook-explorer.actions.tags] ; TODO: would love not to include this just for side effects
             [webhook-explorer.shims]
             [webhook-explorer.init :as init]
             [webhook-explorer.app-state :as app-state]

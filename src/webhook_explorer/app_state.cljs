@@ -7,6 +7,8 @@
 
 (defonce auth (r/atom {:user-data nil :cognito-session nil}))
 
+(defonce tags (r/atom {:user [] :public {:readable [] :writable []}}))
+
 (defonce reqs (r/atom {:items []
                        :selected-item nil
                        :next-req {:folder "all"}
