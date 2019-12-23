@@ -10,6 +10,8 @@ module.exports = {
   getUserFromEvent,
   getTagForFavorite,
   getPrivateTag,
+  isPrivateTag,
+  unNamespacedPrivateTag,
   isValidUserSpecifiedTag,
   isUserAuthorizedToReadFolder,
   isUserAuthorizedToWriteFolder,
@@ -79,6 +81,15 @@ function keyForParts(folder, iso, method, host, path, reqId) {
 
 function folderForTag(tag) {
   return `tags/${tag}`;
+}
+
+function isPrivateTag(tag) {
+  // private tags are namespaced to users
+  return tag.indexOf('/') >= 0;
+}
+
+function unNamespacedPrivateTag(namespacedPrivateTag) {
+  return namespacedPrivateTag.split('/').slice(-1)[0];
 }
 
 function replaceKeyTag(newTag, sourceKey) {

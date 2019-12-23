@@ -4,7 +4,9 @@ const {
   auditKeyToFingerprintAndTag,
   getTagForFavorite,
   isUserAuthorizedToReadFolder,
-  folderForTag
+  folderForTag,
+  isPrivateTag,
+  unNamespacedPrivateTag
 } = require('./common');
 const { getNextListing } = require('./ymd-lister');
 
@@ -14,7 +16,8 @@ exports.handler = async function handler(event, context) {
 
   const page = await getNextListing('audit', ymd, token, auditKeyToFingerprintAndTag);
 
-  return response(200, {}, JSON.stringify(generatePage(uid, page)));
+  const cacheSeconds = (ymd || token) ? 300 : 5;
+  return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify(generatePage(uid, page)));
 };
 
 function generatePage(uid, page) {
@@ -27,12 +30,14 @@ function generatePage(uid, page) {
   const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag))) 
   const tagsByFingerprint = filteredItems.reduce(
     (tagsForFingerprint, { fingerprint, tag }) => {
-      const prev = tagsForFingerprint[fingerprint] || { fav: false, tags: [] };
+      const prev = tagsForFingerprint[fingerprint] || { fav: false, privateTags: [], publicTags: [] };
 
       if ( tag === favTag ) {
         prev.fav = true;
+      } else if ( isPrivateTag(tag) ) {
+        prev.privateTags = prev.privateTags.concat([unNamespacedPrivateTag(tag)]);
       } else {
-        prev.tags = prev.tags.concat([tag]);
+        prev.publicTags = prev.publicTags.concat([tag]);
       }
 
       tagsForFingerprint[fingerprint] = prev;
