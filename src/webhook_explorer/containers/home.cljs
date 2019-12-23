@@ -26,9 +26,12 @@
             ["@material-ui/core/Fab" :default FloatingActionButton]
             ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
+            ["@material-ui/core/ListItemIcon" :default ListItemIcon]
+            ["@material-ui/core/ListItemText" :default ListItemText]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
             ["@material-ui/core/Menu" :default Menu]
             ["@material-ui/core/MenuItem" :default MenuItem]
+            ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
             ["@material-ui/icons/Label" :default TagIcon]
@@ -89,12 +92,21 @@
 (defn- tag-selector []
   (let [tag-anchor-el (r/atom nil)
         input-tag (r/atom "")]
-    (fn []
+    (fn [{:keys [item]}]
       (let [entered-tag @input-tag
             el @tag-anchor-el
             tags @app-state/tags
             private-tags (filter-tags entered-tag (:user tags))
-            public-tags (filter-tags entered-tag (get-in tags [:public :writable]))]
+            public-tags (filter-tags entered-tag (get-in tags [:public :writable]))
+            is-entered-tag? #(-> %
+                                 (string/lower-case)
+                                 (= (string/lower-case entered-tag)))
+            new-private (when-not (or (empty? entered-tag)
+                                      (some is-entered-tag? private-tags))
+                          entered-tag)
+            new-public (when-not (or (empty? entered-tag)
+                                      (some is-entered-tag? public-tags))
+                          entered-tag)]
         [:<>
           [action-btn "Tag" TagIcon #(reset! tag-anchor-el (obj/get % "currentTarget"))]
           [:> Menu {:anchorEl el
@@ -114,12 +126,20 @@
               [:> ListSubheader "Private tags"])
             (for [tag private-tags]
               ^{:key tag}
-              [:> MenuItem {:onClick #()} tag])
+              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:tag tag})} tag])
             (when (not-empty public-tags)
               [:> ListSubheader "Public tags"])
             (for [tag public-tags]
               ^{:key tag}
-              [:> MenuItem {:onClick #()} tag])]]))))
+              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:pub true :tag tag})} tag])
+            (when (or new-private new-public)
+              [:> ListSubheader "Create new tag"])
+            (when new-private
+              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:tag new-private})}
+                (str "New private tag \"" new-private "\"")])
+            (when new-public
+              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:pub true :tag new-public})}
+                (str "New public tag \"" new-public "\"")])]]))))
 
 (defn- req-card
   [{:keys [styles favorited on-visibility-toggled]
@@ -142,7 +162,7 @@
                     method])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
-                               [tag-selector]
+                               [tag-selector {:item item}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)

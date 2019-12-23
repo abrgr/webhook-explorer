@@ -2,6 +2,7 @@
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.promise-utils :as putil]
             [webhook-explorer.actions.auth :as auth-actions]
+            [webhook-explorer.actions.tags :as tag-actions]
             [webhook-explorer.http-utils :as http-utils]
             [cljs-http.client :as http]
             [clojure.core.async :as async]
@@ -165,6 +166,7 @@
     nil))
 
 (defn tag-req [item opts]
+  (tag-actions/add-tag opts)
   (with-full-item
     item
     #(async/go

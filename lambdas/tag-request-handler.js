@@ -19,15 +19,15 @@ exports.handler = async function handler(event, context) {
   const isFav = event.queryStringParameters['fav'];
   const isPublic = event.queryStringParameters['pub'];
   const userProvidedTag = event.queryStringParameters['tag'];
-  const tag = isFav
-            ? getTagForFavorite(uid)
-            : (isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag));
 
-  if ( !isFav && !isValidUserSpecifiedTag(tag) ) {
+  if ( !isFav && !isValidUserSpecifiedTag(userProvidedTag) ) {
     console.error('Invalid user-specified tag', { tag, event });
     return response(400, {}, { error: 'Invalid tag' });
   }
 
+  const tag = isFav
+            ? getTagForFavorite(uid)
+            : (isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag));
   const folder = folderForTag(tag);
 
   if ( !isUserAuthorizedToWriteFolder(uid, folder) ) {

@@ -13,10 +13,25 @@
                            :headers (http-utils/auth-headers)}))
           {{:keys [userTags]
             {:keys [readable writable]} :publicTags} :body} res]
-      (println res)
-      (reset! app-state/tags {:user userTags
-                              :public {:readable readable
-                                       :writable writable}}))))
+      (reset! app-state/tags {:user (set userTags)
+                              :public {:readable (set readable)
+                                       :writable (set writable)}}))))
+
+(defn add-tag [{:keys [pub tag]}]
+  (when tag
+    (if pub
+      (swap!
+        app-state/tags
+        update
+        :public
+        #(do (update % :readable conj tag)
+             (update % :writable conj tag)))
+      (swap!
+        app-state/tags
+        update
+        :user
+        conj
+        tag))))
 
 (init/register-init
   10
