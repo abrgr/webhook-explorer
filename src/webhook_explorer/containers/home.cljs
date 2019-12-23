@@ -98,6 +98,10 @@
             tags @app-state/tags
             private-tags (filter-tags entered-tag (:user tags))
             public-tags (filter-tags entered-tag (get-in tags [:public :writable]))
+            apply-tag (fn [tag-opt]
+                        (reqs-actions/tag-req item tag-opt)
+                        (reset! input-tag "")
+                        (reset! tag-anchor-el nil))
             is-entered-tag? #(-> %
                                  (string/lower-case)
                                  (= (string/lower-case entered-tag)))
@@ -126,19 +130,19 @@
               [:> ListSubheader "Private tags"])
             (for [tag private-tags]
               ^{:key tag}
-              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:tag tag})} tag])
+              [:> MenuItem {:onClick #(apply-tag {:tag tag})} tag])
             (when (not-empty public-tags)
               [:> ListSubheader "Public tags"])
             (for [tag public-tags]
               ^{:key tag}
-              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:pub true :tag tag})} tag])
+              [:> MenuItem {:onClick #(apply-tag {:pub true :tag tag})} tag])
             (when (or new-private new-public)
               [:> ListSubheader "Create new tag"])
             (when new-private
-              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:tag new-private})}
+              [:> MenuItem {:onClick #(apply-tag {:tag new-private})}
                 (str "New private tag \"" new-private "\"")])
             (when new-public
-              [:> MenuItem {:onClick #(reqs-actions/tag-req item {:pub true :tag new-public})}
+              [:> MenuItem {:onClick #(apply-tag {:pub true :tag new-public})}
                 (str "New public tag \"" new-public "\"")])]]))))
 
 (defn- req-card
