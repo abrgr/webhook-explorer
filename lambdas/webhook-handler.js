@@ -1,5 +1,5 @@
 const S3 = require('aws-sdk/clients/s3');
-const { keyForParts, response } = require('./common');
+const { keyForParts, response, hashMsg } = require('./common');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
@@ -31,6 +31,7 @@ exports.handler = async function handler(event, context) {
       body: "OK"
     }
   };
+  msg.fingerprint = hashMsg(msg);
   await s3.putObject({
     Body: JSON.stringify(msg),
     Bucket: bucket,

@@ -1,9 +1,10 @@
-const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
 const {
   keyForParts,
   folderForTag,
   response,
+  hashMsg,
+  getAuditKey,
   getUserFromEvent,
   getTagForFavorite,
   getPrivateTag,
@@ -70,14 +71,35 @@ exports.handler = async function handler(event, context) {
       body: resBody
     }
   };
-  const key = keyForParts(folder, iso, method, host, path, crypto.randomBytes(16).toString('hex'));
+  const fingerprint = hashMsg(msg);
+  const key = keyForParts(folder, iso, method, host, path, fingerprint);
 
-  await s3.putObject({
-    Body: JSON.stringify(msg),
-    Bucket: bucket,
-    Key: key,
-    ContentType: 'application/json'
-  }).promise();
+  console.log('audit req', JSON.stringify({
+    iso,
+    fingerprint,
+    tag,
+    s3: {
+      Body: JSON.stringify({ uid, date: new Date().toISOString() }),
+      Bucket: bucket,
+      Key: getAuditKey(iso, fingerprint, tag),
+      ContentType: 'application/json'
+    }
+  }));
+
+  await Promise.all([
+    s3.putObject({
+      Body: JSON.stringify(msg),
+      Bucket: bucket,
+      Key: key,
+      ContentType: 'application/json'
+    }).promise(),
+    s3.putObject({
+      Body: JSON.stringify({ uid, date: new Date().toISOString() }),
+      Bucket: bucket,
+      Key: getAuditKey(iso, fingerprint, tag),
+      ContentType: 'application/json'
+    }).promise()
+  ]);
 
   return response(200, {}, JSON.stringify({ success: true }));
 };

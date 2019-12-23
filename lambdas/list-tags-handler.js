@@ -16,6 +16,7 @@ const bucket = process.env.BUCKET_NAME;
 exports.handler = async function handler(event, context) {
   const { uid } = getUserFromEvent(event);
 
+  // TODO: handle continuation token
   const { CommonPrefixes: userFolders } = await s3List(folderForTag(getPrivateTag(uid, '')));
   const { CommonPrefixes: allTopLevelFolders } = await s3List(folderForTag(''));
   const publicTags = allTopLevelFolders.map(finalPathPartForPrefix).filter(isValidUserSpecifiedTag);
@@ -29,7 +30,7 @@ exports.handler = async function handler(event, context) {
   };
 
   return response(200, { 'Cache-Control': 'max-age=60' }, JSON.stringify(result));
-}
+};
 
 function finalPathPartForPrefix(commonPrefix) {
   return commonPrefix.Prefix.replace(/[\/]$/, '').split('/').slice(-1)[0];

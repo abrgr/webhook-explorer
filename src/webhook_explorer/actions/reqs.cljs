@@ -178,7 +178,7 @@
                 res-body :body} :res} :details} %
              {:keys [success]} (async/<!
                                  (http/post
-                                   (http-utils/make-url "/api/tag-req")
+                                   (http-utils/make-url "/api/tagged-reqs")
                                    {:with-credentials? false
                                     :headers (http-utils/auth-headers)
                                     :query-params opts

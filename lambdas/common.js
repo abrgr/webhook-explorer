@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const EXPECTED_AUD = process.env.EXPECTED_AUD;
 
 module.exports = {
@@ -11,7 +12,10 @@ module.exports = {
   getPrivateTag,
   isValidUserSpecifiedTag,
   isUserAuthorizedToReadFolder,
-  isUserAuthorizedToWriteFolder
+  isUserAuthorizedToWriteFolder,
+  hashMsg,
+  getAuditKey,
+  auditKeyToFingerprintAndTag
 };
 
 function getUserFromEvent(event) {
@@ -79,7 +83,7 @@ function folderForTag(tag) {
 
 function replaceKeyTag(newTag, sourceKey) {
   const [id, sort, d, m, y] = sourceKey.split('/').reverse();
-  const key = `${folderForTag(tag)}/${y}/${m}/${d}/${sort}/${id}`;
+  const key = `${folderForTag(newTag)}/${y}/${m}/${d}/${sort}/${id}`;
   return key;
 }
 
@@ -110,5 +114,25 @@ function response(statusCode, headers, body) {
       ...headers
     },
     body: body
+  };
+}
+
+function hashMsg(msg) {
+  return crypto.createHash('sha256').update(JSON.stringify(msg), 'utf8').digest().toString('hex');
+}
+
+function getAuditKey(iso, fingerprint, tag) {
+  return `audit/${iso.split('T')[0].replace(/-/g, '/')}/${fingerprint}|${encodeURIComponent(tag)}`;
+}
+
+function auditKeyToFingerprintAndTag(auditKey) {
+  const f = auditKey.split('/').slice(-1)[0];
+  const pipeIdx = f.indexOf('|');
+  const fingerprint = f.slice(0, pipeIdx);
+  const tag = f.slice(pipeIdx + 1);
+
+  return {
+    fingerprint,
+    tag: decodeURIComponent(tag)
   };
 }

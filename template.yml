@@ -349,13 +349,22 @@ Resources:
                 requestTemplates:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
-          /api/tag-req:
+          /api/tagged-reqs:
             post:
               responses: {}
               security:
                 - CognitoAuth: []
               x-amazon-apigateway-integration:
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TagRequestHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            get:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListTaggedRequestsHandler.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
                 httpMethod: "POST"
                 type: "aws_proxy"
@@ -473,7 +482,7 @@ Resources:
         ListRequests:
           Type: Api
           Properties:
-            Path: /api/tag-req
+            Path: /api/tagged-reqs
             Method: post
             RestApiId: !Ref WebhookExplorerApi
       Environment:
@@ -488,6 +497,34 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref TagRequestHandler
+      Principal: apigateway.amazonaws.com
+  ListTaggedRequestsHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/list-tagged-requests-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        ListRequests:
+          Type: Api
+          Properties:
+            Path: /api/tagged-reqs
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  ListTaggedRequestsHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListTaggedRequestsHandler
       Principal: apigateway.amazonaws.com
   ListTagsHandler:
     Type: AWS::Serverless::Function
