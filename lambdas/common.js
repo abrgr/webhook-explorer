@@ -1,9 +1,12 @@
 const crypto = require('crypto');
+const path = require('path');
+
 const EXPECTED_AUD = process.env.EXPECTED_AUD;
 
 module.exports = {
   endOfToday,
   keyForParts,
+  partsForKey,
   replaceKeyTag,
   folderForTag,
   response,
@@ -17,7 +20,7 @@ module.exports = {
   isUserAuthorizedToWriteFolder,
   hashMsg,
   getAuditKey,
-  auditKeyToFingerprintAndTag
+  auditKeyToFingerprintTagAndDate
 };
 
 function getUserFromEvent(event) {
@@ -71,12 +74,25 @@ function endOfToday(todayEpoch) {
   return tomorrow.getTime();
 }
 
-function keyForParts(folder, iso, method, host, path, reqId) {
+function keyForParts(folder, iso, method, host, path, fingerprint) {
   const ymd = iso.split('T')[0];
   const date = new Date(iso);
   const epoch = date.getTime();
   const sort = ('' + (endOfToday(epoch) - epoch)).padStart(8, '0');
-  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${encodeURIComponent(method)}:${encodeURIComponent(host)}:${encodeURIComponent(path)}:${encodeURIComponent(reqId)}`;
+  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${encodeURIComponent(method)}:${encodeURIComponent(host)}:${encodeURIComponent(path)}:${fingerprint}`;
+}
+
+function partsForKey(key) {
+  const filename = path.basename(key);
+  const [sort, encodedIso, method, encodedHost, encodedUrlPath, fingerprint] = filename.split(':');
+  return {
+    id: fingerprint,
+    fingerprint,
+    date: decodeURIComponent(encodedIso),
+    path: decodeURIComponent(encodedUrlPath),
+    host: decodeURIComponent(encodedHost),
+    method
+  };
 }
 
 function folderForTag(tag) {
@@ -136,14 +152,15 @@ function getAuditKey(iso, fingerprint, tag) {
   return `audit/${iso.split('T')[0].replace(/-/g, '/')}/${fingerprint}|${encodeURIComponent(tag)}`;
 }
 
-function auditKeyToFingerprintAndTag(auditKey) {
-  const f = auditKey.split('/').slice(-1)[0];
-  const pipeIdx = f.indexOf('|');
-  const fingerprint = f.slice(0, pipeIdx);
-  const tag = f.slice(pipeIdx + 1);
+function auditKeyToFingerprintTagAndDate(auditKey) {
+  const [_, y, m, d, k] = auditKey.split('/');
+  const pipeIdx = k.indexOf('|');
+  const fingerprint = k.slice(0, pipeIdx);
+  const tag = k.slice(pipeIdx + 1);
 
   return {
     fingerprint,
-    tag: decodeURIComponent(tag)
+    tag: decodeURIComponent(tag),
+    date: `${y}-${m}-${d}`
   };
 }

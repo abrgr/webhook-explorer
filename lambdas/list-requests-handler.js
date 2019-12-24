@@ -1,8 +1,8 @@
-const path = require('path');
 const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
 const {
   response,
+  partsForKey,
   folderForTag,
   getUserFromEvent,
   getTagForFavorite,
@@ -35,16 +35,10 @@ exports.handler = async function handler(event, context) {
 };
 
 async function makeItem(key) {
-  const filename = path.basename(key);
-  const [, encodedIso, method, encodedHost, encodedUrlPath] = filename.split(':');
-
+  const parts = partsForKey(key);
   return {
-    id: crypto.createHash('sha256').update(key, 'utf8').digest().toString('hex'),
-    dataUrl: await getSignedUrl('getObject', { Bucket: bucket, Key: key, Expires: ONE_HOUR_IN_SECONDS }),
-    date: decodeURIComponent(encodedIso),
-    path: decodeURIComponent(encodedUrlPath),
-    host: decodeURIComponent(encodedHost),
-    method
+    ...parts,
+    dataUrl: await getSignedUrl('getObject', { Bucket: bucket, Key: key, Expires: ONE_HOUR_IN_SECONDS })
   };
 }
 

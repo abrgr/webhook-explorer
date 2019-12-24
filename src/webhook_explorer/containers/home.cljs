@@ -92,16 +92,20 @@
 (defn- tag-selector []
   (let [tag-anchor-el (r/atom nil)
         input-tag (r/atom "")]
-    (fn [{:keys [item]}]
+    (fn [{:keys [item]
+          cur-private-tags :private-tags
+          cur-public-tags :public-tags}]
       (let [entered-tag @input-tag
             el @tag-anchor-el
             tags @app-state/tags
             private-tags (filter-tags entered-tag (:user tags))
             public-tags (filter-tags entered-tag (get-in tags [:public :writable]))
+            close-menu (fn []
+                         (reset! input-tag "")
+                         (reset! tag-anchor-el nil))
             apply-tag (fn [tag-opt]
                         (reqs-actions/tag-req item tag-opt)
-                        (reset! input-tag "")
-                        (reset! tag-anchor-el nil))
+                        (close-menu))
             is-entered-tag? #(-> %
                                  (string/lower-case)
                                  (= (string/lower-case entered-tag)))
@@ -112,7 +116,11 @@
                                       (some is-entered-tag? public-tags))
                           entered-tag)]
         [:<>
-          [action-btn "Tag" TagIcon #(reset! tag-anchor-el (obj/get % "currentTarget"))]
+          [action-btn
+            "Tag"
+            TagIcon
+            #(reset! tag-anchor-el (obj/get % "currentTarget"))
+            (when (or (not-empty cur-public-tags) (not-empty cur-private-tags)) {:color "primary"})]
           [:> Menu {:anchorEl el
                     :open (some? el)
                     :onClose #(reset! tag-anchor-el nil)
@@ -128,14 +136,20 @@
                              :onChange #(reset! input-tag (obj/getValueByKeys % #js ["target" "value"]))}]]
             (when (not-empty private-tags)
               [:> ListSubheader "Private tags"])
-            (for [tag private-tags]
+            (for [tag private-tags
+                  :let [tagged (cur-private-tags tag)]]
               ^{:key tag}
-              [:> MenuItem {:onClick #(apply-tag {:tag tag})} tag])
+              [:> MenuItem {:onClick #(if tagged (close-menu) (apply-tag {:tag tag}))}
+                [:> Typography {:color (if tagged "primary" "textPrimary")}
+                  (str tag (when tagged " (Already tagged)"))]])
             (when (not-empty public-tags)
               [:> ListSubheader "Public tags"])
-            (for [tag public-tags]
+            (for [tag public-tags
+                  :let [tagged (cur-public-tags tag)]]
               ^{:key tag}
-              [:> MenuItem {:onClick #(apply-tag {:pub true :tag tag})} tag])
+              [:> MenuItem {:onClick #(if tagged (close-menu) (apply-tag {:pub true :tag tag}))}
+                [:> Typography {:color (if tagged "primary" "textPrimary")}
+                  (str tag (when tagged " (Already tagged)"))]])
             (when (or new-private new-public)
               [:> ListSubheader "Create new tag"])
             (when new-private
@@ -146,7 +160,7 @@
                 (str "New public tag \"" new-public "\"")])]]))))
 
 (defn- req-card
-  [{:keys [styles favorited on-visibility-toggled]
+  [{:keys [styles favorited public-tags private-tags on-visibility-toggled]
     {:keys [id
             date
             host
@@ -166,7 +180,9 @@
                     method])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
-                               [tag-selector {:item item}]
+                               [tag-selector {:item item
+                                              :private-tags (or private-tags #{})
+                                              :public-tags (or public-tags #{})}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)
@@ -190,10 +206,11 @@
 
 (defn- row-renderer [styles theme on-row-updated props]
   (r/as-element
-    (let [{:keys [items favorite-reqs next-req]} @app-state/reqs
+    (let [{:keys [items tagged-reqs next-req]} @app-state/reqs
           item-count (count items)
           idx (obj/get props "index")
-          {:keys [id details] :as item} (get items idx)
+          {:keys [id fingerprint details] :as item} (get items idx)
+          tagged-req (get tagged-reqs fingerprint)
           key (obj/get props "key")
           style (obj/get props "style")
           parent (obj/get props "parent")]
@@ -227,7 +244,9 @@
                     :else [req-card
                             {:item item
                              :styles styles
-                             :favorited (contains? favorite-reqs id)
+                             :favorited (:fav tagged-req)
+                             :private-tags (:private-tags tagged-req)
+                             :public-tags (:public-tags tagged-req)
                              :on-visibility-toggled (if (some? details)
                                                       start-animating
                                                       load-details)}])]))))])))

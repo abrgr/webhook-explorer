@@ -12,7 +12,9 @@
 (defonce reqs (r/atom {:items []
                        :selected-item nil
                        :next-req {:folder "all"}
-                       :favorite-reqs #{"yoyo2"}}))
+                       :tagged-reqs {}
+                       :earliest-tagged-req nil
+                       :next-tagged-req {}}))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))

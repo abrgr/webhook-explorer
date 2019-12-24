@@ -8,7 +8,48 @@
             [clojure.core.async :as async]
             [clojure.set :as s]
             ["copy-to-clipboard" :as copy-to-clipboard]))
-    
+
+(defn- get-tagged-reqs-thru [earliest-item-date]
+  (async/go-loop []
+    (let [{:keys [next-tagged-req]} @app-state/reqs
+          res (async/<! (http/get
+                          (http-utils/make-url "/api/tagged-reqs")
+                          {:with-credentials? false
+                           :headers (http-utils/auth-headers)
+                           :query-params next-tagged-req}))
+          {{:keys [earliestDate tagsByFingerprint nextReq]} :body} res]
+      (swap!
+        app-state/reqs
+        (fn [{prev-tagged-reqs :tagged-reqs :as reqs}]
+          (let [tagged-reqs (->> tagsByFingerprint
+                                 (reduce
+                                   (fn [tagged-reqs [fingerprint {:keys [fav privateTags publicTags]}]]
+                                     (let [prev (get tagged-reqs (name fingerprint))
+                                           fav (or (:fav prev) fav)
+                                           private-tags (->> prev
+                                                             :private-tags
+                                                             (concat privateTags)
+                                                             (into #{}))
+                                           public-tags (->> prev
+                                                            :public-tags
+                                                            (concat publicTags)
+                                                            (into #{}))]
+                                       (assoc
+                                         tagged-reqs
+                                         (name fingerprint)
+                                         {:fav fav
+                                          :private-tags private-tags
+                                          :public-tags public-tags})))
+                                   prev-tagged-reqs))]
+            (merge
+              reqs
+              {:tagged-reqs tagged-reqs
+               :next-tagged-req nextReq
+               :earliest-tagged-req earliestDate}))))
+      (when (and (some? nextReq)
+                 (< earliest-item-date earliestDate))
+        (recur)))))
+
 (defn- get-reqs [params]
   (if (nil? params)
     (async/to-chan [:stop])
@@ -17,7 +58,12 @@
                                                         (http-utils/make-url "/api/reqs")
                                                         {:with-credentials? false
                                                          :headers (http-utils/auth-headers)
-                                                         :query-params params}))]
+                                                         :query-params params}))
+            earliest-item-date (-> items last :date)
+            earliest-tag-req-date (:earliest-tagged-req @app-state/reqs)]
+        (when (or (nil? earliest-tag-req-date)
+                  (< earliest-item-date earliest-tag-req-date))
+          (get-tagged-reqs-thru earliest-item-date))
         (swap!
           app-state/reqs 
           (fn [{prev-items :items :as reqs}]
@@ -165,7 +211,7 @@
     :selected-item
     nil))
 
-(defn tag-req [item opts]
+(defn tag-req [{:keys [fingerprint] :as item} {:keys [fav pub tag] :as opts}]
   (tag-actions/add-tag opts)
   (with-full-item
     item
@@ -193,4 +239,16 @@
                                                  :body req-body}
                                            :res {:headers res-headers
                                                  :body res-body}}}}))]
+         (apply
+           swap!
+           app-state/reqs
+           update-in
+           [:tagged-reqs
+            fingerprint
+            (cond fav :fav
+                  pub :public-tags
+                  :else :private-tags)]
+           (if fav
+             [(constantly true)] ; set :fav to true
+             [s/union #{tag}])) ; union :public-tags or :private-tags with #{tag}
          success))))

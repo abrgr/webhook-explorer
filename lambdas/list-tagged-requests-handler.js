@@ -1,7 +1,7 @@
 const {
   getUserFromEvent,
   response,
-  auditKeyToFingerprintAndTag,
+  auditKeyToFingerprintTagAndDate,
   getTagForFavorite,
   isUserAuthorizedToReadFolder,
   folderForTag,
@@ -14,7 +14,7 @@ exports.handler = async function handler(event, context) {
   const { uid } = getUserFromEvent(event);
   const { ymd, token } = event.queryStringParameters || {};
 
-  const page = await getNextListing('audit', ymd, token, auditKeyToFingerprintAndTag);
+  const page = await getNextListing('audit', ymd, token, auditKeyToFingerprintTagAndDate);
 
   const cacheSeconds = (ymd || token) ? 300 : 5;
   return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify(generatePage(uid, page)));
@@ -46,9 +46,11 @@ function generatePage(uid, page) {
     },
     {}
   );
+  const earliestDatedItem = items.sort((a, b) => (a < b) ? -1 : (a === b ? 0 : 1))[0];
 
   return {
     tagsByFingerprint,
-    nextReq
+    nextReq,
+    earliestDate: earliestDatedItem ? earliestDatedItem.date : null
   };
 }

@@ -14,7 +14,6 @@ exports.handler = async function handler(event, context) {
   const body = event.body;
   const protocol = (headers['X-Forwarded-Proto'] || headers['x-forwarded-proto'] || '').toLowerCase();
   const qs = event.queryStringParameters || {};
-  const key = keyForParts('all', iso, method, host, path, context.awsRequestId);
   const msg = {
     host,
     protocol,
@@ -32,6 +31,7 @@ exports.handler = async function handler(event, context) {
     }
   };
   msg.fingerprint = hashMsg(msg);
+  const key = keyForParts('all', iso, method, host, path, msg.fingerprint);
   await s3.putObject({
     Body: JSON.stringify(msg),
     Bucket: bucket,
