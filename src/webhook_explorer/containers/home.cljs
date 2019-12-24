@@ -24,6 +24,7 @@
             ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Fab" :default FloatingActionButton]
+            ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/ListItemIcon" :default ListItemIcon]
@@ -42,6 +43,7 @@
   (styles/style-wrapper
     (fn [theme]
       {:container {:flex "1"}
+       :list {:outline "none"}
        :card-container {:display "flex"
                         :justifyContent "center"}
        :card {:width "80%"
@@ -69,6 +71,10 @@
                             :width "100%"
                             :height "4em"}}
        :previewed-card-content {:margin-top "-32px"}
+       :control-bar {:display "flex"
+                     :align-items "center"
+                     :margin-bottom 3
+                     :height 60}
        :send-btn {:margin-right 15
                   :margin-bottom 15
                   :margin-left "auto"}})))
@@ -269,6 +275,7 @@
             (r/as-element
               [:> List {:ref #(do (reset! list-ref %)
                                   ((obj/get scroll-info "registerChild") %))
+                        :className (obj/get styles "list")
                         :onRowsRendered (obj/get scroll-info "onRowsRendered")
                         :rowRenderer (partial row-renderer styles theme #(when-not (nil? @list-ref) (.recomputeGridSize @list-ref %)))
                         :height (obj/get size "height")
@@ -283,6 +290,9 @@
     (r/as-element
       [:<>
         [req-editor/component]
+        [:> Paper {:elevation 2
+                   :className (obj/get styles "control-bar")}
+          [:> TextField {:label "Start at"}]]
         [:div {:className (obj/get styles "container")}
           [:> AutoSizer
             (fn [size]
