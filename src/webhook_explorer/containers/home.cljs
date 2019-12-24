@@ -1,17 +1,18 @@
 (ns webhook-explorer.containers.home
   (:require [clojure.core.async :as async]
-            [clojure.string :as string]
             [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.containers.req-editor :as req-editor]
             [webhook-explorer.components.req-parts :as req-parts]
+            [webhook-explorer.components.tag-selector :as tag-selector]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
             ["react-virtualized/dist/commonjs/AutoSizer" :default AutoSizer]
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
             ["react-virtualized/dist/commonjs/List" :default List]
             ["react-virtualized/dist/commonjs/InfiniteLoader" :default InfiniteLoader]
+            ["@material-ui/pickers" :as pickers]
             ["@material-ui/core/Avatar" :default Avatar]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Card" :default Card]
@@ -22,16 +23,9 @@
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Tooltip" :default Tooltip]
-            ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Fab" :default FloatingActionButton]
             ["@material-ui/core/Paper" :default Paper]
-            ["@material-ui/core/TextField" :default TextField]
-            ["@material-ui/core/ListSubheader" :default ListSubheader]
-            ["@material-ui/core/ListItemIcon" :default ListItemIcon]
-            ["@material-ui/core/ListItemText" :default ListItemText]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
-            ["@material-ui/core/Menu" :default Menu]
-            ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
@@ -74,7 +68,9 @@
        :control-bar {:display "flex"
                      :align-items "center"
                      :margin-bottom 3
-                     :height 60}
+                     :min-height 60
+                     :padding-left 60
+                     :padding-right 60}
        :send-btn {:margin-right 15
                   :margin-bottom 15
                   :margin-left "auto"}})))
@@ -88,82 +84,12 @@
                       :onClick on-click}
         [:> icon icon-props]]]))
 
-(defn- filter-tags [input tags]
-  (if (zero? (count input))
-    tags
-    (filter
-      #(string/includes? (string/lower-case %) (string/lower-case input))
-      tags)))
-
-(defn- tag-selector []
-  (let [tag-anchor-el (r/atom nil)
-        input-tag (r/atom "")]
-    (fn [{:keys [item]
-          cur-private-tags :private-tags
-          cur-public-tags :public-tags}]
-      (let [entered-tag @input-tag
-            el @tag-anchor-el
-            tags @app-state/tags
-            private-tags (filter-tags entered-tag (:user tags))
-            public-tags (filter-tags entered-tag (get-in tags [:public :writable]))
-            close-menu (fn []
-                         (reset! input-tag "")
-                         (reset! tag-anchor-el nil))
-            apply-tag (fn [tag-opt]
-                        (reqs-actions/tag-req item tag-opt)
-                        (close-menu))
-            is-entered-tag? #(-> %
-                                 (string/lower-case)
-                                 (= (string/lower-case entered-tag)))
-            new-private (when-not (or (empty? entered-tag)
-                                      (some is-entered-tag? private-tags))
-                          entered-tag)
-            new-public (when-not (or (empty? entered-tag)
-                                      (some is-entered-tag? public-tags))
-                          entered-tag)]
-        [:<>
-          [action-btn
-            "Tag"
-            TagIcon
-            #(reset! tag-anchor-el (obj/get % "currentTarget"))
-            (when (or (not-empty cur-public-tags) (not-empty cur-private-tags)) {:color "primary"})]
-          [:> Menu {:anchorEl el
-                    :open (some? el)
-                    :onClose #(reset! tag-anchor-el nil)
-                    :getContentAnchorEl nil
-                    :anchorOrigin #js {:vertical "bottom"
-                                       :horizontal "left"}}
-            [:> MenuItem {}
-              [:> TextField {:fullWidth true
-                             :label "Tag"
-                             :value entered-tag
-                             :onKeyDown #(when-not (string/starts-with? (obj/get % "key") "Arrow")
-                                           (.stopPropagation %))
-                             :onChange #(reset! input-tag (obj/getValueByKeys % #js ["target" "value"]))}]]
-            (when (not-empty private-tags)
-              [:> ListSubheader "Private tags"])
-            (for [tag private-tags
-                  :let [tagged (cur-private-tags tag)]]
-              ^{:key tag}
-              [:> MenuItem {:onClick #(if tagged (close-menu) (apply-tag {:tag tag}))}
-                [:> Typography {:color (if tagged "primary" "textPrimary")}
-                  (str tag (when tagged " (Already tagged)"))]])
-            (when (not-empty public-tags)
-              [:> ListSubheader "Public tags"])
-            (for [tag public-tags
-                  :let [tagged (cur-public-tags tag)]]
-              ^{:key tag}
-              [:> MenuItem {:onClick #(if tagged (close-menu) (apply-tag {:pub true :tag tag}))}
-                [:> Typography {:color (if tagged "primary" "textPrimary")}
-                  (str tag (when tagged " (Already tagged)"))]])
-            (when (or new-private new-public)
-              [:> ListSubheader "Create new tag"])
-            (when new-private
-              [:> MenuItem {:onClick #(apply-tag {:tag new-private})}
-                (str "New private tag \"" new-private "\"")])
-            (when new-public
-              [:> MenuItem {:onClick #(apply-tag {:pub true :tag new-public})}
-                (str "New public tag \"" new-public "\"")])]]))))
+(defn- tag-action-btn [{:keys [on-open-menu any-selected]}]
+  [action-btn
+    "Tag"
+    TagIcon
+    on-open-menu
+    (when any-selected {:color "primary"})])
 
 (defn- req-card
   [{:keys [styles favorited public-tags private-tags on-visibility-toggled]
@@ -186,9 +112,12 @@
                     method])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
-                               [tag-selector {:item item
-                                              :private-tags (or private-tags #{})
-                                              :public-tags (or public-tags #{})}]
+                               [tag-selector/component
+                                 {:on-select-tag (partial reqs-actions/tag-req item)
+                                  :rw :writable
+                                  :target-component tag-action-btn
+                                  :private-tags private-tags
+                                  :public-tags public-tags}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)
@@ -292,7 +221,16 @@
         [req-editor/component]
         [:> Paper {:elevation 2
                    :className (obj/get styles "control-bar")}
-          [:> TextField {:label "Start at"}]]
+          [tag-selector/component {:target-component tag-action-btn
+                                   :on-select-tag #()
+                                   :rw :readable
+                                   :private-tags #{}
+                                   :public-tags #{}}]
+          [:> pickers/KeyboardDatePicker {:label "Start at"
+                                          :format "yyyy-MM-dd"
+                                          :variant "inline"
+                                          :disableFuture true
+                                          :autoOk true}]]
         [:div {:className (obj/get styles "container")}
           [:> AutoSizer
             (fn [size]

@@ -1,6 +1,8 @@
 (ns ^:figwheel-hooks webhook-explorer.core
   (:require [reagent.core :as r]
             ["@material-ui/core/CssBaseline" :default CssBaseline]
+            ["@material-ui/pickers" :as pickers]
+            ["@date-io/moment" :as MomentUtils]
             [webhook-explorer.actions.tags] ; TODO: would love not to include this just for side effects
             [webhook-explorer.shims]
             [webhook-explorer.init :as init]
@@ -18,9 +20,10 @@
 
 (defn- page []
   [:div {:style #js {:display "flex" :flexDirection "column" :height "100%"}}
-    [:> CssBaseline]
-    [app-bar/component]
-    [current-page]])
+    [:> pickers/MuiPickersUtilsProvider {:utils MomentUtils}
+      [:> CssBaseline]
+      [app-bar/component]
+      [current-page]]])
 
 (defn- mount []
   (r/render [page]
