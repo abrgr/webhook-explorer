@@ -11,44 +11,45 @@
 
 (defn- get-tagged-reqs-thru [earliest-item-date]
   (async/go-loop []
-    (let [{:keys [next-tagged-req]} @app-state/reqs
-          res (async/<! (http/get
-                          (http-utils/make-url "/api/tagged-reqs")
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)
-                           :query-params next-tagged-req}))
-          {{:keys [earliestDate tagsByFingerprint nextReq]} :body} res]
-      (swap!
-        app-state/reqs
-        (fn [{prev-tagged-reqs :tagged-reqs :as reqs}]
-          (let [tagged-reqs (->> tagsByFingerprint
-                                 (reduce
-                                   (fn [tagged-reqs [fingerprint {:keys [fav privateTags publicTags]}]]
-                                     (let [prev (get tagged-reqs (name fingerprint))
-                                           fav (or (:fav prev) fav)
-                                           private-tags (->> prev
-                                                             :private-tags
-                                                             (concat privateTags)
-                                                             (into #{}))
-                                           public-tags (->> prev
-                                                            :public-tags
-                                                            (concat publicTags)
-                                                            (into #{}))]
-                                       (assoc
-                                         tagged-reqs
-                                         (name fingerprint)
-                                         {:fav fav
-                                          :private-tags private-tags
-                                          :public-tags public-tags})))
-                                   prev-tagged-reqs))]
-            (merge
-              reqs
-              {:tagged-reqs tagged-reqs
-               :next-tagged-req nextReq
-               :earliest-tagged-req earliestDate}))))
-      (when (and (some? nextReq)
-                 (< earliest-item-date earliestDate))
-        (recur)))))
+    (let [{:keys [next-tagged-req]} @app-state/reqs]
+      (when-not (nil? next-tagged-req)
+        (let [res (async/<! (http/get
+                              (http-utils/make-url "/api/tagged-reqs")
+                              {:with-credentials? false
+                               :headers (http-utils/auth-headers)
+                               :query-params next-tagged-req}))
+              {{:keys [earliestDate tagsByFingerprint nextReq]} :body} res]
+          (swap!
+            app-state/reqs
+            (fn [{prev-tagged-reqs :tagged-reqs :as reqs}]
+              (let [tagged-reqs (->> tagsByFingerprint
+                                     (reduce
+                                       (fn [tagged-reqs [fingerprint {:keys [fav privateTags publicTags]}]]
+                                         (let [prev (get tagged-reqs (name fingerprint))
+                                               fav (or (:fav prev) fav)
+                                               private-tags (->> prev
+                                                                 :private-tags
+                                                                 (concat privateTags)
+                                                                 (into #{}))
+                                               public-tags (->> prev
+                                                                :public-tags
+                                                                (concat publicTags)
+                                                                (into #{}))]
+                                           (assoc
+                                             tagged-reqs
+                                             (name fingerprint)
+                                             {:fav fav
+                                              :private-tags private-tags
+                                              :public-tags public-tags})))
+                                       prev-tagged-reqs))]
+                (merge
+                  reqs
+                  {:tagged-reqs tagged-reqs
+                   :next-tagged-req nextReq
+                   :earliest-tagged-req earliestDate}))))
+          (when (and (some? nextReq)
+                     (< earliest-item-date earliestDate))
+            (recur)))))))
 
 (defn- get-reqs [params]
   (if (nil? params)
@@ -252,3 +253,22 @@
              [(constantly true)] ; set :fav to true
              [s/union #{tag}])) ; union :public-tags or :private-tags with #{tag}
          success))))
+
+(defn- make-next-req [{:keys [all fav priv pub]} latest-date]
+  {:fav fav
+   :privTag priv
+   :pubTag pub
+   :ymd latest-date})
+
+(defn set-latest-date [moment]
+  (swap!
+    app-state/reqs
+    (fn [{:keys [selected-tag] :as old}]
+      (merge
+        old
+        {:latest-date (.format moment "YYYY-MM-DD")
+         :items []
+         :next-req (make-next-req selected-tag (.format moment "YYYY/MM/DD"))
+         :tagged-reqs {}
+         :earliest-tagged-req nil
+         :next-tagged-req {}}))))

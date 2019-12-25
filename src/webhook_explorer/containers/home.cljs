@@ -8,6 +8,7 @@
             [webhook-explorer.components.tag-selector :as tag-selector]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
+            ["moment" :as moment]
             ["react-virtualized/dist/commonjs/AutoSizer" :default AutoSizer]
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
             ["react-virtualized/dist/commonjs/List" :default List]
@@ -22,10 +23,14 @@
             ["@material-ui/core/Collapse" :default Collapse]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
+            ["@material-ui/core/Select" :default Select]
+            ["@material-ui/core/FormControl" :default FormControl]
+            ["@material-ui/core/InputLabel" :default InputLabel]
             ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Fab" :default FloatingActionButton]
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
+            ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
@@ -71,6 +76,8 @@
                      :min-height 60
                      :padding-left 60
                      :padding-right 60}
+       :control-bar-control {:width 238
+                             :margin-right 60}
        :send-btn {:margin-right 15
                   :margin-bottom 15
                   :margin-left "auto"}})))
@@ -117,7 +124,8 @@
                                   :rw :writable
                                   :target-component tag-action-btn
                                   :private-tags private-tags
-                                  :public-tags public-tags}]
+                                  :public-tags public-tags
+                                  :allow-creation true}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)
@@ -192,9 +200,14 @@
 
 (defn- req-list []
   (let [list-ref (r/atom nil)]
-    (fn [{:keys [size styles theme]}]
+    (fn [{:keys [size styles theme set-refetch-items]}]
       (let [{:keys [items next-req] :as reqs-state} @app-state/reqs]
-        [:> InfiniteLoader {:isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
+        [:> InfiniteLoader {:ref (fn [inf-ldr]
+                                   (set-refetch-items
+                                     (if (nil? inf-ldr)
+                                       #()
+                                       #(.resetLoadMoreRowsCache inf-ldr))))
+                            :isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
                             :threshold 5
                             :minimumBatchSize 10
                             :loadMoreRows load-more-rows
@@ -213,31 +226,62 @@
                         :rowHeight (obj/get cell-measure-cache "rowHeight")
                         :deferredMeasurementCache cell-measure-cache}]))]))))
 
+(defn- tag-selector-select [styles {:keys [on-open-menu any-selected]}]
+  (let [id (str (random-uuid))]
+    (fn []
+      [:> FormControl {:classes {:root (obj/get styles "control-bar-control")}}
+        [:> InputLabel {:id id} "Tag"]
+        [:> Select
+          {:labelId id
+           :value "hi"
+           :onChange #()
+           :open false
+           :onOpen on-open-menu}
+          [:> MenuItem {:value "hi"} "Hi"]]])))
+
+(defn- control-bar []
+  (fn [{:keys [styles refetch-items]}]
+    (let [{:keys [latest-date selected-tag]} @app-state/reqs
+          fmt "YYYY-MM-DD"]
+      [:> Paper {:elevation 2
+                 :className (obj/get styles "control-bar")}
+        [tag-selector/component {:target-component (partial tag-selector-select styles)
+                                 :on-select-tag #()
+                                 :rw :readable
+                                 :private-tags #{}
+                                 :public-tags #{}}]
+        [:> FormControl {:classes {:root (obj/get styles "control-bar-control")}}
+          [:> pickers/KeyboardDatePicker {:label "Latest date (UTC)"
+                                          :format fmt
+                                          :value (or latest-date (-> (moment.) (.format fmt)))
+                                          :onChange #(do (reqs-actions/set-latest-date %)
+                                                         (refetch-items))
+                                          :variant "inline"
+                                          :disableFuture true
+                                          :autoOk true}]]])))
+
+(defn- home []
+  (fn [{:keys [styles theme]}]
+    (let [refetch-items (r/atom nil)]
+      (r/as-element
+        [:<>
+          [req-editor/component]
+          [control-bar {:styles styles
+                        :refetch-items @refetch-items}]
+          [:div {:className (obj/get styles "container")}
+            [:> AutoSizer
+              (fn [size]
+                (r/as-element
+                  [req-list {:size size
+                             :styles styles
+                             :theme theme
+                             :set-refetch-items #(reset! refetch-items %)}]))]]]))))
 (defn- -component [props]
   (let [styles (obj/get props "styles")
         theme (obj/get props "theme")]
     (r/as-element
-      [:<>
-        [req-editor/component]
-        [:> Paper {:elevation 2
-                   :className (obj/get styles "control-bar")}
-          [tag-selector/component {:target-component tag-action-btn
-                                   :on-select-tag #()
-                                   :rw :readable
-                                   :private-tags #{}
-                                   :public-tags #{}}]
-          [:> pickers/KeyboardDatePicker {:label "Start at"
-                                          :format "yyyy-MM-dd"
-                                          :variant "inline"
-                                          :disableFuture true
-                                          :autoOk true}]]
-        [:div {:className (obj/get styles "container")}
-          [:> AutoSizer
-            (fn [size]
-              (r/as-element
-                [req-list {:size size
-                           :styles styles
-                           :theme theme}]))]]])))
+      [home {:styles styles
+             :theme theme}])))
 
 (def ^:private -component-with-styles-and-theme (with-theme -component))
 

@@ -19,7 +19,7 @@
 (defn component []
   (let [tag-anchor-el (r/atom nil)
         input-tag (r/atom "")]
-    (fn [{:keys [target-component on-select-tag rw]
+    (fn [{:keys [target-component on-select-tag rw allow-creation]
           cur-private-tags :private-tags
           cur-public-tags :public-tags
           :or {cur-private-tags #{}
@@ -77,12 +77,12 @@
               [:> MenuItem {:onClick #(if tagged (close-menu) (apply-tag {:pub true :tag tag}))}
                 [:> Typography {:color (if tagged "primary" "textPrimary")}
                   (str tag (when tagged " (Already tagged)"))]])
-            (when (or new-private new-public)
-              [:> ListSubheader "Create new tag"])
-            (when new-private
-              [:> MenuItem {:onClick #(apply-tag {:tag new-private})}
-                (str "New private tag \"" new-private "\"")])
-            (when new-public
-              [:> MenuItem {:onClick #(apply-tag {:pub true :tag new-public})}
-                (str "New public tag \"" new-public "\"")])]]))))
+              (when (and allow-creation (or new-private new-public))
+                [:> ListSubheader "Create new tag"])
+              (when (and allow-creation new-private)
+                [:> MenuItem {:onClick #(apply-tag {:tag new-private})}
+                  (str "New private tag \"" new-private "\"")])
+              (when (and allow-creation new-public)
+                [:> MenuItem {:onClick #(apply-tag {:pub true :tag new-public})}
+                  (str "New public tag \"" new-public "\"")])]]))))
 

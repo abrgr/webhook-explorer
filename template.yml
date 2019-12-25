@@ -643,6 +643,9 @@ Resources:
         ViewerCertificate:
           AcmCertificateArn: !Ref WebhookExplorerCertificate
           SslSupportMethod: sni-only
+        CustomErrorResponses:
+          - ErrorCode: 500
+            ErrorCachingMinTTL: 5
   WebhookExplorerDNS:
     Type: AWS::Route53::RecordSetGroup
     Properties: 

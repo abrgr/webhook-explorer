@@ -63,7 +63,6 @@ function isUserAuthorizedToWriteFolder(uid, folder) {
   return folderUid === encodeUidForTagFolder(uid);
 }
 
-
 function endOfToday(todayEpoch) {
   const tomorrow = new Date(todayEpoch);
   tomorrow.setDate(tomorrow.getDate() + 1);

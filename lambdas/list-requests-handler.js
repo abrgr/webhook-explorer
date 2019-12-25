@@ -4,6 +4,7 @@ const {
   response,
   partsForKey,
   folderForTag,
+  getPrivateTag,
   getUserFromEvent,
   getTagForFavorite,
   isUserAuthorizedToReadFolder
@@ -15,14 +16,17 @@ const bucket = process.env.BUCKET_NAME;
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
-  const { folder, fav, tag, ymd, token } = event.queryStringParameters || {};
+  const { fav, pubTag, privTag, ymd, token } = event.queryStringParameters || {};
   const { uid } = getUserFromEvent(event);
+  const tag = privTag
+            ? getPrivateTag(uid, privTag)
+            : pubTag;
   const resolvedTag = fav
                     ? getTagForFavorite(uid)
                     : tag;
   const resolvedFolder = resolvedTag
                        ? folderForTag(resolvedTag)
-                       : folder;
+                       : 'all';
 
   if ( !isUserAuthorizedToReadFolder(uid, resolvedFolder) ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
