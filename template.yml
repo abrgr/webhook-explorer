@@ -212,6 +212,8 @@ Resources:
         - COGNITO
       CallbackURLs:
         - !Sub "https://${WebhookExplorerDomainName}/"
+      LogoutURLs:
+        - !Sub "https://${WebhookExplorerDomainName}/"
       ReadAttributes:
         - email
         - email_verified

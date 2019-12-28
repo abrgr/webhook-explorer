@@ -5,6 +5,9 @@
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Toolbar" :default Toolbar]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/core/Menu" :default Menu]
+            ["@material-ui/core/MenuItem" :default MenuItem]
+            ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/icons/Menu" :default MenuIcon]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Avatar" :default Avatar]
@@ -20,11 +23,24 @@
        :app-bar-offset (js->clj (obj/getValueByKeys theme #js ["mixins" "toolbar"]) :keywordize-keys true)})))
 
 (defn- avatar []
-  (let [{:keys [given-name family-name name pic-url]} (app-state/user-info)]
-    [:> Avatar {:alt name
-                :src pic-url}
-      (when (nil? pic-url)
-        (str (first given-name) (first family-name)))]))
+  (let [anchor-el (r/atom nil)]
+    (fn []
+      (let [{:keys [given-name family-name name email pic-url] :as u} (app-state/user-info)
+            anchor @anchor-el]
+        [:<>
+          [:> Avatar {:alt name
+                      :src pic-url
+                      :onClick #(reset! anchor-el (obj/get % "currentTarget"))}
+            (when (nil? pic-url)
+              (str (first given-name) (first family-name)))]
+          [:> Menu {:anchorEl anchor
+                    :anchorOrigin #js {:vertical "bottom" :horizontal "left"}
+                    :getContentAnchorEl nil
+                    :open (some? anchor)
+                    :onClose #(reset! anchor-el nil)}
+            [:> ListSubheader email]
+            [:> MenuItem {:onClick #(auth-actions/sign-out)}
+              "Log Out"]]]))))
 
 (defn- -component [{:keys [styles]}]
   [:<>

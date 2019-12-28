@@ -62,3 +62,6 @@
       (.getSignInUserSession)
       (.getIdToken)
       (.getJwtToken)))
+
+(defn sign-out []
+  (.signOut ca))
