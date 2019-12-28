@@ -13,7 +13,7 @@
                        :selected-item nil
                        :next-req {}
                        :latest-date nil
-                       :selected-tag {:all true :fav false :priv nil :pub nil}
+                       :selected-tag {:all true :fav false :tag nil :pub false}
                        :tagged-reqs {}
                        :earliest-tagged-req nil
                        :next-tagged-req {}}))

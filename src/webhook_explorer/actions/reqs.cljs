@@ -254,11 +254,16 @@
              [s/union #{tag}])) ; union :public-tags or :private-tags with #{tag}
          success))))
 
-(defn- make-next-req [{:keys [all fav priv pub]} latest-date]
-  {:fav fav
-   :privTag priv
-   :pubTag pub
-   :ymd latest-date})
+(defn- make-next-req [{:keys [all fav tag pub]} latest-date]
+  (merge
+    (when tag
+      {:tag tag})
+    (when pub
+      {:pub true})
+    (when latest-date
+      {:ymd latest-date})
+    (when fav
+      {:fav fav})))
 
 (defn set-latest-date [moment]
   (swap!
@@ -269,6 +274,19 @@
         {:latest-date (.format moment "YYYY-MM-DD")
          :items []
          :next-req (make-next-req selected-tag (.format moment "YYYY/MM/DD"))
+         :tagged-reqs {}
+         :earliest-tagged-req nil
+         :next-tagged-req {}}))))
+
+(defn select-tag [selected-tag]
+  (swap!
+    app-state/reqs
+    (fn [{:keys [latest-date] :as old}]
+      (merge
+        old
+        {:selected-tag selected-tag
+         :items []
+         :next-req (make-next-req selected-tag latest-date)
          :tagged-reqs {}
          :earliest-tagged-req nil
          :next-tagged-req {}}))))

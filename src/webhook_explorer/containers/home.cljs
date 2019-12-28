@@ -125,7 +125,8 @@
                                   :target-component tag-action-btn
                                   :private-tags private-tags
                                   :public-tags public-tags
-                                  :allow-creation true}]
+                                  :allow-creation true
+                                  :selected-label "(Already tagged)"}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
        :title (str host path)
@@ -226,30 +227,47 @@
                         :rowHeight (obj/get cell-measure-cache "rowHeight")
                         :deferredMeasurementCache cell-measure-cache}]))]))))
 
-(defn- tag-selector-select [styles {:keys [on-open-menu any-selected]}]
+(defn- tag-selector-select
+  [styles props]
   (let [id (str (random-uuid))]
-    (fn []
-      [:> FormControl {:classes {:root (obj/get styles "control-bar-control")}}
-        [:> InputLabel {:id id} "Tag"]
-        [:> Select
-          {:labelId id
-           :value "hi"
-           :onChange #()
-           :open false
-           :onOpen on-open-menu}
-          [:> MenuItem {:value "hi"} "Hi"]]])))
+    (fn [{:keys [on-open-menu any-selected selected-priv-tags selected-pub-tags extra-tags]}]
+      (let [sel-priv-tag (first selected-priv-tags)
+            sel-pub-tag (first selected-pub-tags)
+            sel (or sel-priv-tag sel-pub-tag)
+            sel-label (or (get extra-tags sel-priv-tag sel-priv-tag) sel-pub-tag)]
+        [:> FormControl {:classes {:root (obj/get styles "control-bar-control")}}
+          [:> InputLabel {:id id} "Tag"]
+          [:> Select
+            {:labelId id
+             :value sel
+             :onChange #()
+             :open false
+             :onOpen on-open-menu}
+            [:> MenuItem {:value sel} sel-label]]]))))
 
 (defn- control-bar []
   (fn [{:keys [styles refetch-items]}]
-    (let [{:keys [latest-date selected-tag]} @app-state/reqs
-          fmt "YYYY-MM-DD"]
+    (let [{:keys [latest-date]
+           {:keys [all fav tag pub]} :selected-tag} @app-state/reqs
+          fmt "YYYY-MM-DD"
+          extra-tags (sorted-map
+                       "*all*" "All"
+                       "*fav*" "My Favorites")]
       [:> Paper {:elevation 2
                  :className (obj/get styles "control-bar")}
         [tag-selector/component {:target-component (partial tag-selector-select styles)
-                                 :on-select-tag #()
+                                 :on-select-tag #(reqs-actions/select-tag (case (:tag %)
+                                                                             "*all*" {:all true}
+                                                                             "*fav*" {:fav true}
+                                                                             %))
                                  :rw :readable
-                                 :private-tags #{}
-                                 :public-tags #{}}]
+                                 :private-tags #{(cond
+                                                    all "*all*"
+                                                    fav "*fav*"
+                                                    (not pub) tag)}
+                                 :public-tags (if pub #{tag} nil)
+                                 :extra-tags extra-tags
+                                 :selected-label "(Selected)"}]
         [:> FormControl {:classes {:root (obj/get styles "control-bar-control")}}
           [:> pickers/KeyboardDatePicker {:label "Latest date (UTC)"
                                           :format fmt
@@ -261,13 +279,14 @@
                                           :autoOk true}]]])))
 
 (defn- home []
-  (fn [{:keys [styles theme]}]
-    (let [refetch-items (r/atom nil)]
+  (let [refetch-items (r/atom nil)
+        set-refetch-items (partial reset! refetch-items)]
+    (fn [{:keys [styles theme]}]
       (r/as-element
         [:<>
           [req-editor/component]
           [control-bar {:styles styles
-                        :refetch-items @refetch-items}]
+                        :refetch-items #(@refetch-items)}]
           [:div {:className (obj/get styles "container")}
             [:> AutoSizer
               (fn [size]
@@ -275,7 +294,7 @@
                   [req-list {:size size
                              :styles styles
                              :theme theme
-                             :set-refetch-items #(reset! refetch-items %)}]))]]]))))
+                             :set-refetch-items set-refetch-items}]))]]]))))
 (defn- -component [props]
   (let [styles (obj/get props "styles")
         theme (obj/get props "theme")]
