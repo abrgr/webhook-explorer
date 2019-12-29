@@ -16,7 +16,7 @@
 (defn- with-user-handler [c]
   (set!
     (.-userhandler c)
-    #js {:onSuccess #(do (reset! app-state/auth {:user-data (current-user-data) :cognito-session %})
+    #js {:onSuccess #(do (reset! app-state/auth {:user-data (current-user-data %) :cognito-session %})
                          (routes/nav-to-home))
          :onFailure #(routes/nav-to-auth {:query-params {:failure true}})})
   c)
@@ -36,12 +36,14 @@
     (.isUserSignedIn ca)
     (unexpired?)))
 
-(defn- current-user-data []
-  (-> ca
-      (.getSignInUserSession)
-      (.getIdToken)
-      (.-payload)
-      (js->clj :keywordize-keys true)))
+(defn- current-user-data
+  ([]
+    (current-user-data (.getSignInUserSession ca)))
+  ([sess]
+    (-> sess
+        (.getIdToken)
+        (.decodePayload)
+        (js->clj :keywordize-keys true))))
 
 (init/register-init
   0
