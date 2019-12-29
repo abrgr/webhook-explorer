@@ -15,7 +15,7 @@
 (defn- current-page []
   (case (:page @app-state/nav)
     :auth [auth/component]
-    :home [home/component]
+    :reqs [home/component]
     [auth/component]))
 
 (defn- page []

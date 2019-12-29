@@ -17,7 +17,7 @@
   (set!
     (.-userhandler c)
     #js {:onSuccess #(do (reset! app-state/auth {:user-data (current-user-data %) :cognito-session %})
-                         (routes/nav-to-home))
+                         (routes/nav-to-reqs))
          :onFailure #(routes/nav-to-auth {:query-params {:failure true}})})
   c)
 

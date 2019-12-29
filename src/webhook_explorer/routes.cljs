@@ -32,8 +32,14 @@
     (nav-to-auth)
     true))
 
-(defextroute hist home-path nav-to-home [require-login] "/home" []
-  (reset! app-state/nav {:page :home}))
+(defextroute hist reqs-path nav-to-reqs [require-login] "/reqs" []
+  (reset! app-state/nav {:page :reqs}))
+
+(defextroute hist users-path nav-to-users [require-login] "/users" []
+  (reset! app-state/nav {:page :users}))
+
+(defextroute hist handlers-path nav-to-handlers [require-login] "/handlers" []
+  (reset! app-state/nav {:page :handlers}))
 
 (defn init! []
   (defroute "*" []
