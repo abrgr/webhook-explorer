@@ -53,15 +53,14 @@ function getUserFromEvent(event) {
 }
 
 function cognitoUserToUser(u) {
-  return {
+  return u.Attributes.reduce((attrs, { Name, Value }) => ({
+    ...attrs,
+    [Name.replace('custom:', '')]: Value
+  }), {
     username: u.Username,
     createdAt: u.UserCreateDate,
     enabled: u.Enabled,
-    attributes: u.Attributes.reduce((attrs, { Name, Value }) => ({
-      ...attrs,
-      [Name]: Value
-    }))
-  };
+  });
 }
 
 function isUserAuthorizedToReadFolder(uid, folder) {

@@ -16,7 +16,7 @@ exports.handler = async function handler(event, context) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
   }
 
-  const { User: user } = cognito.adminCreateUser({
+  const { User: user } = await cognito.adminCreateUser({
     UserPoolId: poolId,
     Username: email,
     DesiredDeliveryMediums: ['EMAIL'],
@@ -33,5 +33,5 @@ exports.handler = async function handler(event, context) {
     ]
   }).promise();
 
-  return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify({ user: cognitoUserToUser(user), success: true }));
+  return response(200, {}, JSON.stringify({ user: cognitoUserToUser(user), success: true }));
 };

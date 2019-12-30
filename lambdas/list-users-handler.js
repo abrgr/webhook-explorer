@@ -9,6 +9,7 @@ const cognito = new Cognito({ apiVersion: '2019-09-21' });
 const poolId = process.env.COGNITO_USER_POOL_ID;
 
 exports.handler = async function handler(event, context) {
+  console.log("EVENT", JSON.stringify(event));
   const { token } = event.queryStringParameters || {};
   const { permissions: { canAdminUsers }} = getUserFromEvent(event);
 
@@ -16,9 +17,9 @@ exports.handler = async function handler(event, context) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
   }
 
-  const { Users: users, PaginationToken: nextToken } = cognito.listUsers({
+  const { Users: users, PaginationToken: nextToken } = await cognito.listUsers({
     UserPoolId: poolId,
-    AttributesToGet: ["cognito:username", "email", "given_name", "family_name", "preferred_username", "custom:role"]
+    PaginationToken: token
   }).promise();
 
   const page = {
@@ -26,5 +27,5 @@ exports.handler = async function handler(event, context) {
     nextReq: nextToken ? { token: nextToken } : null
   };
 
-  return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify(page));
+  return response(200, { 'Cache-Control': `max-age=${300}` }, JSON.stringify(page));
 };

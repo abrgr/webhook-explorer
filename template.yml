@@ -230,6 +230,7 @@ Resources:
         - zoneinfo
         - updated_at
         - website
+        - "custom:role"
   WebhookExplorerAuthCertificate:
     Type: 'Custom::CertificateCreator'
     Version: '1.0'
