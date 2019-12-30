@@ -74,18 +74,6 @@ exports.handler = async function handler(event, context) {
   const fingerprint = hashMsg(msg);
   const key = keyForParts(folder, iso, method, host, path, fingerprint);
 
-  console.log('audit req', JSON.stringify({
-    iso,
-    fingerprint,
-    tag,
-    s3: {
-      Body: JSON.stringify({ uid, date: new Date().toISOString() }),
-      Bucket: bucket,
-      Key: getAuditKey(iso, fingerprint, tag),
-      ContentType: 'application/json'
-    }
-  }));
-
   await Promise.all([
     s3.putObject({
       Body: JSON.stringify(msg),

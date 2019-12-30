@@ -187,10 +187,11 @@ Resources:
         - preferred_username
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
-        ReplyToEmailAddress: "adam.g.berger@gmail.com"
+        ReplyToEmailAddress: !Ref AdminEmailAddress
       Schema:
         - AttributeDataType: String
-          Name: tenant_role
+          Name: role
+          Mutable: true
       UserPoolName: !Sub "${AWS::StackName}-user-pool"
   WebhookExplorerApp:
     Type: AWS::Cognito::UserPoolClient
@@ -282,6 +283,27 @@ Resources:
           AliasTarget:
             DNSName: !Ref CustomCognitoDomain
             HostedZoneId: Z2FDTNDATAQYW2
+  CustomIndexFileCreator:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/custom-index-file.handler
+      MemorySize: 512
+      Timeout: 600
+      AutoPublishAlias: live
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  CustomIndexFile:
+    Type: 'Custom::CustomIndexFileCreator'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt CustomIndexFileCreator.Arn
+      UserPoolId: !Ref WebhookExplorerUserPool
+      ClientId: !Ref WebhookExplorerApp
+      AppWebDomain: !Ref WebhookExplorerAuthDomainName
+      RedirectUri: !Sub "https://${WebhookExplorerDomainName}/"
+      Bucket: !Ref WebhookRequestBucket
   AdminUser:
     Type: AWS::Cognito::UserPoolUser
     Properties:
@@ -295,6 +317,8 @@ Resources:
           Value: !Ref AdminEmailAddress
         - Name: email_verified
           Value: true
+        - Name: "custom:role"
+          Value: "admin"
   WebhookExplorerApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -434,6 +458,52 @@ Resources:
                 requestTemplates:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
+          /api/users:
+            post:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateUserHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            get:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListUsersHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              consumes:
+                - "application/json"
+              produces:
+                - "application/json"
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                    Access-Control-Allow-Methods:
+                      type: "string"
+                    Access-Control-Allow-Headers:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
+                type: "mock"
         securityDefinitions:
           CognitoAuth:
             type: "apiKey"
@@ -463,6 +533,7 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref WebhookRequestBucket
           EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
@@ -491,6 +562,7 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref WebhookRequestBucket
           EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
@@ -519,6 +591,7 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref WebhookRequestBucket
           EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
@@ -547,6 +620,7 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref WebhookRequestBucket
           EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
@@ -555,6 +629,70 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref ListTagsHandler
+      Principal: apigateway.amazonaws.com
+  ListUsersHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/list-users-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        ListUsers:
+          Type: Api
+          Properties:
+            Path: /api/users
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:ListUsers"
+              Resource: !GetAtt WebhookExplorerUserPool.Arn
+  ListUsersHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListUsersHandler
+      Principal: apigateway.amazonaws.com
+  CreateUserHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/create-user-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        CreateUser:
+          Type: Api
+          Properties:
+            Path: /api/users
+            Method: post
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:AdminCreateUser"
+              Resource: !GetAtt WebhookExplorerUserPool.Arn
+  CreateUserHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CreateUserHandler 
       Principal: apigateway.amazonaws.com
   WebhookExplorerOriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity

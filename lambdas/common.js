@@ -20,7 +20,8 @@ module.exports = {
   isUserAuthorizedToWriteFolder,
   hashMsg,
   getAuditKey,
-  auditKeyToFingerprintTagAndDate
+  auditKeyToFingerprintTagAndDate,
+  cognitoUserToUser
 };
 
 function getUserFromEvent(event) {
@@ -30,6 +31,7 @@ function getUserFromEvent(event) {
         claims: {
           aud,
           "cognito:username": uid,
+          "custom:role": role
           email
         }
       }
@@ -43,7 +45,22 @@ function getUserFromEvent(event) {
 
   return {
     email,
-    uid
+    uid,
+    permissions: {
+      canAdminUsers: role === 'admin'
+    }
+  };
+}
+
+function cognitoUserToUser(u) {
+  return {
+    username: u.Username,
+    createdAt: u.UserCreateDate,
+    enabled: u.Enabled,
+    attributes: u.Attributes.reduce((attrs, { Name, Value }) => ({
+      ...attrs,
+      [Name]: Value
+    })
   };
 }
 

@@ -37,7 +37,6 @@ exports.handler = async function handler(event, context) {
 };
 
 async function handleDelete(event) {
-  console.log('Handling delete...');
   const { RequestId, StackId, LogicalResourceId, PhysicalResourceId } = event;
   const { HostedZoneId } = event.ResourceProperties;
 
@@ -70,8 +69,6 @@ async function handleDelete(event) {
 }
 
 async function handleCreate(event) {
-  console.log('Handling create...');
-
   const { RequestId, LogicalResourceId, StackId } = event;
   const { DomainName, HostedZoneId } = event.ResourceProperties;
 
@@ -89,7 +86,6 @@ async function handleCreate(event) {
 }
 
 async function sendResponse(response, ResponseURL) {
-  console.log('Sending response');
   return new Promise((resolve, reject) => {
     const parsedUrl = url.parse(ResponseURL);
     const responseBody = JSON.stringify(response);
@@ -127,7 +123,6 @@ async function sendResponse(response, ResponseURL) {
 }
 
 async function createCert(HostedZoneId, DomainName) {
-  console.log('Requesting cert');
   const { CertificateArn } = await acm.requestCertificate({
     DomainName,
     ValidationMethod: 'DNS'
@@ -150,7 +145,6 @@ async function delay(seconds) {
 
 async function getCertCname(CertificateArn) {
   await delay(10); // wait for aws to generate the cname we need
-  console.log('Describing cert');
   const cert = await acm.describeCertificate({
     CertificateArn
   }).promise();
@@ -159,7 +153,6 @@ async function getCertCname(CertificateArn) {
 }
 
 async function verifyDomain(HostedZoneId, cnameRecord) {
-  console.log('Verifying domain');
   try {
     return await route53.changeResourceRecordSets({
       HostedZoneId,
@@ -188,7 +181,6 @@ async function verifyDomain(HostedZoneId, cnameRecord) {
 }
 
 async function deleteDomain(HostedZoneId, cnameRecord) {
-  console.log('Deleting domain');
   return await route53.changeResourceRecordSets({
     HostedZoneId,
     ChangeBatch: {
