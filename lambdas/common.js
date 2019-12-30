@@ -31,7 +31,7 @@ function getUserFromEvent(event) {
         claims: {
           aud,
           "cognito:username": uid,
-          "custom:role": role
+          "custom:role": role,
           email
         }
       }
@@ -60,7 +60,7 @@ function cognitoUserToUser(u) {
     attributes: u.Attributes.reduce((attrs, { Name, Value }) => ({
       ...attrs,
       [Name]: Value
-    })
+    }))
   };
 }
 
