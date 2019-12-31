@@ -10,12 +10,14 @@
             [webhook-explorer.routes :as routes]
             [webhook-explorer.containers.app-bar :as app-bar]
             [webhook-explorer.containers.home :as home]
+            [webhook-explorer.containers.users :as users]
             [webhook-explorer.containers.auth :as auth]))
 
 (defn- current-page []
   (case (:page @app-state/nav)
     :auth [auth/component]
     :reqs [home/component]
+    :users [users/component]
     [auth/component]))
 
 (defn- page []
