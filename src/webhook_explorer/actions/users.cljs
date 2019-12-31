@@ -48,7 +48,7 @@
                            :headers (http-utils/auth-headers)
                            :json-params {:user {:email email
                                                 :role role}}}))
-          {{:keys [user status]
+          {{:keys [user]
             {err-msg :msg} :error} :body} res]
       (if user
         (swap!
@@ -63,3 +63,25 @@
           :error
           (or err-msg "Failed to create user")))
       (some? user))))
+
+(defn update-user [{:keys [username]} k v]
+  (async/go
+    (let [res (async/<! (http/post
+                          (http-utils/make-url (str "/api/users/" username))
+                          {:with-credentials? false
+                           :headers (http-utils/auth-headers)
+                           :json-params {:actions [{k v}]}}))
+          {:keys [status]} res
+          success (= status 200)]
+      (when success
+        (swap!
+          app-state/users
+          update
+          :users
+          (fn [prev-users]
+            (mapv
+              #(if (= (:username %) username)
+                (assoc % k v)
+                %)
+              prev-users))))
+      success)))

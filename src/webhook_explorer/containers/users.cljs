@@ -6,6 +6,7 @@
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.users :as users-actions]
             ["moment" :as moment]
+            ["@material-ui/core/Switch" :default Switch]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Snackbar" :default Snackbar]
@@ -43,13 +44,13 @@
                      :display "flex"
                      :justify-content "flex-end"}})))
 
-(def ^:private row-height 48)
+(def ^:private row-height 64)
 
 (def ^:private cols
   (sorted-map
     :email {:label "Email"}
-    :enabled {:label "Enabled"}
-    :role {:label "Role"}))
+    :role {:label "Role"}
+    :enabled {:label "Enabled"}))
 
 (defn- header-renderer [props]
   (r/as-element
@@ -59,26 +60,60 @@
        :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
       [:span (obj/get props "label")]]))
 
-(defn- cell-renderer [props]
-  (r/as-element
-    [:> TableCell
-      {:component "div"
-       :variant "body"
-       :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
-      (if (and (nil? (obj/get props "rowData"))
-               (= 0 (obj/get props "columnIndex")))
-        [:> CircularProgress]
-        (obj/get props "cellData" ""))]))
+(defn- role-select [{:keys [label role on-update]} & children]
+  [:> FormControl {:fullWidth true
+                   :margin "normal"}
+    [:> InputLabel label]
+    [:> Select {:value (or role "")
+                :onChange #(let [v (obj/getValueByKeys % #js ["target" "value"])]
+                             (on-update v))}
+      [:> MenuItem {:value "admin"} "Admin"]
+      [:> MenuItem {:value "eng"} "Engineer"]
+      [:> MenuItem {:value "ops"} "Ops"]]
+    children])
+
+(defn- enabled-switch [{:keys [enabled on-update]}]
+  [:> Switch {:checked (or enabled false)
+              :onChange #(let [v (obj/getValueByKeys % #js ["target" "checked"])]
+                           (on-update v))}])
+
+(defn- cell-renderer [show-msg props]
+  (let [row-data (obj/get props "rowData")
+        col-index (obj/get props "columnIndex")
+        cell-data (obj/get props "cellData")
+        colsv (->> cols
+                   keys
+                   (into []))
+        col (get colsv col-index)
+        on-update (fn [k k-label v]
+                    (async/go
+                      (if (async/<! (users-actions/update-user row-data k v))
+                        (show-msg (str "Updated " (:email row-data) "'s " k-label))
+                        (show-msg (str "Failed to update " (:email row-data) "'s " k-label)))))]
+    (r/as-element
+      [:> TableCell
+        {:component "div"
+         :variant "body"
+         :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
+        (if (nil? row-data)
+          (when (= col :email)
+            [:> CircularProgress])
+          (case col
+            :role [role-select {:role cell-data
+                                :on-update (partial on-update :role "role")}]
+            :enabled [enabled-switch {:enabled cell-data
+                                      :on-update (partial on-update :enabled "enablement status")}]
+            (str cell-data)))])))
 
 (defn- get-cell-data [props]
   (let [row-data (obj/get props "rowData")
         data-key (obj/get props "dataKey")]
-    (str (get row-data (keyword data-key)))))
+    (get row-data (keyword data-key))))
 
 (defn- load-more-rows []
   (users-actions/load-next-users))
 
-(defn- user-list [{:keys [styles users next-req]}]
+(defn- user-list [{:keys [styles users next-req show-msg]}]
   (let [row-count (if (nil? next-req) (count users) (inc (count users)))]
     [:> AutoSizer
       (fn [size]
@@ -108,12 +143,16 @@
                       ^{:key col}
                       [:> Column
                         {:headerRenderer header-renderer
-                         :cellRenderer cell-renderer
+                         :cellRenderer (partial cell-renderer show-msg)
                          :cellDataGetter get-cell-data
                          :label label
                          :flexGrow 1
                          :width 120
                          :dataKey col}])]))])))]))
+
+(defn- role-helper-text []
+  [:> FormHelperText
+    "Ops users can only use templated requests but cannot view or execute other requests. Engineer users can do everything except manage and create other users. Admin users can do everything, including managing other users."])
 
 (defn- user-dialog [{:keys [user error on-close on-update on-create]}]
   [:> Dialog {:open (some? user)
@@ -132,17 +171,10 @@
                        :value (get user :email "")
                        :onChange #(let [v (obj/getValueByKeys % #js ["target" "value"])]
                                     (on-update assoc :email v))}]]
-      [:> FormControl {:fullWidth true
-                       :margin "normal"}
-        [:> InputLabel "Role"]
-        [:> Select {:value (get user :role "")
-                    :onChange #(let [v (obj/getValueByKeys % #js ["target" "value"])]
-                                 (on-update assoc :role v))}
-          [:> MenuItem {:value "admin"} "Admin"]
-          [:> MenuItem {:value "eng"} "Engineer"]
-          [:> MenuItem {:value "ops"} "Ops"]]
-        [:> FormHelperText
-          "Ops users can only use templated requests but cannot view or execute other requests. Engineer users can do everything except manage and create other users. Admin users can do everything, including managing other users."]]
+      [role-select {:role (get user :role)
+                    :label "Role"
+                    :on-update (partial on-update assoc :role)}
+        [role-helper-text]]
         (when error
           [:> Typography {:color "error"}
             error])]
@@ -155,22 +187,23 @@
 
 (defn- -component []
   (let [editing-user (r/atom nil)
-        created-notification (r/atom nil)
+        notification (r/atom nil)
         on-close #(reset! editing-user nil)
+        show-msg (partial reset! notification)
         on-create #(async/go
                       (when (async/<! (users-actions/create-user @editing-user))
                         (on-close)
-                        (reset! created-notification "Created user")))]
+                        (reset! notification "Created user")))]
     (fn [{:keys [styles]}]
       (let [{:keys [users next-req error]} @app-state/users
-            notification @created-notification
+            notif @notification
             row-count (if (nil? next-req) (count users) (inc (count users)))]
         [:div {:className (obj/get styles "container")}
           [:> Snackbar
-            {:open (some? notification)
+            {:open (some? notif)
              :autoHideDuration 3000
-             :onClose #(reset! created-notification nil)
-             :message (r/as-element [:span notification])}]
+             :onClose #(reset! notification nil)
+             :message (r/as-element [:span notif])}]
           [:div {:className (obj/get styles "right-align")}
             [:> Button {:variant "contained"
                         :color "primary"
@@ -181,7 +214,7 @@
                         :on-close on-close
                         :on-update (partial swap! editing-user)
                         :on-create on-create}]
-          [user-list {:styles styles :users users :next-req next-req}]]))))
+          [user-list {:styles styles :users users :next-req next-req :show-msg show-msg}]]))))
 
 (defn component []
   [styled {} -component])
