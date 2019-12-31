@@ -19,7 +19,8 @@
                        :next-tagged-req {}}))
 
 (defonce users (r/atom {:users []
-                        :next-req {}}))
+                        :next-req {}
+                        :error nil}))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))

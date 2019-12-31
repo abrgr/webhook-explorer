@@ -39,3 +39,27 @@
         p (putil/chan->promise resp-chan)]
     (async/put! req-chan resp-chan)
     p))
+
+(defn create-user [{:keys [email role]}]
+  (async/go
+    (let [res (async/<! (http/post
+                          (http-utils/make-url "/api/users")
+                          {:with-credentials? false
+                           :headers (http-utils/auth-headers)
+                           :json-params {:user {:email email
+                                                :role role}}}))
+          {{:keys [user status]
+            {err-msg :msg} :error} :body} res]
+      (if user
+        (swap!
+          app-state/users
+          update
+          :users
+          conj
+          user)
+        (swap!
+          app-state/users
+          assoc
+          :error
+          (or err-msg "Failed to create user")))
+      (some? user))))

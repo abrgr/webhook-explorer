@@ -6,6 +6,9 @@
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.users :as users-actions]
             ["moment" :as moment]
+            ["@material-ui/core/Typography" :default Typography]
+            ["@material-ui/core/CircularProgress" :default CircularProgress]
+            ["@material-ui/core/Snackbar" :default Snackbar]
             ["@material-ui/core/TableCell" :default TableCell]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Dialog" :default Dialog]
@@ -62,7 +65,10 @@
       {:component "div"
        :variant "body"
        :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
-      (obj/get props "cellData" "")]))
+      (if (and (nil? (obj/get props "rowData"))
+               (= 0 (obj/get props "columnIndex")))
+        [:> CircularProgress]
+        (obj/get props "cellData" ""))]))
 
 (defn- get-cell-data [props]
   (let [row-data (obj/get props "rowData")
@@ -109,7 +115,7 @@
                          :width 120
                          :dataKey col}])]))])))]))
 
-(defn- user-dialog [{:keys [user on-close on-update]}]
+(defn- user-dialog [{:keys [user error on-close on-update on-create]}]
   [:> Dialog {:open (some? user)
               :onClose on-close
               :fullWidth true
@@ -136,28 +142,45 @@
           [:> MenuItem {:value "eng"} "Engineer"]
           [:> MenuItem {:value "ops"} "Ops"]]
         [:> FormHelperText
-          "Ops users can only use templated requests but cannot view or execute other requests. Engineer users can do everything except manage and create other users. Admin users can do everything, including managing other users."]]]
+          "Ops users can only use templated requests but cannot view or execute other requests. Engineer users can do everything except manage and create other users. Admin users can do everything, including managing other users."]]
+        (when error
+          [:> Typography {:color "error"}
+            error])]
     [:> DialogActions
       [:> Button {:onClick on-close}
         "Cancel"]
-      [:> Button {:onClick on-close
-                  :color "primary"} 
+      [:> Button {:onClick on-create
+                  :color "primary"}
         "Create"]]])
 
 (defn- -component []
-  (let [editing-user (r/atom nil)]
+  (let [editing-user (r/atom nil)
+        created-notification (r/atom nil)
+        on-close #(reset! editing-user nil)
+        on-create #(async/go
+                      (when (async/<! (users-actions/create-user @editing-user))
+                        (on-close)
+                        (reset! created-notification "Created user")))]
     (fn [{:keys [styles]}]
-      (let [{:keys [users next-req]} @app-state/users
+      (let [{:keys [users next-req error]} @app-state/users
+            notification @created-notification
             row-count (if (nil? next-req) (count users) (inc (count users)))]
         [:div {:className (obj/get styles "container")}
+          [:> Snackbar
+            {:open (some? notification)
+             :autoHideDuration 3000
+             :onClose #(reset! created-notification nil)
+             :message (r/as-element [:span notification])}]
           [:div {:className (obj/get styles "right-align")}
             [:> Button {:variant "contained"
                         :color "primary"
                         :onClick #(reset! editing-user {})}
               "Create user"]]
           [user-dialog {:user @editing-user
-                        :on-close #(reset! editing-user nil)
-                        :on-update (partial swap! editing-user)}]
+                        :error error
+                        :on-close on-close
+                        :on-update (partial swap! editing-user)
+                        :on-create on-create}]
           [user-list {:styles styles :users users :next-req next-req}]]))))
 
 (defn component []
