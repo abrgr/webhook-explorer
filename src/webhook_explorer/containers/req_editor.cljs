@@ -52,7 +52,7 @@
                 :onClose on-close
                 :fullWidth true
                 :PaperProps #js {:style #js {"height" "75%"}}}
-      (when open
+      (if open
         [:<>
           [:> DialogTitle "Send Request"]
           [:> DialogContent
@@ -154,7 +154,8 @@
                       "Copy as curl"]
             [:> Button {:onClick on-close
                         :color "secondary"}
-                      "Cancel"]]])]))
+                      "Cancel"]]]
+        [:div])]))
 
 (defn- dialog []
   [styled {} styled-dialog])
