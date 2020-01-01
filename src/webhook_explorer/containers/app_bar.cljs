@@ -13,7 +13,7 @@
             ["@material-ui/core/ListItemText" :default ListItemText]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/icons/Menu" :default MenuIcon]
-            ["@material-ui/icons/Dashboard" :default DashboardIcon]
+            ["@material-ui/icons/Dashboard" :default RequestsIcon]
             ["@material-ui/icons/Group" :default UsersIcon]
             ["@material-ui/icons/SettingsInputComponent" :default HandlerConfigIcon]
             ["@material-ui/core/Drawer" :default Drawer]
@@ -83,7 +83,7 @@
               [:> ListItem {:button true
                             :onClick #(nav-from-drawer routes/nav-to-reqs)}
                 [:> ListItemIcon
-                  [:> DashboardIcon]]
+                  [:> RequestsIcon]]
                 [:> ListItemText
                   "Requests"]]
               [:> ListItem {:button true
