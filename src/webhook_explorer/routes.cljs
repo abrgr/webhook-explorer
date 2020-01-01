@@ -3,13 +3,20 @@
                    [webhook-explorer.routes :refer [defextroute]])
   (:import goog.history.Html5History)
   (:require [secretary.core :as secretary]
+            [goog.object :as obj]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
             [reagent.core :as reagent]
             [webhook-explorer.init :as init]
             [webhook-explorer.app-state :as app-state]))
 
-(def ^:private hist (Html5History.))
+(def ^:private hist
+  (Html5History.
+    nil
+    #js {:retrieveToken (fn [prefix loc]
+                          (subs (obj/get loc "pathname") (count prefix)))
+         :createUrl (fn [token prefix url]
+                      (str prefix token))}))
 
 (defn- hook-browser-navigation! []
   (doto hist
@@ -32,8 +39,9 @@
     (nav-to-auth)
     true))
 
-(defextroute hist reqs-path nav-to-reqs [require-login] "/reqs" []
-  (reset! app-state/nav {:page :reqs}))
+(defextroute hist reqs-path nav-to-reqs [require-login] "/reqs" [query-params]
+  (reset! app-state/nav {:page :reqs
+                         :params (select-keys query-params [:latest-date :all :fav :pub :tag])}))
 
 (defextroute hist users-path nav-to-users [require-login] "/users" []
   (reset! app-state/nav {:page :users}))

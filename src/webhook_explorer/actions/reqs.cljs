@@ -4,10 +4,51 @@
             [webhook-explorer.actions.auth :as auth-actions]
             [webhook-explorer.actions.tags :as tag-actions]
             [webhook-explorer.http-utils :as http-utils]
+            [webhook-explorer.routes :as routes]
+            [webhook-explorer.init :as init]
             [cljs-http.client :as http]
             [clojure.core.async :as async]
             [clojure.set :as s]
+            [clojure.string :as string]
             ["copy-to-clipboard" :as copy-to-clipboard]))
+
+(defn- make-next-req [{:keys [all fav tag pub]} latest-date]
+  (merge
+    (when all
+      {})
+    (when tag
+      {:tag tag})
+    (when pub
+      {:pub true})
+    (when latest-date
+      {:ymd latest-date})
+    (when fav
+      {:fav fav})))
+
+(defn- init! []
+  (add-watch
+    app-state/nav
+    ::nav-watch
+    (fn [_ _ {old-params :params} {new-params :params :keys [page]}]
+      (when (and (= page :reqs)
+                 (not= old-params new-params))
+        (let [new-latest-date (:latest-date new-params)
+              latest-date (when (some? new-latest-date)
+                            (string/replace new-latest-date "-" "/"))
+              next-req (make-next-req new-params latest-date)
+              old-req (-> @app-state/reqs
+                          :next-req
+                          (select-keys [:latest-date :all :fav :pub :tag]))]
+          (swap!
+            app-state/reqs
+            merge
+            {:items []
+             :next-req next-req
+             :tagged-reqs {}
+             :earliest-tagged-req nil
+             :next-tagged-req {}}))))))
+        
+(init/register-init 0 init!)
 
 (defn- get-tagged-reqs-thru [earliest-item-date]
   (async/go-loop []
@@ -254,39 +295,19 @@
              [s/union #{tag}])) ; union :public-tags or :private-tags with #{tag}
          success))))
 
-(defn- make-next-req [{:keys [all fav tag pub]} latest-date]
-  (merge
-    (when tag
-      {:tag tag})
-    (when pub
-      {:pub true})
-    (when latest-date
-      {:ymd latest-date})
-    (when fav
-      {:fav fav})))
-
 (defn set-latest-date [moment]
-  (swap!
-    app-state/reqs
-    (fn [{:keys [selected-tag] :as old}]
-      (merge
-        old
-        {:latest-date (.format moment "YYYY-MM-DD")
-         :items []
-         :next-req (make-next-req selected-tag (.format moment "YYYY/MM/DD"))
-         :tagged-reqs {}
-         :earliest-tagged-req nil
-         :next-tagged-req {}}))))
+  (let [params (:params @app-state/nav)]
+    (routes/nav-to-reqs
+      {:query-params
+        (assoc
+          params
+          :latest-date
+          (.format moment "YYYY-MM-DD"))})))
 
 (defn select-tag [selected-tag]
-  (swap!
-    app-state/reqs
-    (fn [{:keys [latest-date] :as old}]
-      (merge
-        old
-        {:selected-tag selected-tag
-         :items []
-         :next-req (make-next-req selected-tag latest-date)
-         :tagged-reqs {}
-         :earliest-tagged-req nil
-         :next-tagged-req {}}))))
+  (let [params (:params @app-state/nav)]
+    (routes/nav-to-reqs
+      {:query-params
+        (merge
+          (select-keys params [:latest-date])
+          selected-tag)})))

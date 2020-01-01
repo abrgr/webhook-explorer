@@ -207,8 +207,9 @@
                                    (set-refetch-items
                                      (if (nil? inf-ldr)
                                        #()
-                                       #(.resetLoadMoreRowsCache inf-ldr))))
-                            :isRowLoaded #(or (nil? next-req) (< (obj/get % "index") (count items)))
+                                       #(.resetLoadMoreRowsCache inf-ldr true))))
+                            :isRowLoaded #(let [{:keys [items next-req] :as reqs-state} @app-state/reqs]
+                                            (or (nil? next-req) (< (obj/get % "index") (count items))))
                             :threshold 5
                             :minimumBatchSize 10
                             :loadMoreRows load-more-rows
@@ -247,8 +248,9 @@
 
 (defn- control-bar []
   (fn [{:keys [styles refetch-items]}]
-    (let [{:keys [latest-date]
-           {:keys [all fav tag pub]} :selected-tag} @app-state/reqs
+    (let [{{:keys [latest-date all fav tag pub]} :params} @app-state/nav
+          all-selected (or all
+                           (every? nil? [latest-date all fav tag pub]))
           fmt "YYYY-MM-DD"
           extra-tags (sorted-map
                        "*all*" "All"
@@ -256,13 +258,14 @@
       [:> Paper {:elevation 2
                  :className (obj/get styles "control-bar")}
         [tag-selector/component {:target-component (partial tag-selector-select styles)
-                                 :on-select-tag #(reqs-actions/select-tag (case (:tag %)
-                                                                             "*all*" {:all true}
-                                                                             "*fav*" {:fav true}
-                                                                             %))
+                                 :on-select-tag #(do (reqs-actions/select-tag (case (:tag %)
+                                                                                 "*all*" {:all true}
+                                                                                 "*fav*" {:fav true}
+                                                                                 %))
+                                                      (refetch-items))
                                  :rw :readable
                                  :private-tags #{(cond
-                                                    all "*all*"
+                                                    all-selected "*all*"
                                                     fav "*fav*"
                                                     (not pub) tag)}
                                  :public-tags (if pub #{tag} nil)
@@ -286,7 +289,8 @@
         [:<>
           [req-editor/component]
           [control-bar {:styles styles
-                        :refetch-items #(@refetch-items)}]
+                        :refetch-items #(when-let [r @refetch-items]
+                                          (r))}]
           [:div {:className (obj/get styles "container")}
             [:> AutoSizer
               (fn [size]
