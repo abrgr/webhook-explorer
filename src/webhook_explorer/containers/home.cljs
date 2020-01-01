@@ -22,6 +22,7 @@
             ["@material-ui/core/CardHeader" :default CardHeader]
             ["@material-ui/core/Collapse" :default Collapse]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Select" :default Select]
             ["@material-ui/core/FormControl" :default FormControl]
@@ -31,6 +32,7 @@
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
             ["@material-ui/core/MenuItem" :default MenuItem]
+            ["@material-ui/icons/Dashboard" :default RequestsIcon]
             ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Send" :default SendIcon]
             ["@material-ui/icons/Favorite" :default FavoriteIcon]
@@ -45,6 +47,12 @@
        :list {:outline "none"}
        :card-container {:display "flex"
                         :justifyContent "center"}
+       :no-items-container {:display "flex"
+                            :flexDirection "column"
+                            :height "100%"
+                            :alignItems "center"
+                            :justifyContent "center"}
+       :disabled {:color "rgba(0, 0, 0, 0.26)"}
        :card {:width "80%"
               :minWidth "480px"
               :maxWidth "768px"
@@ -199,6 +207,15 @@
   (.then (reqs-actions/load-next-items)
     #(when (not= % :stop) (.clearAll cell-measure-cache))))
 
+(defn- no-rows-renderer [styles]
+  (r/as-element
+    [:div {:className (obj/get styles "no-items-container")}
+      [:> RequestsIcon {:style #js {:fontSize 100}
+                        :color "disabled"}]
+      [:> Typography {:variant "h4"
+                      :className (obj/get styles "disabled")}
+        "No matching requests"]]))
+
 (defn- req-list []
   (let [list-ref (r/atom nil)]
     (fn [{:keys [size styles theme set-refetch-items]}]
@@ -219,6 +236,7 @@
             (r/as-element
               [:> List {:ref #(do (reset! list-ref %)
                                   ((obj/get scroll-info "registerChild") %))
+                        :noRowsRenderer (partial no-rows-renderer styles)
                         :className (obj/get styles "list")
                         :onRowsRendered (obj/get scroll-info "onRowsRendered")
                         :rowRenderer (partial row-renderer styles theme #(when-not (nil? @list-ref) (.recomputeGridSize @list-ref %)))
