@@ -89,24 +89,25 @@ function endOfToday(todayEpoch) {
   return tomorrow.getTime();
 }
 
-function keyForParts(folder, iso, method, host, path, fingerprint) {
+function keyForParts(folder, iso, method, host, path, status, fingerprint) {
   const ymd = iso.split('T')[0];
   const date = new Date(iso);
   const epoch = date.getTime();
   const sort = ('' + (endOfToday(epoch) - epoch)).padStart(8, '0');
-  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${encodeURIComponent(method)}:${encodeURIComponent(host)}:${encodeURIComponent(path)}:${fingerprint}`;
+  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${encodeURIComponent(method)}:${encodeURIComponent(host)}:${encodeURIComponent(path)}:${status}:${fingerprint}`;
 }
 
 function partsForKey(key) {
   const filename = path.basename(key);
-  const [sort, encodedIso, method, encodedHost, encodedUrlPath, fingerprint] = filename.split(':');
+  const [sort, encodedIso, method, encodedHost, encodedUrlPath, status, fingerprint] = filename.split(':');
   return {
     id: fingerprint,
     fingerprint,
     date: decodeURIComponent(encodedIso),
     path: decodeURIComponent(encodedUrlPath),
     host: decodeURIComponent(encodedHost),
-    method
+    method,
+    status
   };
 }
 
@@ -160,7 +161,9 @@ function response(statusCode, headers, body) {
 }
 
 function hashMsg(msg) {
-  return crypto.createHash('sha256').update(JSON.stringify(msg), 'utf8').digest().toString('hex');
+  const keys = Object.keys(msg).sort();
+  const toHash = keys.map(k => `${encodeURIComponent(k)}=${encodeURIComponent(msg[k])}`).join('&');
+  return crypto.createHash('sha256').update(toHash, 'utf8').digest().toString('hex');
 }
 
 function getAuditKey(iso, fingerprint, tag) {

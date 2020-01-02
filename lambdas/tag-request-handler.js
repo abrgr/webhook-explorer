@@ -45,6 +45,7 @@ exports.handler = async function handler(event, context) {
       qs,
       method,
       iso,
+      status,
       req: {
         headers: reqHeaders,
         body: reqBody
@@ -62,6 +63,7 @@ exports.handler = async function handler(event, context) {
     qs,
     method,
     iso,
+    status,
     req: {
       headers: reqHeaders,
       body: reqBody
@@ -72,7 +74,7 @@ exports.handler = async function handler(event, context) {
     }
   };
   const fingerprint = hashMsg(msg);
-  const key = keyForParts(folder, iso, method, host, path, fingerprint);
+  const key = keyForParts(folder, iso, method, host, path, status, fingerprint);
 
   await Promise.all([
     s3.putObject({
@@ -82,7 +84,7 @@ exports.handler = async function handler(event, context) {
       ContentType: 'application/json'
     }).promise(),
     s3.putObject({
-      Body: JSON.stringify({ uid, date: new Date().toISOString() }),
+      Body: JSON.stringify({ uid, date: new Date().toISOString(), key, tag }),
       Bucket: bucket,
       Key: getAuditKey(iso, fingerprint, tag),
       ContentType: 'application/json'

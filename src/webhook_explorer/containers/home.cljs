@@ -13,6 +13,7 @@
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
             ["react-virtualized/dist/commonjs/List" :default List]
             ["react-virtualized/dist/commonjs/InfiniteLoader" :default InfiniteLoader]
+            ["@material-ui/core/colors" :as colors]
             ["@material-ui/pickers" :as pickers]
             ["@material-ui/core/Avatar" :default Avatar]
             ["@material-ui/core/Button" :default Button]
@@ -40,55 +41,72 @@
             ["@material-ui/icons/Share" :default ShareIcon]
             ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]))
 
+(defn- background-style [theme color]
+  {:color (.getContrastText (obj/get theme "palette") color)
+   :backgroundColor color})
+
 (def ^:private styled
   (styles/style-wrapper
     (fn [theme]
-      {:container {:flex "1"}
-       :list {:outline "none"}
-       :card-container {:display "flex"
-                        :justifyContent "center"}
-       :no-items-container {:display "flex"
-                            :flexDirection "column"
-                            :height "100%"
-                            :alignItems "center"
-                            :justifyContent "center"}
-       :disabled {:color "rgba(0, 0, 0, 0.26)"}
-       :card {:width "80%"
-              :minWidth "480px"
-              :maxWidth "768px"
-              :margin "25px auto"}
-       :card-action-btn {:margin (.spacing theme 1)}
-       :date {:fontSize 14}
-       :method {:width 60
-                :height 60
-                :margin 10}
-       :fix-card-content {:marginBottom "-24px"}
-       :hidden {:display "none"}
-       :code {:width "100%"
-              "& > .CodeMirror" {:height "auto"
-                                 :border "1px solid #eee"}}
-       :blurred {:position "relative"
-                 "&:after" {:content "\" \""
-                            :position "absolute"
-                            :z-index 1
-                            :bottom 0
-                            :left 0
-                            :pointer-events "none"
-                            :background-image "linear-gradient(to bottom, rgba(255,255,255, 0), rgba(255,255,255, 1) 90%)"
-                            :width "100%"
-                            :height "4em"}}
-       :previewed-card-content {:margin-top "-32px"}
-       :control-bar {:display "flex"
-                     :align-items "center"
-                     :margin-bottom 3
-                     :min-height 60
-                     :padding-left 60
-                     :padding-right 60}
-       :control-bar-control {:width 238
-                             :margin-right 60}
-       :send-btn {:margin-right 15
-                  :margin-bottom 15
-                  :margin-left "auto"}})))
+      (let [status-style {:width 60 :height 60 :margin 10}]
+        {:container {:flex "1"}
+         :list {:outline "none"}
+         :card-container {:display "flex"
+                          :justifyContent "center"}
+         :no-items-container {:display "flex"
+                              :flexDirection "column"
+                              :height "100%"
+                              :alignItems "center"
+                              :justifyContent "center"}
+         :disabled {:color "rgba(0, 0, 0, 0.26)"}
+         :card {:width "80%"
+                :minWidth "480px"
+                :maxWidth "768px"
+                :margin "25px auto"}
+         :card-action-btn {:margin (.spacing theme 1)}
+         :date {:fontSize 14}
+         :status-info (merge
+                        (background-style theme (aget colors/yellow 500))
+                        status-style)
+         :status-success (merge
+                           (background-style theme (aget colors/green 500))
+                           status-style)
+         :status-redirect (merge
+                            (background-style theme (aget colors/grey 500))
+                            status-style)
+         :status-client-error (merge
+                                (background-style theme (aget colors/pink 500))
+                                status-style)
+         :status-server-error (merge
+                                (background-style theme (aget colors/red 500))
+                                status-style)
+         :fix-card-content {:marginBottom "-24px"}
+         :hidden {:display "none"}
+         :code {:width "100%"
+                "& > .CodeMirror" {:height "auto"
+                                   :border "1px solid #eee"}}
+         :blurred {:position "relative"
+                   "&:after" {:content "\" \""
+                              :position "absolute"
+                              :z-index 1
+                              :bottom 0
+                              :left 0
+                              :pointer-events "none"
+                              :background-image "linear-gradient(to bottom, rgba(255,255,255, 0), rgba(255,255,255, 1) 90%)"
+                              :width "100%"
+                              :height "4em"}}
+         :previewed-card-content {:margin-top "-32px"}
+         :control-bar {:display "flex"
+                       :align-items "center"
+                       :margin-bottom 3
+                       :min-height 60
+                       :padding-left 60
+                       :padding-right 60}
+         :control-bar-control {:width 238
+                               :margin-right 60}
+         :send-btn {:margin-right 15
+                    :margin-bottom 15
+                    :margin-left "auto"}}))))
 
 (defn- action-btn
   ([label icon on-click]
@@ -106,13 +124,22 @@
     on-open-menu
     (when any-selected {:color "primary"})])
 
+(defn- status-class [styles status]
+  (cond
+    (< status 200) (obj/get styles "status-info")
+    (< status 300) (obj/get styles "status-success")
+    (< status 400) (obj/get styles "status-redirect")
+    (< status 500) (obj/get styles "status-client-error")
+    :else          (obj/get styles "status-server-error")))
+
 (defn- req-card
   [{:keys [styles favorited public-tags private-tags on-visibility-toggled]
     {:keys [id
             date
             host
             path
-            method]
+            method
+            status]
     {:keys [qs]
      {req-headers :headers
        req-body :body} :req
@@ -122,9 +149,9 @@
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
       {:avatar (r/as-element
-                  [:> Avatar {:aria-label method
-                              :className (obj/get styles "method")}
-                    method])
+                  [:> Avatar {:aria-label status
+                              :className (status-class styles status)}
+                    status])
        :action (r/as-element [:div
                                [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
                                [tag-selector/component
@@ -137,7 +164,7 @@
                                   :selected-label "(Already tagged)"}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
                                [action-btn "Share" ShareIcon #()]])
-       :title (str host path)
+       :title (str method " " host path)
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
       [req-parts/qs-view "Query Parameters" qs on-visibility-toggled]

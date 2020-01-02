@@ -258,7 +258,7 @@
   (with-full-item
     item
     #(async/go
-       (let [{:keys [date path host method]
+       (let [{:keys [date path host method status]
               {:keys [protocol qs iso]
                {req-headers :headers
                 req-body :body} :req
@@ -277,6 +277,7 @@
                                            :qs qs
                                            :method method
                                            :iso iso
+                                           :status status
                                            :req {:headers req-headers
                                                  :body req-body}
                                            :res {:headers res-headers
