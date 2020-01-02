@@ -160,9 +160,11 @@
     item
     #(swap!
        app-state/reqs
-       assoc
-       :selected-item
-       {:item %})))
+       assoc-in
+       [:selected-item :item]
+       (-> %
+           (dissoc :status)
+           (update-in [:details] dissoc :res)))))
 
 (defn- selected-req []
   (let [{{:keys [item]} :selected-item} @app-state/reqs
@@ -190,54 +192,6 @@
                      (map #(vector (name (first %)) (second %)))
                      (into {}))
        :body body}))
-
-(defn- req->curl-string [{:keys [headers method body url]}]
-  (let [header-parts (->> headers
-                          (map
-                            (fn [[header value]]
-                              (str "--header '" header  ": " value "'")))
-                          (interpose " ")
-                          (apply str))]
-    (str "curl"
-         " "
-         "--request " method
-         " "
-         header-parts
-         " "
-         (when (some? body)
-           (str "--data '" body "'"
-                " "))
-         "'" url "'")))
-
-(defn copy-selected-as-curl []
-  (let [opts (selected-req)
-        curl (req->curl-string opts)
-        clipboard-result (copy-to-clipboard curl)]
-    (swap!
-      app-state/reqs
-      assoc-in
-      [:selected-item :notification]
-      "Copied curl command to clipboard")))
-
-(defn send-selected-as-local-request []
-  (let [opts (selected-req)]
-    (async/go
-      (swap!
-        app-state/reqs
-        assoc-in
-        [:selected-item :in-progress]
-        true)
-      (let [res (async/<! (http/request (assoc opts
-                                               :with-credentials?
-                                               false)))]
-        (swap!
-          app-state/reqs
-          update
-          :selected-item
-          #(merge
-             %
-             {:in-progress false
-              :res res}))))))
 
 (defn update-selected-item-in [item-ks value]
   (swap!
@@ -312,3 +266,63 @@
         (merge
           (select-keys params [:latest-date])
           selected-tag)})))
+
+(defn- req->curl-string [{:keys [headers method body url]}]
+  (let [header-parts (->> headers
+                          (map
+                            (fn [[header value]]
+                              (str "--header '" header  ": " value "'")))
+                          (interpose " ")
+                          (apply str))]
+    (str "curl"
+         " "
+         "--request " method
+         " "
+         header-parts
+         " "
+         (when (some? body)
+           (str "--data '" body "'"
+                " "))
+         "'" url "'")))
+
+(defn copy-selected-as-curl []
+  (let [opts (selected-req)
+        curl (req->curl-string opts)
+        clipboard-result (copy-to-clipboard curl)]
+    (swap!
+      app-state/reqs
+      assoc-in
+      [:selected-item :notification]
+      "Copied curl command to clipboard")))
+
+(defn send-selected-as-local-request []
+  (let [opts (selected-req)]
+    (async/go
+      (swap!
+        app-state/reqs
+        update
+        :selected-item
+        (fn [item]
+          (-> item 
+              (assoc-in [:in-progress] true)
+              (dissoc :status)
+              (update-in [:details] dissoc :res))))
+      (let [res (async/<! (http/request (assoc opts
+                                               :with-credentials?
+                                               false)))
+            iso (.toISOString (js/Date.))]
+        (swap!
+          app-state/reqs
+          update
+          :selected-item
+          (fn [{{:keys [details] :as item} :item :as selected-item}]
+            (-> selected-item
+                (assoc :in-progress false)
+                (assoc-in [:item :iso] iso)
+                (assoc-in [:item :details :iso] iso)
+                (assoc-in
+                  [:item :details :res]
+                  {:headers (:headers res)
+                   :body (:body res)})
+                (assoc-in [:item :status] (:status res)))))
+        (tag-req (get-in @app-state/reqs [:selected-item :item]) {:tag "My Executed Requests"})))))

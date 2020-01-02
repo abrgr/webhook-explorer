@@ -34,14 +34,21 @@
                             :justifyContent "center"
                             :width "100%"}})))
 
+(defn- success-status [status]
+  (cond
+    (< status 100) false
+    (< status 400) true
+    :else false))
+
 (defn- styled-dialog [{:keys [styles]}]
-  (let [{{:keys [item in-progress res]} :selected-item} @app-state/reqs
-        {:keys [method path]} item
+  (let [{{:keys [item in-progress]} :selected-item} @app-state/reqs
+        {:keys [method path status]} item
         host (get-in item [:details :host])
         protocol (get-in item [:details :protocol])
         qs (get-in item [:details :qs])
         headers (get-in item [:details :req :headers])
         body (get-in item [:details :req :body])
+        res (get-in item [:details :res])
         non-host-headers (->> headers (filter (comp not #{:Host} first)) (into {}))
         open (some? item)
         on-close reqs-actions/unselect-item
@@ -110,14 +117,17 @@
             (if in-progress
               [:div {:className (obj/get styles "centered-container")}
                 [:> CircularProgress]]
-              (when res
+              (when (and (some? status) (some? res))
                 [:<>
-                  [:> Typography {:variant "h4"
-                                  :gutterBottom true
-                                  :classes (when (:success res) #js {:root (obj/get styles "success")})
-                                  :color (when-not (:success res) "error")}
-                    (str "Response: " (:status res))]
-                  (when (zero? (:status res))
+                  (let [success (success-status status)]
+                    [:> Typography
+                      (merge
+                        {:variant "h4"
+                         :gutterBottom true
+                         :classes (when success #js {:root (obj/get styles "success")})}
+                        (when-not success {:color "error"}))
+                      (str "Response: " status)])
+                  (when (zero? status)
                     [:<>
                       [:> Typography {:gutterBottom true}
                         (str

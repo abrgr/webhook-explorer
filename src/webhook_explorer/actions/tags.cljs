@@ -24,8 +24,9 @@
         app-state/tags
         update
         :public
-        #(do (update % :readable conj tag)
-             (update % :writable conj tag)))
+        #(-> %
+             (update :readable conj tag)
+             (update :writable conj tag)))
       (swap!
         app-state/tags
         update
