@@ -11,6 +11,7 @@
             [webhook-explorer.containers.app-bar :as app-bar]
             [webhook-explorer.containers.home :as home]
             [webhook-explorer.containers.users :as users]
+            [webhook-explorer.containers.handlers :as handlers]
             [webhook-explorer.containers.auth :as auth]))
 
 (defn- current-page []
@@ -18,6 +19,7 @@
     :auth [auth/component]
     :reqs [home/component]
     :users [users/component]
+    :handlers [handlers/component]
     [auth/component]))
 
 (defn- page []
