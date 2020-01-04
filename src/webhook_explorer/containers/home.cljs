@@ -297,7 +297,7 @@
           all-selected (or all
                            (every? nil? [latest-date all fav tag pub]))
           fmt "YYYY-MM-DD"
-          extra-tags (sorted-map
+          extra-tags (array-map
                        "*all*" "All"
                        "*fav*" "My Favorites")]
       [:> Paper {:elevation 2

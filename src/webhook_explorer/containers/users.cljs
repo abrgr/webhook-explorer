@@ -47,7 +47,7 @@
 (def ^:private row-height 64)
 
 (def ^:private cols
-  (sorted-map
+  (array-map
     :email {:label "Email"}
     :role {:label "Role"}
     :enabled {:label "Enabled"}))
