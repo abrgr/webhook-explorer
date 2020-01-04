@@ -2,6 +2,7 @@
   (:require [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.components.req-parts :as req-parts]
             ["@material-ui/core/Select" :default Select]
             ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/core/InputLabel" :default InputLabel]
@@ -33,7 +34,8 @@
                    :marginLeft 20}
        :divider {:margin-top 16
                  :margin-bottom 16}
-       :2-col-container {:display "flex"}
+       :2-col-container {:display "flex"
+                         "& .MuiExpansionPanelSummary-root" {:padding 0}}
        :left-container {:width 100}
        :matcher-container {:marginTop 48
                            :padding 20}
@@ -42,19 +44,27 @@
                                :alignItems "center"}})))
 
 (def ^:private match-types
-  (sorted-map
+  (array-map
     "exact" {:label "Exact match"}
     "prefix" {:label "Prefix match"}))
 
 (def ^:private response-types
-  (sorted-map
+  (array-map
     "mock-response" {:label "Mock response"}
     "proxied-response" {:label "Proxied response"}))
+
+(def ^:private body-match-types
+  (array-map
+    "json" {:label "JSON"}
+    "form-data" {:label "Form Data"}))
 
 (defn- match-type-label [{:keys [value label]}]
   [:> FormControlLabel {:label label
                         :value value
                         :control (r/as-element [:> Radio])}])
+
+(defn- get-target-value [evt]
+  (obj/getValueByKeys evt #js ["target" "value"]))
 
 (defn- path-component [{:keys [styles match-type path on-update]}]
   [:div {:className (obj/get styles "path-container")}
@@ -64,7 +74,7 @@
         "Path match type"]
       [:> RadioGroup {:aria-label "Path match type"
                       :value match-type
-                      :onChange (partial on-update :match-type)}
+                      :onChange #(on-update assoc :match-type (get-target-value %))}
         (for [[match-type {:keys [label]}] match-types]
           ^{:key match-type}
           [match-type-label {:label label
@@ -78,42 +88,83 @@
                                      [:br]
                                      [:span "Prefix match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here/and/here', etc."]])
                      :value path
-                     :onChange (partial on-update :path)}]]])
+                     :onChange #(on-update assoc :path (get-target-value %))}]]])
 
-(defn- matcher [{:keys [styles response-type on-update]}]
-  [:> Paper {:elevation 3
-             :className (obj/get styles "matcher-container")}
-    [:div {:className (obj/get styles "2-col-container")}
-      [:div {:className (obj/get styles "left-container")}
-        [:> Typography {:variant "h5"
-                        :color "textSecondary"}
-          "When:"]]
-      [:div {:className (obj/get styles "full-flex")}
-        "yo"]]
-    [:> Divider {:className (obj/get styles "divider")}]
-    [:div {:className (obj/get styles "2-col-container")}
-      [:div {:className (obj/get styles "left-container")}
-        [:> Typography {:variant "h5"
-                        :color "textSecondary"}
-          "Then:"]]
-      [:div {:className (obj/get styles "full-flex")}
-        [:> FormControl {:fullWidth true
-                         :margin "normal"}
-          [:> InputLabel "Respond with"]
-          [:> Select {:value response-type
-                      :onChange (partial on-update :response-type)}
-            (for [[rt {:keys [label]}] response-types]
-              ^{:key rt}
-              [(r/adapt-react-class MenuItem) {:value rt} label])]]]]])
+(defn- matcher [{:keys [styles response-type header-matches body-matcher on-update]}]
+  (let [on-update-input (fn [k evt]
+                          (on-update assoc k (get-target-value evt)))
+        body-match-type (:type body-matcher)
+        body-matchers (->> body-matcher
+                           :matchers
+                           (map (fn [[k {:keys [expected-value]}]] [k expected-value]))
+                           (into {}))]
+    [:> Paper {:elevation 3
+               :className (obj/get styles "matcher-container")}
+      [:div {:className (obj/get styles "2-col-container")}
+        [:div {:className (obj/get styles "left-container")}
+          [:> Typography {:variant "h5"
+                          :color "textSecondary"}
+            "When:"]]
+        [:div {:className (obj/get styles "full-flex")}
+          [req-parts/editable-headers-view
+            (str "Request header matchers (" (count header-matches) ")")
+            header-matches
+            (fn [k v]
+              (if (nil? v)
+                (on-update update :header-matches dissoc k) 
+                (on-update assoc-in [:header-matches k] v)))]
+          [:> FormControl {:fullWidth true
+                           :margin "normal"}
+            [:> InputLabel "Request body matcher"]
+            [:> Select {:value (or body-match-type " ")
+                        :onChange #(let [v (get-target-value %)]
+                                     (if (= v " ")
+                                       (on-update dissoc :body-matcher)
+                                       (on-update assoc :body-matcher {:type v :matchers {}})))}
+              [:> MenuItem {:value " "} "None"]
+              (for [[mt {:keys [label]}] body-match-types]
+                ^{:key mt}
+                [(r/adapt-react-class MenuItem) {:value mt} label])]]
+          (when (some? body-matchers)
+            [req-parts/base-kv-view
+              "Body matchers"
+              "JSON Path to check"
+              "Matched value"
+              body-matchers
+              true
+              (fn [])
+              req-parts/editable-value
+              true
+              (fn [jp v]
+                (if (nil? v)
+                  (on-update update-in [:body-matcher :matchers] dissoc jp)
+                  (on-update assoc-in [:body-matcher :matchers jp :expected-value] v)))])]]
+      [:> Divider {:className (obj/get styles "divider")}]
+      [:div {:className (obj/get styles "2-col-container")}
+        [:div {:className (obj/get styles "left-container")}
+          [:> Typography {:variant "h5"
+                          :color "textSecondary"}
+            "Then:"]]
+        [:div {:className (obj/get styles "full-flex")}
+          [:> FormControl {:fullWidth true
+                           :margin "normal"}
+            [:> InputLabel "Respond with"]
+            [:> Select {:value response-type
+                        :onChange #(on-update assoc :response-type (get-target-value %))}
+              (for [[rt {:keys [label]}] response-types]
+                ^{:key rt}
+                [(r/adapt-react-class MenuItem) {:value rt} label])]]]]]))
 
 (defn- -component []
   (let [v (r/atom {:match-type "exact"
                    :path ""
+                   :header-matches {}
+                   :body-matcher nil
                    :response-type ""})
-        on-update (fn [k evt]
-                    (swap! v assoc k (obj/getValueByKeys evt #js ["target" "value"])))]
+        on-update (fn [& updater]
+                    (apply swap! v updater))]
     (fn [{:keys [styles]}]
-      (let [{:keys [match-type path response-type]} @v]
+      (let [{:keys [match-type path header-matches body-matcher response-type]} @v]
         [:div {:className (obj/get styles "container")}
           [path-component {:styles styles
                            :match-type match-type
@@ -121,6 +172,8 @@
                            :on-update on-update}]
           [matcher {:styles styles
                     :response-type response-type
+                    :header-matches header-matches
+                    :body-matcher body-matcher
                     :on-update on-update}]
           [:> Paper {:elevation 3
                      :className (str

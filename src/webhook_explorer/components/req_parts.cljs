@@ -55,13 +55,14 @@
   [styled {:value value :content-type content-type :onChange on-change} editor])
 
 (defn base-kv-view
-  ([title k-title v-title m editable on-visibility-toggled value-component]
-    [base-kv-view title k-title v-title m editable on-visibility-toggled value-component {}])
-  ([title k-title v-title m editable on-visibility-toggled value-component on-change]
+  ([title k-title v-title m editable on-visibility-toggled value-component default-expanded]
+    [base-kv-view title k-title v-title m editable on-visibility-toggled value-component default-expanded {}])
+  ([title k-title v-title m editable on-visibility-toggled value-component default-expanded on-change]
     (let [new-kv (r/atom {:new-k "" :new-v ""})]
-      (fn [title k-title v-title m editable on-visibility-toggled value-component on-change]
+      (fn [title k-title v-title m editable on-visibility-toggled value-component default-expanded on-change]
         (let [{:keys [new-k new-v]} @new-kv]
           [:> ExpansionPanel {:elevation 0
+                              :defaultExpanded default-expanded
                               :TransitionProps #js {:onEntered on-visibility-toggled
                                                     :onExit on-visibility-toggled
                                                     :unmountOnExit true}}
@@ -112,7 +113,7 @@
   ([title headers]
     [headers-view title headers nop])
   ([title headers on-visibility-toggled]
-    [base-kv-view title "Header" "Value" headers false on-visibility-toggled base-value]))
+    [base-kv-view title "Header" "Value" headers false on-visibility-toggled base-value false]))
 
 (defn- editable-value [{:keys [key value on-change]}]
   ^{:key key}
@@ -120,13 +121,13 @@
                  :onChange #(on-change key (obj/getValueByKeys % #js ["target" "value"]))}])
 
 (defn editable-headers-view [title headers on-header-change]
-  [base-kv-view title "Header" "Value" headers true nop editable-value on-header-change])
+  [base-kv-view title "Header" "Value" headers true nop editable-value false on-header-change])
 
 (defn qs-view [title qs on-visibility-toggled]
-  [base-kv-view title "Key" "Value" qs false on-visibility-toggled base-value])
+  [base-kv-view title "Key" "Value" qs false on-visibility-toggled base-value false])
 
 (defn editable-qs-view [title qs on-qs-change]
-  [base-kv-view title "Key" "Value" qs true nop editable-value on-qs-change])
+  [base-kv-view title "Key" "Value" qs true nop editable-value false on-qs-change])
 
 (defn base-body-view [title body headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]
