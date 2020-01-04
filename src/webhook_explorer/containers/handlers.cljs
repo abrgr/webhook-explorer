@@ -90,14 +90,14 @@
                      :value path
                      :onChange #(on-update assoc :path (get-target-value %))}]]])
 
-(defn- matcher [{:keys [styles response-type header-matches body-matcher on-update]}]
+(defn- matcher [{:keys [styles idx response-type header-matches body-matcher on-update]}]
   (let [on-update-input (fn [k evt]
-                          (on-update assoc k (get-target-value evt)))
+                          (on-update assoc-in [:matchers idx k] (get-target-value evt)))
         body-match-type (:type body-matcher)
-        body-matchers (->> body-matcher
-                           :matchers
-                           (map (fn [[k {:keys [expected-value]}]] [k expected-value]))
-                           (into {}))]
+        body-matchers (some->> body-matcher
+                               :matchers
+                               (map (fn [[k {:keys [expected-value]}]] [k expected-value]))
+                               (into {}))]
     [:> Paper {:elevation 3
                :className (obj/get styles "matcher-container")}
       [:div {:className (obj/get styles "2-col-container")}
@@ -111,16 +111,16 @@
             header-matches
             (fn [k v]
               (if (nil? v)
-                (on-update update :header-matches dissoc k) 
-                (on-update assoc-in [:header-matches k] v)))]
+                (on-update update-in [:matchers idx :header-matches] dissoc k) 
+                (on-update assoc-in [:matchers idx :header-matches k] v)))]
           [:> FormControl {:fullWidth true
                            :margin "normal"}
             [:> InputLabel "Request body matcher"]
             [:> Select {:value (or body-match-type " ")
                         :onChange #(let [v (get-target-value %)]
                                      (if (= v " ")
-                                       (on-update dissoc :body-matcher)
-                                       (on-update assoc :body-matcher {:type v :matchers {}})))}
+                                       (on-update update-in [:matchers idx] dissoc :body-matcher)
+                                       (on-update assoc-in [:matchers idx :body-matcher] {:type v :matchers {}})))}
               [:> MenuItem {:value " "} "None"]
               (for [[mt {:keys [label]}] body-match-types]
                 ^{:key mt}
@@ -137,8 +137,8 @@
               true
               (fn [jp v]
                 (if (nil? v)
-                  (on-update update-in [:body-matcher :matchers] dissoc jp)
-                  (on-update assoc-in [:body-matcher :matchers jp :expected-value] v)))])]]
+                  (on-update update-in [:matchers idx :body-matcher :matchers] dissoc jp)
+                  (on-update assoc-in [:matchers idx :body-matcher :matchers jp :expected-value] v)))])]]
       [:> Divider {:className (obj/get styles "divider")}]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
@@ -150,37 +150,46 @@
                            :margin "normal"}
             [:> InputLabel "Respond with"]
             [:> Select {:value response-type
-                        :onChange #(on-update assoc :response-type (get-target-value %))}
+                        :onChange #(on-update assoc-in [:matchers idx :response-type] (get-target-value %))}
               (for [[rt {:keys [label]}] response-types]
                 ^{:key rt}
                 [(r/adapt-react-class MenuItem) {:value rt} label])]]]]]))
 
+(def ^:private new-matcher-template
+  {:header-matches {}
+   :body-matcher nil
+   :response-type ""})
+
 (defn- -component []
-  (let [v (r/atom {:match-type "exact"
-                   :path ""
-                   :header-matches {}
-                   :body-matcher nil
-                   :response-type ""})
+  (let [state (r/atom {:match-type "exact"
+                       :path ""
+                       :matchers []})
         on-update (fn [& updater]
-                    (apply swap! v updater))]
+                    (apply swap! state updater))]
     (fn [{:keys [styles]}]
-      (let [{:keys [match-type path header-matches body-matcher response-type]} @v]
+      (let [{:keys [match-type path matchers]} @state]
         [:div {:className (obj/get styles "container")}
           [path-component {:styles styles
                            :match-type match-type
                            :path path
                            :on-update on-update}]
-          [matcher {:styles styles
-                    :response-type response-type
-                    :header-matches header-matches
-                    :body-matcher body-matcher
-                    :on-update on-update}]
+          (map-indexed
+            (fn [idx {:keys [match-type path header-matches body-matcher response-type]}]
+              ^{:key idx}
+              [matcher {:styles styles
+                        :idx idx
+                        :response-type response-type
+                        :header-matches header-matches
+                        :body-matcher body-matcher
+                        :on-update on-update}])
+            matchers)
           [:> Paper {:elevation 3
                      :className (str
                                   (obj/get styles "add-matcher-container")
                                   " "
                                   (obj/get styles "matcher-container"))}
-            [:> Fab {:color "primary"}
+            [:> Fab {:color "primary"
+                     :onClick #(on-update update :matchers conj new-matcher-template)}
               [:> AddIcon]]
             [:> Typography {:color "textSecondary"}
               "Add a matcher."]]]))))
