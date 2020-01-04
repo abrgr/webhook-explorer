@@ -45,23 +45,18 @@
 
 (def ^:private match-types
   (array-map
-    "exact" {:label "Exact match"}
-    "prefix" {:label "Prefix match"}))
+    :exact {:label "Exact match"}
+    :prefix {:label "Prefix match"}))
 
 (def ^:private response-types
   (array-map
-    "mock-response" {:label "Mock response"}
-    "proxied-response" {:label "Proxied response"}))
+    :mock-response {:label "Mock response"}
+    :proxied-response {:label "Proxied response"}))
 
 (def ^:private body-match-types
   (array-map
-    "json" {:label "JSON"}
-    "form-data" {:label "Form Data"}))
-
-(defn- match-type-label [{:keys [value label]}]
-  [:> FormControlLabel {:label label
-                        :value value
-                        :control (r/as-element [:> Radio])}])
+    :json {:label "JSON"}
+    :form-data {:label "Form Data"}))
 
 (defn- get-target-value [evt]
   (obj/getValueByKeys evt #js ["target" "value"]))
@@ -73,12 +68,14 @@
       [:> FormLabel {:component "legend"}
         "Path match type"]
       [:> RadioGroup {:aria-label "Path match type"
-                      :value match-type
-                      :onChange #(on-update assoc :match-type (get-target-value %))}
+                      :value (if match-type (name match-type) "")
+                      :onChange #(on-update assoc :match-type (keyword (get-target-value %)))}
         (for [[match-type {:keys [label]}] match-types]
           ^{:key match-type}
-          [match-type-label {:label label
-                             :value match-type}])]]
+          [(r/adapt-react-class FormControlLabel)
+            {:label label
+             :value (name match-type)
+             :control (r/as-element [:> Radio])}])]]
     [:> FormControl {:margin "normal"
                      :className (obj/get styles "full-flex")}
       [:> TextField {:label "Path"
@@ -116,15 +113,15 @@
           [:> FormControl {:fullWidth true
                            :margin "normal"}
             [:> InputLabel "Request body matcher"]
-            [:> Select {:value (or body-match-type " ")
+            [:> Select {:value (if body-match-type (name body-match-type) " ")
                         :onChange #(let [v (get-target-value %)]
                                      (if (= v " ")
                                        (on-update update-in [:matchers idx] dissoc :body-matcher)
-                                       (on-update assoc-in [:matchers idx :body-matcher] {:type v :matchers {}})))}
+                                       (on-update assoc-in [:matchers idx :body-matcher] {:type (keyword v) :matchers {}})))}
               [:> MenuItem {:value " "} "None"]
               (for [[mt {:keys [label]}] body-match-types]
                 ^{:key mt}
-                [(r/adapt-react-class MenuItem) {:value mt} label])]]
+                [(r/adapt-react-class MenuItem) {:value (name mt)} label])]]
           (when (some? body-matchers)
             [req-parts/base-kv-view
               "Body matchers"
@@ -149,16 +146,16 @@
           [:> FormControl {:fullWidth true
                            :margin "normal"}
             [:> InputLabel "Respond with"]
-            [:> Select {:value response-type
-                        :onChange #(on-update assoc-in [:matchers idx :response-type] (get-target-value %))}
+            [:> Select {:value (if response-type (name response-type) "")
+                        :onChange #(on-update assoc-in [:matchers idx :response-type] (keyword (get-target-value %)))}
               (for [[rt {:keys [label]}] response-types]
                 ^{:key rt}
-                [(r/adapt-react-class MenuItem) {:value rt} label])]]]]]))
+                [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]]]]))
 
 (def ^:private new-matcher-template
   {:header-matches {}
    :body-matcher nil
-   :response-type ""})
+   :response-type nil})
 
 (defn- -component []
   (let [state (r/atom {:match-type "exact"
