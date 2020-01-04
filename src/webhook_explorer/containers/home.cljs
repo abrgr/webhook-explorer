@@ -206,7 +206,7 @@
                       (measure)
                       (when (pos? ms-remaining) (js/requestAnimationFrame (partial advance-animation (- ms-remaining 16))))) ; TODO: set deadline instead of assuming 16ms/frame
                     (start-animating []
-                      (advance-animation (obj/getValueByKeys theme #js ["transitions" "duration" "standard"])))
+                      (advance-animation (* 2 (obj/getValueByKeys theme #js ["transitions" "duration" "standard"]))))
                     (load-details []
                       (start-animating)
                       (async/go

@@ -35,7 +35,9 @@
   (styles/style-wrapper
     (fn [theme]
       {:code {:width "100%"
+              "& .CodeMirror-scroll" {:maxHeight 500}
               "& > .CodeMirror" {:height "auto"
+                                 :width "100%"
                                  :border "1px solid #eee"}}})))
 
 (defn- editor [{:keys [value content-type onChange styles] :as p}]
@@ -45,7 +47,8 @@
       [:> CodeMirror {:className (obj/get styles "code")
                       :value value
                       :onChange onChange
-                      :options #js {:viewportMargin ##Inf
+                      :options #js {:lineWrapping true
+                                    :lineNumbers true
                                     :mode mode}}])))
 
 (defn- styled-editor [value content-type on-change]
