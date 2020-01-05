@@ -8,6 +8,7 @@
             ["@material-ui/core/InputLabel" :default InputLabel]
             ["@material-ui/core/Divider" :default Divider]
             ["@material-ui/core/Typography" :default Typography]
+            ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Fab" :default Fab]
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/Radio" :default Radio]
@@ -16,6 +17,7 @@
             ["@material-ui/core/FormControlLabel" :default FormControlLabel]
             ["@material-ui/core/FormLabel" :default FormLabel]
             ["@material-ui/core/TextField" :default TextField]
+            ["@material-ui/icons/Publish" :default SaveIcon]
             ["@material-ui/icons/Add" :default AddIcon]))
 
 (def ^:private styled
@@ -23,6 +25,10 @@
     (fn [theme]
       {:flex-container {:display "flex"
                         :align-items "center"}
+       :extended-icon {:marginRight (.spacing theme 1)}
+       :floating-save {:position "fixed"
+                       :right 50 
+                       :bottom 50}
        :container {:width "80%"
                    :height "100%"
                    :minWidth "480px"
@@ -48,10 +54,10 @@
     :exact {:label "Exact match"}
     :prefix {:label "Prefix match"}))
 
-(def ^:private response-types
+(def ^:private handler-types
   (array-map
-    :mock-response {:label "Mock response"}
-    :proxied-response {:label "Proxied response"}))
+    :mock {:label "Mock"}
+    :proxy {:label "Proxy"}))
 
 (def ^:private body-match-types
   (array-map
@@ -60,6 +66,23 @@
 
 (defn- get-target-value [evt]
   (obj/getValueByKeys evt #js ["target" "value"]))
+
+(defmulti handler-component (fn [{{:keys [type]} :handler}] type))
+
+(defmethod handler-component :default [_]
+  [:div])
+
+(defmethod handler-component :mock [{{:keys [mock]} :handler}]
+  [:div "mock"])
+
+(defmethod handler-component :proxy [{{:keys [proxy]} :handler :keys [idx on-update]}]
+  (let [{:keys [remote-url]} proxy]
+    [:> TextField
+      {:label "Remote URL"
+       :fullWidth true
+       :helperText "URL to proxy matching requests to"
+       :value (or remote-url "")
+       :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
 
 (defn- path-component [{:keys [styles match-type path on-update]}]
   [:div {:className (obj/get styles "path-container")}
@@ -87,14 +110,15 @@
                      :value path
                      :onChange #(on-update assoc :path (get-target-value %))}]]])
 
-(defn- matcher [{:keys [styles idx response-type header-matches body-matcher on-update]}]
+(defn- matcher [{:keys [styles idx handler header-matches body-matcher on-update]}]
   (let [on-update-input (fn [k evt]
                           (on-update assoc-in [:matchers idx k] (get-target-value evt)))
         body-match-type (:type body-matcher)
         body-matchers (some->> body-matcher
                                :matchers
                                (map (fn [[k {:keys [expected-value]}]] [k expected-value]))
-                               (into {}))]
+                               (into {}))
+        handler-type (:type handler)]
     [:> Paper {:elevation 3
                :className (obj/get styles "matcher-container")}
       [:div {:className (obj/get styles "2-col-container")}
@@ -145,17 +169,20 @@
         [:div {:className (obj/get styles "full-flex")}
           [:> FormControl {:fullWidth true
                            :margin "normal"}
-            [:> InputLabel "Respond with"]
-            [:> Select {:value (if response-type (name response-type) "")
-                        :onChange #(on-update assoc-in [:matchers idx :response-type] (keyword (get-target-value %)))}
-              (for [[rt {:keys [label]}] response-types]
+            [:> InputLabel "Handle with"]
+            [:> Select {:value (if handler-type (name handler-type) "")
+                        :onChange #(on-update assoc-in [:matchers idx :handler :type] (keyword (get-target-value %)))}
+              (for [[rt {:keys [label]}] handler-types]
                 ^{:key rt}
-                [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]]]]))
+                [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]
+          [handler-component {:handler handler
+                              :idx idx
+                              :styles styles}]]]]))
 
 (def ^:private new-matcher-template
   {:header-matches {}
    :body-matcher nil
-   :response-type nil})
+   :handler nil})
 
 (defn- -component []
   (let [state (r/atom {:match-type "exact"
@@ -166,16 +193,23 @@
     (fn [{:keys [styles]}]
       (let [{:keys [match-type path matchers]} @state]
         [:div {:className (obj/get styles "container")}
+          [:> Fab {:classes #js {:root (obj/get styles "floating-save")}
+                   :variant "extended"
+                   :label "Save"
+                   :color "secondary"
+                   :onClick #(js/alert "HI")}
+            [:> SaveIcon {:className (obj/get styles "extended-icon")}]
+            "Publish changes"]
           [path-component {:styles styles
                            :match-type match-type
                            :path path
                            :on-update on-update}]
           (map-indexed
-            (fn [idx {:keys [match-type path header-matches body-matcher response-type]}]
+            (fn [idx {:keys [match-type path header-matches body-matcher handler]}]
               ^{:key idx}
               [matcher {:styles styles
                         :idx idx
-                        :response-type response-type
+                        :handler handler
                         :header-matches header-matches
                         :body-matcher body-matcher
                         :on-update on-update}])
