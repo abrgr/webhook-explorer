@@ -74,35 +74,36 @@
                 [:> Table {:aria-label title}
                   [:> TableHead
                     [:> TableRow
-                      (when editable
-                        [:> TableCell ""])
                       [:> TableCell k-title]
-                      [:> TableCell v-title]]]
+                      [:> TableCell v-title]
+                      (when editable
+                        [:> TableCell ""])]]
                   [:> TableBody
                     (for [[k v] m]
                       ^{:key k}
                       [:> TableRow
+                        [:> TableCell k]
+                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]
                         (when editable
                           [:> TableCell
                             [:> IconButton {:aria-label "delete"
                                             :onClick #(on-change k nil)}
-                              [:> DeleteIcon {:fontSize "small"}]]])
-                        [:> TableCell k]
-                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]])]
+                              [:> DeleteIcon {:fontSize "small"}]]])])]
                   (when editable
                     [:> TableFooter
                       [:> TableRow
-                        [:> TableCell
-                          [:> IconButton {:aria-label "add"
-                                          :onClick #(do (on-change (keyword new-k) new-v)
-                                                        (reset! new-kv {:new-k "" :new-v ""}))}
-                            [:> AddIcon {:fontSize "small"}]]]
                         [:> TableCell
                           [:> TextField {:value new-k
                                          :onChange #(swap! new-kv assoc :new-k (obj/getValueByKeys % #js ["target" "value"]))}]]
                         [:> TableCell
                           [:> TextField {:value new-v
-                                         :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]]])])]])))))
+                                         :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]
+                        [:> TableCell
+                          [:> IconButton {:aria-label "add"
+                                          :onClick #(do (on-change (keyword new-k) new-v)
+                                                        (reset! new-kv {:new-k "" :new-v ""}))}
+                            [:> AddIcon {:color "primary"
+                                         :fontSize "small"}]]]]])])]])))))
 
 (defn- base-value [{:keys [value]}]
   value)
