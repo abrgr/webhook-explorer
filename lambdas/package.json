@@ -1,0 +1,15 @@
+{
+  "name": "rogo-lambdas",
+  "version": "1.0.0",
+  "description": "Lambdas for Rogo",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ratchet Designs",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "busboy": "^0.3.1",
+    "json-stable-stringify": "^1.0.1"
+  }
+}

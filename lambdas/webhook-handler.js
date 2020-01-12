@@ -33,6 +33,8 @@ exports.handler = async function handler(event, context) {
     }
   };
   msg.fingerprint = hashMsg(msg);
+  msg.req.cookies = parseRequestCookies(headers.Cookie || headers.cookie);
+  msg.res.cookies = null;
   const key = keyForParts('all', iso, method, host, path, status, msg.fingerprint);
   await s3.putObject({
     Body: JSON.stringify(msg),

@@ -48,11 +48,13 @@ exports.handler = async function handler(event, context) {
       status,
       req: {
         headers: reqHeaders,
-        body: reqBody
+        body: reqBody,
+        cookies: reqCookies
       },
       res: {
         headers: resHeaders,
-        body: resBody
+        body: resBody,
+        cookies: resCookies
       }
     }
   } = req;
@@ -74,6 +76,9 @@ exports.handler = async function handler(event, context) {
     }
   };
   const fingerprint = hashMsg(msg);
+  msg.fingerprint = fingerprint;
+  msg.req.cookies = reqCookies;
+  msg.res.cookies = resCookies;
   const key = keyForParts(folder, iso, method, host, path, status, fingerprint);
 
   await Promise.all([

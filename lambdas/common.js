@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const path = require('path');
+const stableStringify = require('json-stable-stringify')
 
 const EXPECTED_AUD = process.env.EXPECTED_AUD;
 
@@ -21,7 +22,9 @@ module.exports = {
   hashMsg,
   getAuditKey,
   auditKeyToFingerprintTagAndDate,
-  cognitoUserToUser
+  cognitoUserToUser,
+  parseRequestCookies,
+  parseResponseCookies
 };
 
 function getUserFromEvent(event) {
@@ -161,8 +164,7 @@ function response(statusCode, headers, body) {
 }
 
 function hashMsg(msg) {
-  const keys = Object.keys(msg).sort();
-  const toHash = keys.map(k => `${encodeURIComponent(k)}=${encodeURIComponent(msg[k])}`).join('&');
+  const toHash = stableStringify(msg);
   return crypto.createHash('sha256').update(toHash, 'utf8').digest().toString('hex');
 }
 
@@ -181,4 +183,44 @@ function auditKeyToFingerprintTagAndDate(auditKey) {
     tag: decodeURIComponent(tag),
     date: `${y}-${m}-${d}`
   };
+}
+
+function parseRequestCookies(cookieStr) {
+  const pairs = (cookieStr || '').split(';');
+  return pairs.reduce((cookies, pair) => {
+    const [k, v] = pair.trim().split('=');
+    if ( !k || !v ) {
+      return cookies;
+    }
+    return {
+      ...cookies,
+      [k]: { value: decodeURIComponent(v) }
+    };
+  }, {});
+}
+
+function parseResponseCookies(cookieStrs) {
+  return (cookieStrs || []).reduce((cookies, cookieStr) => {
+    const parts = (cookieStr || '').split(';');
+    if ( !parts.length ) {
+      return cookies;
+    }
+
+    const [k, v] = parts[0].trim().split('=');
+    const tags = parts.slice(1).reduce((tags, p) => {
+      const [tagK, tagV] = p.trim().split('=');
+      return {
+        ...tags,
+        [tagK]: tagV ? decodeURIComponent(tagV) : true
+      };
+    }, {});
+
+    return {
+      ...cookies,
+      [k]: {
+        value: decodeURIComponent(v),
+        tags
+      }
+    };
+  }, {});
 }
