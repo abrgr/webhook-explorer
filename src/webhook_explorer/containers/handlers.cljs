@@ -177,6 +177,7 @@
                 [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]
           [handler-component {:handler handler
                               :idx idx
+                              :on-update on-update
                               :styles styles}]]]]))
 
 (def ^:private new-matcher-template
@@ -197,7 +198,7 @@
                    :variant "extended"
                    :label "Save"
                    :color "secondary"
-                   :onClick #(js/alert "HI")}
+                   :onClick #(println @state)}
             [:> SaveIcon {:className (obj/get styles "extended-icon")}]
             "Publish changes"]
           [path-component {:styles styles
