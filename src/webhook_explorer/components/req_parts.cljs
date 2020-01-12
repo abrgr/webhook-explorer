@@ -37,6 +37,7 @@
   (styles/style-wrapper
     (fn [theme]
       {:code {:width "100%"
+              :marginTop 16
               "& .CodeMirror-scroll" {:maxHeight 500}
               "& > .CodeMirror" {:height "auto"
                                  :width "100%"
@@ -161,21 +162,21 @@
   (let [tab (r/atom (-> bodies first))]
     (fn [{:keys [bodies content-type on-change]}]
       (let [{:keys [type label] :as t} @tab]
-        [:> Tabs {:value type
-                  :label label
-                  :variant "fullWidth"
-                  :indicatorColor "primary"
-                  :textColor "primary"
-                  :onChange (fn [_ v]
-                              (->> bodies
-                                   (filter #(= (:type %) (keyword v)))
-                                   first
-                                   (reset! tab)))}
-          (for [{:keys [type label] :as body} bodies]
-            ^{:key label}
-            [(r/adapt-react-class Tab) {:value type :label label}])
-          [:div
-            [inner-body-view (merge t {:content-type content-type :on-change on-change})]]]))))
+        [:div {:style #js {:width "100%"}}
+          [:> Tabs {:value type
+                    :label label
+                    :indicatorColor "primary"
+                    :textColor "primary"
+                    :variant "fullWidth"
+                    :onChange (fn [_ v]
+                                (->> bodies
+                                     (filter #(= (:type %) (keyword v)))
+                                     first
+                                     (reset! tab)))}
+            (for [{:keys [type label] :as body} bodies]
+              ^{:key label}
+              [(r/adapt-react-class Tab) {:value type :label label}])]
+          [inner-body-view (merge t {:content-type content-type :on-change on-change})]]))))
 
 (defn base-body-view [title bodies headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]

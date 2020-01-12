@@ -185,7 +185,7 @@
         "Request Body"
         (req-parts/make-bodies
           {:raw {:label "Raw" :body req-body}
-           :fields {:label "Form" :body fields}})
+           :fields {:label "Form Fields" :body fields}})
         req-headers
         on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
