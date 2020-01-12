@@ -180,7 +180,7 @@
                             :href (str "data:" mimetype ";base64," data)}
               [:> DownloadIcon {:fontSize "small"}]]]])]])
 
-(defn- body-tabs [{:keys [bodies content-type on-change]}]
+(defn- body-tabs [{:keys [bodies content-type on-visibility-toggled on-change]}]
   (let [tab (r/atom (-> bodies first))]
     (fn [{:keys [bodies content-type on-change]}]
       (let [{:keys [type label] :as t} @tab]
@@ -194,7 +194,8 @@
                                 (->> bodies
                                      (filter #(= (:type %) (keyword v)))
                                      first
-                                     (reset! tab)))}
+                                     (reset! tab))
+                                (on-visibility-toggled))}
             (for [{:keys [type label] :as body} bodies]
               ^{:key label}
               [(r/adapt-react-class Tab) {:value type :label label}])]
@@ -215,6 +216,7 @@
                                                    :on-change on-change}])
           :else [body-tabs {:bodies bodies
                             :content-type content-type
+                            :on-visibility-toggled on-visibility-toggled
                             :on-change on-change}])]]))
 
 (defn make-bodies [bodies-by-type]
