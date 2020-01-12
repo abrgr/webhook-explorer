@@ -111,7 +111,8 @@
                  (reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2))]
             [req-parts/editable-body-view
               "Request Body"
-              body
+              (req-parts/make-bodies
+                {:raw {:label "Raw" :body body}})
               headers
               #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]
             (if in-progress
@@ -148,7 +149,8 @@
                     (:headers res)]
                   [req-parts/body-view
                     "Response Body"
-                    (:body res)
+                    (req-parts/make-bodies
+                      {:raw {:label "Raw" :body (:body res)}})
                     (:headers res)]]))]
           [:> DialogActions
             [:> Tooltip {:title "Change host to 'localhost'"

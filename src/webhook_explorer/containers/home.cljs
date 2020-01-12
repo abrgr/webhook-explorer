@@ -143,7 +143,8 @@
     {:keys [qs]
      {req-headers :headers
       req-cookies :cookies
-      req-body :body} :req
+      req-body :body
+      {:keys [fields files]} :form} :req
      {res-headers :headers
       res-body :body} :res
      :as details} :details
@@ -180,9 +181,15 @@
           "Request Cookies"
           cs
           on-visibility-toggled])
-      [req-parts/body-view "Request Body" req-body req-headers on-visibility-toggled]
+      [req-parts/body-view
+        "Request Body"
+        (req-parts/make-bodies
+          {:raw {:label "Raw" :body req-body}
+           :fields {:label "Form" :body fields}})
+        req-headers
+        on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
-      [req-parts/body-view "Response Body" res-body res-headers on-visibility-toggled]]
+      [req-parts/body-view "Response Body" (req-parts/make-bodies {:raw {:label "Raw" :body res-body}}) res-headers on-visibility-toggled]]
     [:> CardActions
       [:> FloatingActionButton {:color "primary"
                                 :className (obj/get styles "send-btn")

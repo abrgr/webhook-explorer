@@ -3,6 +3,8 @@
             [webhook-explorer.init :as init]
             [webhook-explorer.styles :as styles]
             [goog.object :as obj]
+            ["@material-ui/core/Tabs" :default Tabs]
+            ["@material-ui/core/Tab" :default Tab]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Delete" :default DeleteIcon]
@@ -136,21 +138,76 @@
 (defn editable-qs-view [title qs on-qs-change]
   [base-kv-view title "Key" "Value" qs true nop editable-value false on-qs-change])
 
-(defn base-body-view [title body headers on-change on-visibility-toggled]
+(defmulti inner-body-view (fn [{:keys [type]}] type))
+
+(defmethod inner-body-view :raw [{:keys [body content-type on-change]}]
+  [styled-editor body content-type on-change])
+
+(defmethod inner-body-view :fields [{:keys [body content-type on-change]}]
+  (let [fields (->> body
+                    (map (fn [[k v]] [(name k) v]))
+                    (into {}))]
+    [base-kv-view
+      "Fields"
+      "Name"
+      "Value"
+      fields
+      false
+      nop
+      base-value
+      true]))
+
+(defn- body-tabs [{:keys [bodies content-type on-change]}]
+  (let [tab (r/atom (-> bodies first))]
+    (fn [{:keys [bodies content-type on-change]}]
+      (let [{:keys [type label] :as t} @tab]
+        [:> Tabs {:value type
+                  :label label
+                  :variant "fullWidth"
+                  :indicatorColor "primary"
+                  :textColor "primary"
+                  :onChange (fn [_ v]
+                              (->> bodies
+                                   (filter #(= (:type %) (keyword v)))
+                                   first
+                                   (reset! tab)))}
+          (for [{:keys [type label] :as body} bodies]
+            ^{:key label}
+            [(r/adapt-react-class Tab) {:value type :label label}])
+          [:div
+            [inner-body-view (merge t {:content-type content-type :on-change on-change})]]]))))
+
+(defn base-body-view [title bodies headers on-change on-visibility-toggled]
   (let [content-type (get headers "Content-Type")]
     [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}
       [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
         title]
       [:> ExpansionPanelDetails
-        (if (and (nil? body) (nil? headers))
-          [:> CircularProgress]
-          [styled-editor body content-type on-change])]]))
+        (cond
+          (and (nil? bodies) (nil? headers)) [:> CircularProgress]
+          (= (count bodies) 1) (let [{:keys [type body]} (-> bodies first)]
+                                 [inner-body-view {:type type
+                                                   :body body
+                                                   :content-type content-type
+                                                   :on-change on-change}])
+          :else [body-tabs {:bodies bodies
+                            :content-type content-type
+                            :on-change on-change}])]]))
+
+(defn make-bodies [bodies-by-type]
+  (->> bodies-by-type
+       (reduce
+         (fn [bodies [type {:keys [label body]}]]
+           (if body
+             (conj (or bodies []) {:type type :label label :body body})
+             bodies))
+         nil)))
 
 (defn body-view
-  ([title body headers]
-    [body-view title body headers nop])
-  ([title body headers on-visibility-toggled]
-    [base-body-view title body headers nop on-visibility-toggled]))
+  ([title bodies headers]
+    [body-view title bodies headers nop])
+  ([title bodies headers on-visibility-toggled]
+    [base-body-view title bodies headers nop on-visibility-toggled]))
 
-(defn editable-body-view [title body headers on-change]
-  [base-body-view title body headers on-change nop])
+(defn editable-body-view [title bodies headers on-change]
+  [base-body-view title bodies headers on-change nop])
