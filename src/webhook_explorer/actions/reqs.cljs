@@ -215,7 +215,9 @@
        (let [{:keys [date path host method status]
               {:keys [protocol qs iso]
                {req-headers :headers
-                req-body :body} :req
+                req-body :body
+                req-cookies :cookies
+                req-form :form} :req
                {res-headers :headers
                 res-body :body} :res} :details} %
              {:keys [success]} (async/<!
@@ -231,9 +233,11 @@
                                            :qs qs
                                            :method method
                                            :iso iso
-                                           :status status
+                                           :status (js/parseInt status 10)
                                            :req {:headers req-headers
-                                                 :body req-body}
+                                                 :body req-body
+                                                 :cookies req-cookies
+                                                 :form req-form}
                                            :res {:headers res-headers
                                                  :body res-body}}}}))]
          (apply
