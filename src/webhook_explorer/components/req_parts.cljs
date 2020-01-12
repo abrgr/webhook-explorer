@@ -8,6 +8,7 @@
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/Delete" :default DeleteIcon]
+            ["@material-ui/icons/CloudDownload" :default DownloadIcon]
             ["@material-ui/core/ExpansionPanel" :default ExpansionPanel]
             ["@material-ui/core/ExpansionPanelSummary" :default ExpansionPanelSummary]
             ["@material-ui/icons/ExpandMore" :default ExpandMoreIcon]
@@ -144,7 +145,7 @@
 (defmethod inner-body-view :raw [{:keys [body content-type on-change]}]
   [styled-editor body content-type on-change])
 
-(defmethod inner-body-view :fields [{:keys [body content-type on-change]}]
+(defmethod inner-body-view :fields [{:keys [body on-change]}]
   (let [fields (->> body
                     (map (fn [[k v]] [(name k) v]))
                     (into {}))]
@@ -157,6 +158,27 @@
       nop
       base-value
       true]))
+
+(defmethod inner-body-view :files [{:keys [body]}]
+  [:> Table {:aria-label "Files"}
+    [:> TableHead
+      [:> TableRow
+        [:> TableCell "Filename"]
+        [:> TableCell "Mime Type"]
+        [:> TableCell "Encoding"]
+        [:> TableCell ""]]]
+    [:> TableBody
+      (for [{:keys [filename mimetype originalEncoding data]} body]
+        ^{:key filename}
+        [:> TableRow
+          [:> TableCell filename]
+          [:> TableCell mimetype]
+          [:> TableCell originalEncoding]
+          [:> TableCell
+            [:> IconButton {:aria-label "download"
+                            :download filename
+                            :href (str "data:" mimetype ";base64," data)}
+              [:> DownloadIcon {:fontSize "small"}]]]])]])
 
 (defn- body-tabs [{:keys [bodies content-type on-change]}]
   (let [tab (r/atom (-> bodies first))]

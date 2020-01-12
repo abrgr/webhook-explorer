@@ -185,7 +185,8 @@
         "Request Body"
         (req-parts/make-bodies
           {:raw {:label "Raw" :body req-body}
-           :fields {:label "Form Fields" :body fields}})
+           :fields {:label "Form Fields" :body fields}
+           :files {:label "Files" :body (when-not (empty? files) files)}})
         req-headers
         on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
