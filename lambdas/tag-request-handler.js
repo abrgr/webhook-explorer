@@ -49,7 +49,8 @@ exports.handler = async function handler(event, context) {
       req: {
         headers: reqHeaders,
         body: reqBody,
-        cookies: reqCookies
+        cookies: reqCookies,
+        form: reqForm
       },
       res: {
         headers: resHeaders,
@@ -77,6 +78,7 @@ exports.handler = async function handler(event, context) {
   };
   const fingerprint = hashMsg(msg);
   msg.fingerprint = fingerprint;
+  msg.req.form = reqForm;
   msg.req.cookies = reqCookies;
   msg.res.cookies = resCookies;
   const key = keyForParts(folder, iso, method, host, path, status, fingerprint);
