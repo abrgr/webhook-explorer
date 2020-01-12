@@ -6,6 +6,7 @@
             [webhook-explorer.http-utils :as http-utils]
             [webhook-explorer.routes :as routes]
             [webhook-explorer.init :as init]
+            [goog.object :as obj]
             [cljs-http.client :as http]
             [clojure.core.async :as async]
             [clojure.set :as s]
@@ -330,3 +331,15 @@
                    :body (:body res)})
                 (assoc-in [:item :status] (:status res)))))
         (tag-req (get-in @app-state/reqs [:selected-item :item]) {:tag "My Executed Requests"})))))
+
+(defn share-req [{:keys [data-url]}]
+  (let [[_ slug] (re-find #"://[^/]+/([^?]+)[?]?" data-url)
+        share-url (->> {:slug slug}
+                       routes/req-path
+                       (str (obj/getValueByKeys js/window #js ["location" "origin"])))]
+    (copy-to-clipboard share-url)
+    (swap!
+      app-state/reqs
+      assoc-in
+      [:selected-item :notification]
+      "Copied sharable URL to clipboard")))

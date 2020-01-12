@@ -166,7 +166,7 @@
                                   :allow-creation true
                                   :selected-label "(Already tagged)"}]
                                [action-btn "Add to request collection" AddToCollectionIcon #()]
-                               [action-btn "Share" ShareIcon #()]])
+                               [action-btn "Share" ShareIcon #(reqs-actions/share-req item)]])
        :title (str method " " host path)
        :subheader date}]
     [:> CardContent {:className (obj/get styles "fix-card-content")}
