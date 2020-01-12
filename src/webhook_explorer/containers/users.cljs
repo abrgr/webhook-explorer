@@ -174,6 +174,7 @@
       [role-select {:role (get user :role)
                     :label "Role"
                     :on-update (partial on-update assoc :role)}
+        ^{:key "helper"}
         [role-helper-text]]
         (when error
           [:> Typography {:color "error"}
