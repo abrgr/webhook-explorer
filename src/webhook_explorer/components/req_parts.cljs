@@ -116,6 +116,12 @@
   ([title headers on-visibility-toggled]
     [base-kv-view title "Header" "Value" headers false on-visibility-toggled base-value false]))
 
+(defn cookies-view
+  ([title cookies]
+    [cookies-view title cookies nop])
+  ([title cookies on-visibility-toggled]
+    [base-kv-view title "Cookie" "Value" cookies false on-visibility-toggled base-value false]))
+
 (defn- editable-value [{:keys [key value on-change]}]
   ^{:key key}
   [:> TextField {:value value

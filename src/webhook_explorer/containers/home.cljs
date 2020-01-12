@@ -142,9 +142,11 @@
             status]
     {:keys [qs]
      {req-headers :headers
-       req-body :body} :req
-      {res-headers :headers
-       res-body :body} :res} :details
+      req-cookies :cookies
+      req-body :body} :req
+     {res-headers :headers
+      res-body :body} :res
+     :as details} :details
     :as item} :item}]
   [:> Card {:className (obj/get styles "card")}
     [:> CardHeader
@@ -169,6 +171,15 @@
     [:> CardContent {:className (obj/get styles "fix-card-content")}
       [req-parts/qs-view "Query Parameters" qs on-visibility-toggled]
       [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
+      (let [cs (or
+                 (some->> req-cookies
+                          (map (fn [[k {:keys [value]}]] [k value]))
+                          (into {}))
+                 (and details {}))] ; cookies might be nil, set to {} if cookies nil but we have details
+        [req-parts/cookies-view
+          "Request Cookies"
+          cs
+          on-visibility-toggled])
       [req-parts/body-view "Request Body" req-body req-headers on-visibility-toggled]
       [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
       [req-parts/body-view "Response Body" res-body res-headers on-visibility-toggled]]
