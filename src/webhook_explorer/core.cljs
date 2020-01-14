@@ -12,15 +12,18 @@
             [webhook-explorer.containers.home :as home]
             [webhook-explorer.containers.users :as users]
             [webhook-explorer.containers.handlers :as handlers]
+            [webhook-explorer.containers.req :as req]
             [webhook-explorer.containers.auth :as auth]))
 
 (defn- current-page []
-  (case (:page @app-state/nav)
-    :auth [auth/component]
-    :reqs [home/component]
-    :users [users/component]
-    :handlers [handlers/component]
-    [auth/component]))
+  (let [{:keys [page params]} @app-state/nav]
+    (case page
+      :auth [auth/component]
+      :reqs [home/component]
+      :users [users/component]
+      :handlers [handlers/component]
+      :req [req/component params]
+      [auth/component])))
 
 (defn- page []
   [:div {:style #js {:display "flex" :flexDirection "column" :height "100%"}}

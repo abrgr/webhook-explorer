@@ -334,7 +334,7 @@
 
 (defn share-req [{:keys [data-url]}]
   (let [[_ slug] (re-find #"://[^/]+/([^?]+)[?]?" data-url)
-        share-url (->> {:slug slug}
+        share-url (->> {:slug (js/encodeURIComponent slug)}
                        routes/req-path
                        (str (obj/getValueByKeys js/window #js ["location" "origin"])))]
     (copy-to-clipboard share-url)
@@ -343,3 +343,12 @@
       assoc-in
       [:selected-item :notification]
       "Copied sharable URL to clipboard")))
+
+(defn load-req [slug]
+  (async/go
+    (let [res (async/<! (http/get
+                          (http-utils/make-url (str "/api/reqs/" slug))
+                          {:with-credentials? false
+                           :headers (http-utils/auth-headers)}))
+          {item :body} res]
+      item)))

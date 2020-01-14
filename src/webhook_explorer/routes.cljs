@@ -50,7 +50,7 @@
   (reset! app-state/nav {:page :handlers}))
 
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
-  (reset! app-state/nav {:page :req :slug slug}))
+  (reset! app-state/nav {:page :req :params {:slug slug}}))
 
 (defn init! []
   (defroute "*" []
