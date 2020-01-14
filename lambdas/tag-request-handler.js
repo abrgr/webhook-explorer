@@ -83,7 +83,22 @@ exports.handler = async function handler(event, context) {
   msg.res.cookies = resCookies;
   const key = keyForParts(folder, iso, method, host, path, status, fingerprint);
 
-  await Promise.all([
+  console.log({
+    put1: {
+      Body: JSON.stringify(msg),
+      Bucket: bucket,
+      Key: key,
+      ContentType: 'application/json'
+    },
+    put2: {
+      Body: JSON.stringify({ uid, date: new Date().toISOString(), key, tag }),
+      Bucket: bucket,
+      Key: getAuditKey(iso, fingerprint, tag),
+      ContentType: 'application/json'
+    }
+  });
+
+  const resp = await Promise.all([
     s3.putObject({
       Body: JSON.stringify(msg),
       Bucket: bucket,
@@ -97,6 +112,8 @@ exports.handler = async function handler(event, context) {
       ContentType: 'application/json'
     }).promise()
   ]);
+
+  console.log({ resp });
 
   return response(200, {}, JSON.stringify({ success: true }));
 };

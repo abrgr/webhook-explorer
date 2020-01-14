@@ -350,5 +350,10 @@
                           (http-utils/make-url (str "/api/reqs/" slug))
                           {:with-credentials? false
                            :headers (http-utils/auth-headers)}))
-          {item :body} res]
-      item)))
+          {item :body} res
+          adj-item (-> item
+                       (s/rename-keys {:dataUrl :data-url})
+                       (update :tags s/rename-keys {:privateTags :private-tags :publicTags :public-tags})
+                       (update-in [:tags :private-tags] set)
+                       (update-in [:tags :public-tags] set))]
+      adj-item)))

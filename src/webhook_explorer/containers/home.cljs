@@ -13,7 +13,6 @@
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
             ["react-virtualized/dist/commonjs/List" :default List]
             ["react-virtualized/dist/commonjs/InfiniteLoader" :default InfiniteLoader]
-            ["@material-ui/core/colors" :as colors]
             ["@material-ui/pickers" :as pickers]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Collapse" :default Collapse]
@@ -27,10 +26,6 @@
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
             ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/icons/Dashboard" :default RequestsIcon]))
-
-(defn- background-style [theme color]
-  {:color (.getContrastText (obj/get theme "palette") color)
-   :backgroundColor color})
 
 (def ^:private styled
   (styles/style-wrapper
@@ -46,43 +41,6 @@
                               :alignItems "center"
                               :justifyContent "center"}
          :disabled {:color "rgba(0, 0, 0, 0.26)"}
-         :card {:width "80%"
-                :minWidth "480px"
-                :maxWidth "768px"
-                :margin "25px auto"}
-         :card-action-btn {:margin (.spacing theme 1)}
-         :date {:fontSize 14}
-         :status-info (merge
-                        (background-style theme (aget colors/yellow 500))
-                        status-style)
-         :status-success (merge
-                           (background-style theme (aget colors/green 500))
-                           status-style)
-         :status-redirect (merge
-                            (background-style theme (aget colors/grey 500))
-                            status-style)
-         :status-client-error (merge
-                                (background-style theme (aget colors/pink 500))
-                                status-style)
-         :status-server-error (merge
-                                (background-style theme (aget colors/red 500))
-                                status-style)
-         :fix-card-content {:marginBottom "-24px"}
-         :hidden {:display "none"}
-         :code {:width "100%"
-                "& > .CodeMirror" {:height "auto"
-                                   :border "1px solid #eee"}}
-         :blurred {:position "relative"
-                   "&:after" {:content "\" \""
-                              :position "absolute"
-                              :z-index 1
-                              :bottom 0
-                              :left 0
-                              :pointer-events "none"
-                              :background-image "linear-gradient(to bottom, rgba(255,255,255, 0), rgba(255,255,255, 1) 90%)"
-                              :width "100%"
-                              :height "4em"}}
-         :previewed-card-content {:margin-top "-32px"}
          :control-bar {:display "flex"
                        :align-items "center"
                        :margin-bottom 3
@@ -90,10 +48,7 @@
                        :padding-left 60
                        :padding-right 60}
          :control-bar-control {:width 238
-                               :margin-right 60}
-         :send-btn {:margin-right 15
-                    :margin-bottom 15
-                    :margin-left "auto"}}))))
+                               :margin-right 60}}))))
 
 (def ^:private cell-measure-cache
   (CellMeasurerCache. #js {:defaultHeight 431
@@ -138,7 +93,6 @@
                     (>= idx item-count) [:div {:style {:height 50}} " "]
                     :else [req-card/component
                             {:item item
-                             :styles styles
                              :favorited (:fav tagged-req)
                              :private-tags (:private-tags tagged-req)
                              :public-tags (:public-tags tagged-req)

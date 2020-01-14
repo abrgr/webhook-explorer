@@ -24,7 +24,8 @@ module.exports = {
   auditKeyToFingerprintTagAndDate,
   cognitoUserToUser,
   parseRequestCookies,
-  parseResponseCookies
+  parseResponseCookies,
+  fingerprintTagAndDateToUserVisibleTags
 };
 
 function getUserFromEvent(event) {
@@ -223,4 +224,27 @@ function parseResponseCookies(cookieStrs) {
       }
     };
   }, {});
+}
+
+function fingerprintTagAndDateToUserVisibleTags(uid, items) {
+  const favTag = getTagForFavorite(uid);
+  const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag))) 
+  return filteredItems.reduce(
+    (tagsForFingerprint, { fingerprint, tag }) => {
+      const prev = tagsForFingerprint[fingerprint] || { fav: false, privateTags: [], publicTags: [] };
+
+      if ( tag === favTag ) {
+        prev.fav = true;
+      } else if ( isPrivateTag(tag) ) {
+        prev.privateTags = prev.privateTags.concat([unNamespacedPrivateTag(tag)]);
+      } else {
+        prev.publicTags = prev.publicTags.concat([tag]);
+      }
+
+      tagsForFingerprint[fingerprint] = prev;
+
+      return tagsForFingerprint;
+    },
+    {}
+  );
 }

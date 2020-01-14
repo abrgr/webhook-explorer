@@ -6,7 +6,8 @@ const {
   isUserAuthorizedToReadFolder,
   folderForTag,
   isPrivateTag,
-  unNamespacedPrivateTag
+  unNamespacedPrivateTag,
+  fingerprintTagAndDateToUserVisibleTags
 } = require('./common');
 const { getNextListing } = require('./ymd-lister');
 
@@ -26,27 +27,8 @@ function generatePage(uid, page) {
   }
 
   const { items, nextReq } = page;
-  const favTag = getTagForFavorite(uid);
-  const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag))) 
-  const tagsByFingerprint = filteredItems.reduce(
-    (tagsForFingerprint, { fingerprint, tag }) => {
-      const prev = tagsForFingerprint[fingerprint] || { fav: false, privateTags: [], publicTags: [] };
-
-      if ( tag === favTag ) {
-        prev.fav = true;
-      } else if ( isPrivateTag(tag) ) {
-        prev.privateTags = prev.privateTags.concat([unNamespacedPrivateTag(tag)]);
-      } else {
-        prev.publicTags = prev.publicTags.concat([tag]);
-      }
-
-      tagsForFingerprint[fingerprint] = prev;
-
-      return tagsForFingerprint;
-    },
-    {}
-  );
-  const earliestDatedItem = items.sort((a, b) => (a < b) ? -1 : (a === b ? 0 : 1))[0];
+  const tagsByFingerprint = fingerprintTagAndDateToUserVisibleTags(uid, items);
+  const earliestDatedItem = items.sort((a, b) => (a.date < b.date) ? -1 : (a.date === b.date ? 0 : 1))[0];
 
   return {
     tagsByFingerprint,
