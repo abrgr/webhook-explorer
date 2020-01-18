@@ -3,6 +3,9 @@
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.components.req-parts :as req-parts]
+            ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
+            ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
             ["@material-ui/core/Select" :default Select]
             ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/core/InputLabel" :default InputLabel]
@@ -27,6 +30,7 @@
                         :align-items "center"}
        :extended-icon {:marginRight (.spacing theme 1)}
        :floating-save {:position "fixed"
+                       :z-index 100
                        :right 50 
                        :bottom 50}
        :container {:width "80%"
@@ -42,6 +46,9 @@
                  :margin-bottom 16}
        :2-col-container {:display "flex"
                          "& .MuiExpansionPanelSummary-root" {:padding 0}}
+       :right-controls {:display "flex"
+                        :flex-direction "row"
+                        :justify-content "flex-end"}
        :left-container {:width 100}
        :matcher-container {:marginTop 48
                            :padding 20}
@@ -110,7 +117,18 @@
                      :value path
                      :onChange #(on-update assoc :path (get-target-value %))}]]])
 
-(defn- matcher [{:keys [styles idx handler header-matches body-matcher on-update]}]
+(defn- move-item [idx dir v]
+  (let [op (case dir
+             :up dec
+             :down inc)]
+    (assoc v
+      idx (get v (op idx))
+      (op idx) (get v idx))))
+
+(defn- path-template-vars [path]
+  (re-seq #"[{][^}]+[}]" path))
+
+(defn- matcher [{:keys [styles idx total-matcher-count handler header-matches body-matcher on-update]}]
   (let [on-update-input (fn [k evt]
                           (on-update assoc-in [:matchers idx k] (get-target-value evt)))
         body-match-type (:type body-matcher)
@@ -121,6 +139,19 @@
         handler-type (:type handler)]
     [:> Paper {:elevation 3
                :className (obj/get styles "matcher-container")}
+      [:div {:className (obj/get styles "right-controls")}
+        [:> IconButton {:disabled (= idx 0)
+                        :onClick #(on-update
+                                    update
+                                    :matchers 
+                                    (partial move-item idx :up))}
+          [:> UpArrowIcon]]
+        [:> IconButton {:disabled (= idx (dec total-matcher-count))
+                        :onClick #(on-update
+                                    update
+                                    :matchers 
+                                    (partial move-item idx :down))}
+          [:> DownArrowIcon]]]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
           [:> Typography {:variant "h5"
@@ -181,7 +212,8 @@
                               :styles styles}]]]]))
 
 (def ^:private new-matcher-template
-  {:header-matches {}
+  {:proto :https
+   :header-matches {}
    :body-matcher nil
    :handler nil})
 
@@ -210,6 +242,7 @@
               ^{:key idx}
               [matcher {:styles styles
                         :idx idx
+                        :total-matcher-count (count matchers)
                         :handler handler
                         :header-matches header-matches
                         :body-matcher body-matcher
