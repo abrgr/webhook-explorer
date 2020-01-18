@@ -36,7 +36,7 @@
   (r/render [page]
             (js/document.getElementById "app")))
 
-(defn ^:after-load re-render []
+(defn ^:dev/after-load re-render []
   (mount))
 
 (defonce start-up (do (init/fire-init) (mount) true))
