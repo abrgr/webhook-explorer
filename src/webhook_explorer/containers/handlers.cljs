@@ -3,6 +3,7 @@
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.components.req-parts :as req-parts]
+            ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
             ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
@@ -29,10 +30,6 @@
       {:flex-container {:display "flex"
                         :align-items "center"}
        :extended-icon {:marginRight (.spacing theme 1)}
-       :floating-save {:position "fixed"
-                       :z-index 100
-                       :right 50 
-                       :bottom 50}
        :container {:width "80%"
                    :height "100%"
                    :minWidth "480px"
@@ -50,6 +47,23 @@
                         :flex-direction "row"
                         :justify-content "flex-end"}
        :left-container {:width 100}
+       :caption-container {:position "relative"}
+       :caption {:position "absolute"
+                 :bottom -48}
+       :capture-container {:marginTop 20
+                           :padding 20
+                           "& .MuiExpansionPanelSummary-root" {:padding 0}}
+       :template-var-container {:flex 1}
+       :publish-container {:margin "auto"}
+       :bottom-container {:position "fixed"
+                          :display "flex"
+                          :left 0
+                          :right 0
+                          :bottom 0
+                          :height 150
+                          :border-top "2px solid #eee"
+                          :z-index 100
+                          :padding 20}
        :matcher-container {:marginTop 48
                            :padding 20}
        :add-matcher-container {:display "flex"
@@ -66,7 +80,7 @@
     :mock {:label "Mock"}
     :proxy {:label "Proxy"}))
 
-(def ^:private body-match-types
+(def ^:private body-capture-types
   (array-map
     :json {:label "JSON"}
     :form-data {:label "Form Data"}))
@@ -125,8 +139,9 @@
       idx (get v (op idx))
       (op idx) (get v idx))))
 
-(defn- path-template-vars [path]
-  (re-seq #"[{][^}]+[}]" path))
+(defn- path->template-vars [path]
+  (->> (re-seq #"[{]([^}]+)[}]" path)
+       (map second)))
 
 (defn- matcher [{:keys [styles idx total-matcher-count handler header-matches body-matcher on-update]}]
   (let [on-update-input (fn [k evt]
@@ -168,29 +183,19 @@
           [:> FormControl {:fullWidth true
                            :margin "normal"}
             [:> InputLabel "Request body matcher"]
-            [:> Select {:value (if body-match-type (name body-match-type) " ")
-                        :onChange #(let [v (get-target-value %)]
-                                     (if (= v " ")
-                                       (on-update update-in [:matchers idx] dissoc :body-matcher)
-                                       (on-update assoc-in [:matchers idx :body-matcher] {:type (keyword v) :matchers {}})))}
-              [:> MenuItem {:value " "} "None"]
-              (for [[mt {:keys [label]}] body-match-types]
-                ^{:key mt}
-                [(r/adapt-react-class MenuItem) {:value (name mt)} label])]]
-          (when (some? body-matchers)
             [req-parts/base-kv-view
               "Body matchers"
-              "JSON Path to check"
+              "Template variable to check"
               "Matched value"
               body-matchers
               true
               (fn [])
               req-parts/editable-value
               true
-              (fn [jp v]
+              (fn [tv v]
                 (if (nil? v)
-                  (on-update update-in [:matchers idx :body-matcher :matchers] dissoc jp)
-                  (on-update assoc-in [:matchers idx :body-matcher :matchers jp :expected-value] v)))])]]
+                  (on-update update-in [:matchers idx :body-matcher :matchers] dissoc tv)
+                  (on-update assoc-in [:matchers idx :body-matcher :matchers tv :expected-value] v)))]]]]
       [:> Divider {:className (obj/get styles "divider")}]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
@@ -217,6 +222,68 @@
    :body-matcher nil
    :handler nil})
 
+(defn- template-var-map->simple-map [m]
+  (->> m
+       (map (fn [[k {:keys [template-var]}]] [k template-var]))
+       (into {})))
+  
+(defn- captures [{:keys [styles path header-captures body-capture-type body-captures on-update]}]
+  [:> Paper {:elevation 3
+             :className (obj/get styles "capture-container")}
+    [:> Typography {:variant "h6"
+                    :color "textSecondary"}
+      "Capture Template Variables"]
+    [:div {:className (obj/get styles "full-flex")}
+      [req-parts/editable-headers-view
+        (str "Request header captures (" (count header-captures) ")")
+        (template-var-map->simple-map header-captures)
+        (fn [k v]
+          (if (nil? v)
+            (on-update update-in [:captures :headers] dissoc k) 
+            (on-update assoc-in [:captures :headers k :template-var] v)))]
+      [:> FormControl {:fullWidth true
+                       :margin "normal"}
+        [:> InputLabel "Request body captures"]
+        [:> Select {:value (if body-capture-type (name body-capture-type) " ")
+                    :onChange #(let [v (get-target-value %)]
+                                 (if (= v " ")
+                                   (on-update update :captures dissoc :body)
+                                   (on-update assoc-in [:captures :body] {:type (keyword v) :captures {}})))}
+          [:> MenuItem {:value " "} "None"]
+          (for [[mt {:keys [label]}] body-capture-types]
+            ^{:key mt}
+            [(r/adapt-react-class MenuItem) {:value (name mt)} label])]]
+      (when (some? body-captures)
+        [req-parts/base-kv-view
+          "Body captures"
+          "JSON Path to capture"
+          "Template variable"
+          (template-var-map->simple-map body-captures)
+          true
+          (fn [])
+          req-parts/editable-value
+          true
+          (fn [jp v]
+            (if (nil? v)
+              (on-update update-in [:captures :body :captures] dissoc jp)
+              (on-update assoc-in [:captures :body :captures jp :template-var] v)))])]])
+
+(defn- template-var-container [{:keys [styles path header-captures body-captures]}]
+  (let [vars (->> (concat (vals header-captures) (vals body-captures))
+                  (map :template-var)
+                  (concat (path->template-vars path)))]
+    [:div {:className (obj/get styles "template-var-container")}
+      [:> Typography {:variant "h6"
+                      :color "textSecondary"}
+        "Captured template variables"]
+      (if (empty? vars)
+        [:div {:style #js {:margin "auto"}}
+          "No captured variables yet"]
+        (for [tv vars]
+          ^{:key tv}
+          [(r/adapt-react-class Chip) {:label tv
+                                       :variant "outlined"}]))]))
+
 (defn- -component []
   (let [state (r/atom {:match-type "exact"
                        :path ""
@@ -224,19 +291,37 @@
         on-update (fn [& updater]
                     (apply swap! state updater))]
     (fn [{:keys [styles]}]
-      (let [{:keys [match-type path matchers]} @state]
+      (let [{:keys [match-type path matchers]
+             {header-captures :headers
+              {body-capture-type :type
+               body-captures :captures} :body} :captures} @state]
         [:div {:className (obj/get styles "container")}
-          [:> Fab {:classes #js {:root (obj/get styles "floating-save")}
-                   :variant "extended"
-                   :label "Save"
-                   :color "secondary"
-                   :onClick #(println @state)}
-            [:> SaveIcon {:className (obj/get styles "extended-icon")}]
-            "Publish changes"]
+          [:> Paper {:className (obj/get styles "bottom-container")}
+            [template-var-container {:styles styles
+                                     :path path
+                                     :header-captures header-captures
+                                     :body-captures body-captures}]
+            [:div {:className (obj/get styles "publish-container")}
+              [:> Fab {:variant "extended"
+                       :label "Save"
+                       :color "secondary"
+                       :onClick #(println @state)}
+                [:> SaveIcon {:className (obj/get styles "extended-icon")}]
+                "Publish changes"]]]
           [path-component {:styles styles
                            :match-type match-type
                            :path path
                            :on-update on-update}]
+          [captures {:styles styles
+                     :path path
+                     :header-captures header-captures
+                     :body-capture-type body-capture-type
+                     :body-captures body-captures
+                     :on-update on-update}]
+          [:div {:className (obj/get styles "caption-container")}
+            [:> Typography {:variant "caption"
+                            :className (obj/get styles "caption")}
+            "Matchers are processed in order, top to bottom. First match wins."]]
           (map-indexed
             (fn [idx {:keys [match-type path header-matches body-matcher handler]}]
               ^{:key idx}
