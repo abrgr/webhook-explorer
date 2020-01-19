@@ -99,13 +99,12 @@
 
 (defmethod handler-component :proxy [{{:keys [proxy]} :handler :keys [idx on-update]}]
   (let [{:keys [remote-url]} proxy]
-    [:<>
-      [:> TextField
-        {:label "Remote URL"
-         :fullWidth true
-         :helperText "URL to proxy matching requests to. Can include {tempalte-variables}."
-         :value (or remote-url "")
-         :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]]))
+    [:> TextField
+      {:label "Remote URL"
+       :fullWidth true
+       :helperText "URL to proxy matching requests to. Can include {template-variables}."
+       :value (or remote-url "")
+       :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
 
 (defn- path-component [{:keys [styles match-type path on-update]}]
   [:div {:className (obj/get styles "path-container")}
@@ -129,7 +128,11 @@
                                    [:<>
                                      [:span "Exact match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here', etc."]
                                      [:br]
-                                     [:span "Prefix match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here/and/here', etc."]])
+                                     [:span "Prefix match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here/and/here', etc."]
+                                     [:br]
+                                     [:span "Exact and prefix matches are ranked by longest matching concrete prefix (without variables) first."]
+                                     [:br]
+                                     [:span "Exact matches are ranked before prefix matches."]])
                      :value path
                      :onChange #(on-update assoc :path (get-target-value %))}]]])
 
