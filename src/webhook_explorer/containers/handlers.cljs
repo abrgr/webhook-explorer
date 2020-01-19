@@ -54,6 +54,7 @@
                            :padding 20
                            "& .MuiExpansionPanelSummary-root" {:padding 0}}
        :template-var-container {:flex 1}
+       :chip {:margin 10}
        :publish-container {:margin "auto"}
        :bottom-container {:position "fixed"
                           :display "flex"
@@ -98,12 +99,13 @@
 
 (defmethod handler-component :proxy [{{:keys [proxy]} :handler :keys [idx on-update]}]
   (let [{:keys [remote-url]} proxy]
-    [:> TextField
-      {:label "Remote URL"
-       :fullWidth true
-       :helperText "URL to proxy matching requests to"
-       :value (or remote-url "")
-       :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
+    [:<>
+      [:> TextField
+        {:label "Remote URL"
+         :fullWidth true
+         :helperText "URL to proxy matching requests to. Can include {tempalte-variables}."
+         :value (or remote-url "")
+         :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]]))
 
 (defn- path-component [{:keys [styles match-type path on-update]}]
   [:div {:className (obj/get styles "path-container")}
@@ -143,7 +145,16 @@
   (->> (re-seq #"[{]([^}]+)[}]" path)
        (map second)))
 
-(defn- matcher [{:keys [styles idx total-matcher-count handler matches on-update]}]
+(defn- make-template-var-picker [template-vars]
+  (fn template-var-picker [{:keys [value on-change]}]
+    [:> Select {:value (or value "")
+                :fullWidth true
+                :onChange #(on-change (get-target-value %))}
+      (for [tv template-vars]
+        ^{:key tv}
+        [(r/adapt-react-class MenuItem) {:value tv} tv])]))
+
+(defn- matcher [{:keys [styles idx total-matcher-count template-vars handler matches on-update]}]
   (let [on-update-input (fn [k evt]
                           (on-update assoc-in [:matchers idx k] (get-target-value evt)))
         handler-type (:type handler)]
@@ -168,22 +179,25 @@
                           :color "textSecondary"}
             "When:"]]
         [:div {:className (obj/get styles "full-flex")}
-          [:> FormControl {:fullWidth true
-                           :margin "normal"}
-            [:> InputLabel "Request body matcher"]
-            [req-parts/base-kv-view
-              (str "Template variable matches (" (count matches) ")")
-              "Template variable to check"
-              "Matched value"
-              matches
-              true
-              (fn [])
-              req-parts/editable-value
-              false
-              (fn [tv v]
-                (if (nil? v)
-                  (on-update update-in [:matchers idx :matches] dissoc tv)
-                  (on-update assoc-in [:matchers idx :matches tv] v)))]]]]
+          (if (empty? template-vars)
+            [:<>
+              [:> Typography "No template variables available."]
+              [:> Typography "Capture template variables or add path variables, above, to match against."]]
+            [:> FormControl {:fullWidth true
+                             :margin "normal"}
+              [:> InputLabel "Request body matcher"]
+              [req-parts/base-kv-view
+                {:title (str "Template variable matches (" (count matches) ")")
+                 :k-title "Template variable to check"
+                 :v-title "Matched value"
+                 :m matches
+                 :editable true
+                 :value-component req-parts/editable-value
+                 :key-editor-component (make-template-var-picker template-vars)
+                 :on-change (fn [tv v]
+                              (if (nil? v)
+                                (on-update update-in [:matchers idx :matches] dissoc tv)
+                                (on-update assoc-in [:matchers idx :matches tv] v)))}]])]]
       [:> Divider {:className (obj/get styles "divider")}]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
@@ -242,34 +256,37 @@
             [(r/adapt-react-class MenuItem) {:value (name mt)} label])]]
       (when (some? body-captures)
         [req-parts/base-kv-view
-          "Body captures"
-          "JSON Path to capture"
-          "Template variable"
-          (template-var-map->simple-map body-captures)
-          true
-          (fn [])
-          req-parts/editable-value
-          true
-          (fn [jp v]
-            (if (nil? v)
-              (on-update update-in [:captures :body :captures] dissoc jp)
-              (on-update assoc-in [:captures :body :captures jp :template-var] v)))])]])
+          {:title "Body captures"
+           :k-title "JSON Path to capture"
+           :v-title "Template variable"
+           :m (template-var-map->simple-map body-captures)
+           :editable true
+           :value-component req-parts/editable-value
+           :default-expanded true
+           :on-change (fn [jp v]
+                        (if (nil? v)
+                          (on-update update-in [:captures :body :captures] dissoc jp)
+                          (on-update assoc-in [:captures :body :captures jp :template-var] v)))}])]])
 
-(defn- template-var-container [{:keys [styles path header-captures body-captures]}]
-  (let [vars (->> (concat (vals header-captures) (vals body-captures))
-                  (map :template-var)
-                  (concat (path->template-vars path)))]
-    [:div {:className (obj/get styles "template-var-container")}
-      [:> Typography {:variant "h6"
-                      :color "textSecondary"}
-        "Captured template variables"]
-      (if (empty? vars)
-        [:div {:style #js {:margin "auto"}}
-          "No captured variables yet"]
-        (for [tv vars]
-          ^{:key tv}
-          [(r/adapt-react-class Chip) {:label tv
-                                       :variant "outlined"}]))]))
+(defn- get-all-template-vars [path header-captures body-captures]
+  (->> (concat (vals header-captures) (vals body-captures))
+       (map :template-var)
+       (concat (path->template-vars path))
+       (into [])))
+
+(defn- template-var-container [{:keys [styles template-vars]}]
+  [:div {:className (obj/get styles "template-var-container")}
+    [:> Typography {:variant "h6"
+                    :color "textSecondary"}
+      "Captured template variables"]
+    (if (empty? template-vars)
+      [:> Typography
+        "No captured variables yet"]
+      (for [tv template-vars]
+        ^{:key tv}
+        [(r/adapt-react-class Chip) {:label tv
+                                     :className (obj/get styles "chip")
+                                     :variant "outlined"}]))])
 
 (defn- -component []
   (let [state (r/atom {:match-type "exact"
@@ -281,13 +298,12 @@
       (let [{:keys [match-type path matchers]
              {header-captures :headers
               {body-capture-type :type
-               body-captures :captures} :body} :captures} @state]
+               body-captures :captures} :body} :captures} @state
+            template-vars (get-all-template-vars path header-captures body-captures)]
         [:div {:className (obj/get styles "container")}
           [:> Paper {:className (obj/get styles "bottom-container")}
             [template-var-container {:styles styles
-                                     :path path
-                                     :header-captures header-captures
-                                     :body-captures body-captures}]
+                                     :template-vars template-vars}]
             [:div {:className (obj/get styles "publish-container")}
               [:> Fab {:variant "extended"
                        :label "Save"
@@ -315,6 +331,7 @@
               [matcher {:styles styles
                         :idx idx
                         :total-matcher-count (count matchers)
+                        :template-vars template-vars
                         :handler handler
                         :matches matches
                         :on-update on-update}])

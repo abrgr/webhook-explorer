@@ -58,73 +58,86 @@
 (defn- styled-editor [value content-type on-change]
   [styled {:value value :content-type content-type :onChange on-change} editor])
 
-(defn base-kv-view
-  ([title k-title v-title m editable on-visibility-toggled value-component default-expanded]
-    [base-kv-view title k-title v-title m editable on-visibility-toggled value-component default-expanded {}])
-  ([title k-title v-title m editable on-visibility-toggled value-component default-expanded on-change]
-    (let [new-kv (r/atom {:new-k "" :new-v ""})]
-      (fn [title k-title v-title m editable on-visibility-toggled value-component default-expanded on-change]
-        (let [{:keys [new-k new-v]} @new-kv]
-          [:> ExpansionPanel {:elevation 0
-                              :defaultExpanded default-expanded
-                              :TransitionProps #js {:onEntered on-visibility-toggled
-                                                    :onExit on-visibility-toggled
-                                                    :unmountOnExit true}}
-            [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-              title]
-            [:> ExpansionPanelDetails
-              (if (nil? m)
-                [:> CircularProgress]
-                [:> Table {:aria-label title}
-                  [:> TableHead
-                    [:> TableRow
-                      [:> TableCell k-title]
-                      [:> TableCell v-title]
-                      (when editable
-                        [:> TableCell ""])]]
-                  [:> TableBody
-                    (for [[k v] m]
-                      ^{:key k}
-                      [:> TableRow
-                        [:> TableCell k]
-                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]
-                        (when editable
-                          [:> TableCell
-                            [:> IconButton {:aria-label "delete"
-                                            :onClick #(on-change k nil)}
-                              [:> DeleteIcon {:fontSize "small"}]]])])]
-                  (when editable
-                    [:> TableFooter
-                      [:> TableRow
-                        [:> TableCell
-                          [:> TextField {:value new-k
-                                         :onChange #(swap! new-kv assoc :new-k (obj/getValueByKeys % #js ["target" "value"]))}]]
-                        [:> TableCell
-                          [:> TextField {:value new-v
-                                         :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]
-                        [:> TableCell
-                          [:> IconButton {:aria-label "add"
-                                          :onClick #(do (on-change (keyword new-k) new-v)
-                                                        (reset! new-kv {:new-k "" :new-v ""}))}
-                            [:> AddIcon {:color "primary"
-                                         :fontSize "small"}]]]]])])]])))))
+(defn- nop [] nil)
 
 (defn- base-value [{:keys [value]}]
   value)
 
-(defn- nop [] nil)
+(defn- default-key-editor-component [{:keys [value on-change]}]
+  [:> TextField {:value value
+                 :onChange #(on-change (obj/getValueByKeys % #js ["target" "value"]))}])
+
+(defn base-kv-view []
+  (let [new-kv (r/atom {:new-k "" :new-v ""})]
+    (fn [{:keys [title k-title v-title m editable on-visibility-toggled key-editor-component value-component default-expanded on-change]
+          :or {on-change nop
+               value-component base-value
+               key-editor-component default-key-editor-component
+               on-visibility-toggled nop}}]
+      (let [{:keys [new-k new-v]} @new-kv]
+        [:> ExpansionPanel {:elevation 0
+                            :defaultExpanded default-expanded
+                            :TransitionProps #js {:onEntered on-visibility-toggled
+                                                  :onExit on-visibility-toggled
+                                                  :unmountOnExit true}}
+          [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+            title]
+          [:> ExpansionPanelDetails
+            (if (nil? m)
+              [:> CircularProgress]
+              [:> Table {:aria-label title}
+                [:> TableHead
+                  [:> TableRow
+                    [:> TableCell k-title]
+                    [:> TableCell v-title]
+                    (when editable
+                      [:> TableCell ""])]]
+                [:> TableBody
+                  (for [[k v] m]
+                    ^{:key k}
+                    [:> TableRow
+                      [:> TableCell k]
+                      [:> TableCell [value-component {:value v :key k :on-change on-change}]]
+                      (when editable
+                        [:> TableCell
+                          [:> IconButton {:aria-label "delete"
+                                          :onClick #(on-change k nil)}
+                            [:> DeleteIcon {:fontSize "small"}]]])])]
+                (when editable
+                  [:> TableFooter
+                    [:> TableRow
+                      [:> TableCell
+                        [key-editor-component {:value new-k
+                                               :on-change #(swap! new-kv assoc :new-k %)}]]
+                      [:> TableCell
+                        [:> TextField {:value new-v
+                                       :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]
+                      [:> TableCell
+                        [:> IconButton {:aria-label "add"
+                                        :onClick #(do (on-change (keyword new-k) new-v)
+                                                      (reset! new-kv {:new-k "" :new-v ""}))}
+                          [:> AddIcon {:color "primary"
+                                       :fontSize "small"}]]]]])])]]))))
 
 (defn headers-view
   ([title headers]
     [headers-view title headers nop])
   ([title headers on-visibility-toggled]
-    [base-kv-view title "Header" "Value" headers false on-visibility-toggled base-value false]))
+    [base-kv-view {:title title
+                   :k-title "Header"
+                   :v-title "Value"
+                   :m headers
+                   :on-visibility-toggled on-visibility-toggled}]))
 
 (defn cookies-view
   ([title cookies]
     [cookies-view title cookies nop])
   ([title cookies on-visibility-toggled]
-    [base-kv-view title "Cookie" "Value" cookies false on-visibility-toggled base-value false]))
+    [base-kv-view {:title title
+                   :k-title "Cookie"
+                   :v-title "Value"
+                   :m cookies
+                   :on-visibility-toggled on-visibility-toggled}]))
 
 (defn- editable-value [{:keys [key value on-change]}]
   ^{:key key}
@@ -132,13 +145,29 @@
                  :onChange #(on-change key (obj/getValueByKeys % #js ["target" "value"]))}])
 
 (defn editable-headers-view [title headers on-header-change]
-  [base-kv-view title "Header" "Value" headers true nop editable-value false on-header-change])
+  [base-kv-view {:title title
+                 :k-title "Header"
+                 :v-title "Value"
+                 :m headers
+                 :editable true
+                 :value-component editable-value
+                 :on-change on-header-change}])
 
 (defn qs-view [title qs on-visibility-toggled]
-  [base-kv-view title "Key" "Value" qs false on-visibility-toggled base-value false])
+  [base-kv-view {:title title
+                 :k-title "Key"
+                 :v-title "Value"
+                 :m qs
+                 :on-visibility-toggled on-visibility-toggled}])
 
 (defn editable-qs-view [title qs on-qs-change]
-  [base-kv-view title "Key" "Value" qs true nop editable-value false on-qs-change])
+  [base-kv-view {:title title
+                 :k-title "Key"
+                 :v-title "Value"
+                 :m qs
+                 :editable true
+                 :value-component editable-value
+                 :on-change on-qs-change}])
 
 (defmulti inner-body-view (fn [{:keys [type]}] type))
 
@@ -149,15 +178,11 @@
   (let [fields (->> body
                     (map (fn [[k v]] [(name k) v]))
                     (into {}))]
-    [base-kv-view
-      "Fields"
-      "Name"
-      "Value"
-      fields
-      false
-      nop
-      base-value
-      true]))
+    [base-kv-view {:title "Fields"
+                   :k-title "Name"
+                   :v-title "Value"
+                   :m fields
+                   :default-expanded true}]))
 
 (defmethod inner-body-view :files [{:keys [body]}]
   [:> Table {:aria-label "Files"}
