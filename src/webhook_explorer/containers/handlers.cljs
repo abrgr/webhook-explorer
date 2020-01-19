@@ -143,14 +143,9 @@
   (->> (re-seq #"[{]([^}]+)[}]" path)
        (map second)))
 
-(defn- matcher [{:keys [styles idx total-matcher-count handler header-matches body-matcher on-update]}]
+(defn- matcher [{:keys [styles idx total-matcher-count handler matches on-update]}]
   (let [on-update-input (fn [k evt]
                           (on-update assoc-in [:matchers idx k] (get-target-value evt)))
-        body-match-type (:type body-matcher)
-        body-matchers (some->> body-matcher
-                               :matchers
-                               (map (fn [[k {:keys [expected-value]}]] [k expected-value]))
-                               (into {}))
         handler-type (:type handler)]
     [:> Paper {:elevation 3
                :className (obj/get styles "matcher-container")}
@@ -173,29 +168,22 @@
                           :color "textSecondary"}
             "When:"]]
         [:div {:className (obj/get styles "full-flex")}
-          [req-parts/editable-headers-view
-            (str "Request header matchers (" (count header-matches) ")")
-            header-matches
-            (fn [k v]
-              (if (nil? v)
-                (on-update update-in [:matchers idx :header-matches] dissoc k) 
-                (on-update assoc-in [:matchers idx :header-matches k] v)))]
           [:> FormControl {:fullWidth true
                            :margin "normal"}
             [:> InputLabel "Request body matcher"]
             [req-parts/base-kv-view
-              "Body matchers"
+              (str "Template variable matches (" (count matches) ")")
               "Template variable to check"
               "Matched value"
-              body-matchers
+              matches
               true
               (fn [])
               req-parts/editable-value
-              true
+              false
               (fn [tv v]
                 (if (nil? v)
-                  (on-update update-in [:matchers idx :body-matcher :matchers] dissoc tv)
-                  (on-update assoc-in [:matchers idx :body-matcher :matchers tv :expected-value] v)))]]]]
+                  (on-update update-in [:matchers idx :matches] dissoc tv)
+                  (on-update assoc-in [:matchers idx :matches tv] v)))]]]]
       [:> Divider {:className (obj/get styles "divider")}]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
@@ -218,8 +206,7 @@
 
 (def ^:private new-matcher-template
   {:proto :https
-   :header-matches {}
-   :body-matcher nil
+   :matches {}
    :handler nil})
 
 (defn- template-var-map->simple-map [m]
@@ -323,14 +310,13 @@
                             :className (obj/get styles "caption")}
             "Matchers are processed in order, top to bottom. First match wins."]]
           (map-indexed
-            (fn [idx {:keys [match-type path header-matches body-matcher handler]}]
+            (fn [idx {:keys [match-type path matches handler]}]
               ^{:key idx}
               [matcher {:styles styles
                         :idx idx
                         :total-matcher-count (count matchers)
                         :handler handler
-                        :header-matches header-matches
-                        :body-matcher body-matcher
+                        :matches matches
                         :on-update on-update}])
             matchers)
           [:> Paper {:elevation 3
