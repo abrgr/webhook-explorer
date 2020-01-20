@@ -3,6 +3,7 @@
             [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
@@ -304,8 +305,8 @@
                  :key-editor-component (make-template-var-picker template-vars)
                  :on-change (fn [tv v]
                               (if (nil? v)
-                                (on-update update-in [:matchers idx :matches] dissoc tv)
-                                (on-update assoc-in [:matchers idx :matches tv] v)))}]])]]
+                                (on-update update-in [:matchers idx :matches] dissoc (name tv))
+                                (on-update assoc-in [:matchers idx :matches (name tv)] v)))}]])]]
       [:> Divider {:className (obj/get styles "divider")}]
       [:div {:className (obj/get styles "2-col-container")}
         [:div {:className (obj/get styles "left-container")}
@@ -327,8 +328,7 @@
                               :styles styles}]]]]))
 
 (def ^:private new-matcher-template
-  {:proto :https
-   :matches {}
+  {:matches {}
    :handler nil})
 
 (defn- template-var-map->simple-map [m]
@@ -336,6 +336,10 @@
        (map (fn [[k {:keys [template-var]}]] [k template-var]))
        (into {})))
   
+(def ^:private capture-key-title
+  {:json "JSON path to capture"
+   :form-data "Form field to capture"})
+
 (defn- captures [{:keys [styles path header-captures body-capture-type body-captures on-update]}]
   [:> Paper {:elevation 3
              :className (obj/get styles "capture-container")}
@@ -348,8 +352,8 @@
         (template-var-map->simple-map header-captures)
         (fn [k v]
           (if (nil? v)
-            (on-update update-in [:captures :headers] dissoc k) 
-            (on-update assoc-in [:captures :headers k :template-var] v)))]
+            (on-update update-in [:captures :headers] dissoc (name k))
+            (on-update assoc-in [:captures :headers (name k) :template-var] v)))]
       [:> FormControl {:fullWidth true
                        :margin "normal"}
         [:> InputLabel "Request body captures"]
@@ -365,7 +369,7 @@
       (when (some? body-captures)
         [req-parts/base-kv-view
           {:title "Body captures"
-           :k-title "JSON Path to capture"
+           :k-title (capture-key-title body-capture-type)
            :v-title "Template variable"
            :m (template-var-map->simple-map body-captures)
            :editable true
@@ -373,8 +377,8 @@
            :default-expanded true
            :on-change (fn [jp v]
                         (if (nil? v)
-                          (on-update update-in [:captures :body :captures] dissoc jp)
-                          (on-update assoc-in [:captures :body :captures jp :template-var] v)))}])]])
+                          (on-update update-in [:captures :body :captures] dissoc (name jp))
+                          (on-update assoc-in [:captures :body :captures (name jp) :template-var] v)))}])]])
 
 (defn- get-all-template-vars [path header-captures body-captures]
   (->> (concat (vals header-captures) (vals body-captures))
@@ -397,7 +401,8 @@
                                      :variant "outlined"}]))])
 
 (defn- -component []
-  (let [state (r/atom {:match-type "exact"
+  (let [state (r/atom {:proto :https
+                       :match-type :exact
                        :path ""
                        :matchers []})
         on-update (fn [& updater]
@@ -416,7 +421,7 @@
               [:> Fab {:variant "extended"
                        :label "Save"
                        :color "secondary"
-                       :onClick #(println @state)}
+                       :onClick #(handlers-actions/publish-handler @state)}
                 [:> SaveIcon {:className (obj/get styles "extended-icon")}]
                 "Publish changes"]]]
           [path-component {:styles styles
@@ -434,7 +439,7 @@
                             :className (obj/get styles "caption")}
             "Matchers are processed in order, top to bottom. First match wins."]]
           (map-indexed
-            (fn [idx {:keys [match-type path matches handler]}]
+            (fn [idx {:keys [path matches handler]}]
               ^{:key idx}
               [matcher {:styles styles
                         :idx idx
