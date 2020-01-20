@@ -226,7 +226,8 @@
               [(r/adapt-react-class Tab) {:value type :label label}])]
           [inner-body-view (merge t {:content-type content-type :on-change on-change})]]))))
 
-(defn base-body-view [title bodies headers on-change on-visibility-toggled]
+(defn base-body-view [{:keys [title bodies headers on-change on-visibility-toggled]
+                       :or {on-change nop on-visibility-changed nop}}]
   (let [content-type (get headers "Content-Type")]
     [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}
       [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
@@ -257,7 +258,15 @@
   ([title bodies headers]
     [body-view title bodies headers nop])
   ([title bodies headers on-visibility-toggled]
-    [base-body-view title bodies headers nop on-visibility-toggled]))
+    [base-body-view
+      {:title title
+       :bodies bodies
+       :headers headers
+       :on-visibility-toggled on-visibility-toggled}]))
 
 (defn editable-body-view [title bodies headers on-change]
-  [base-body-view title bodies headers on-change nop])
+  [base-body-view
+    {:title title
+     :bodies bodies
+     :headers headers
+     :on-change on-change}])

@@ -1,8 +1,10 @@
 (ns webhook-explorer.containers.handlers
-  (:require [reagent.core :as r]
+  (:require [clojure.string :as string]
+            [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.components.req-parts :as req-parts]
+            ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
@@ -23,6 +25,8 @@
             ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/icons/Publish" :default SaveIcon]
             ["@material-ui/icons/Add" :default AddIcon]))
+
+(def ^:private bottom-container-height 150)
 
 (def ^:private styled
   (styles/style-wrapper
@@ -54,6 +58,9 @@
                            :padding 20
                            "& .MuiExpansionPanelSummary-root" {:padding 0}}
        :template-var-container {:flex 1}
+       :template-caption {:margin-top 20
+                          :margin-bottom 10}
+       :subheader {:background-color "#fff"}
        :chip {:margin 10}
        :publish-container {:margin "auto"}
        :bottom-container {:position "fixed"
@@ -61,10 +68,11 @@
                           :left 0
                           :right 0
                           :bottom 0
-                          :height 150
+                          :height bottom-container-height
                           :border-top "2px solid #eee"
                           :z-index 100
                           :padding 20}
+       :bottom-container-spacer {:height (+ bottom-container-height 50)}
        :matcher-container {:marginTop 48
                            :padding 20}
        :add-matcher-container {:display "flex"
@@ -86,6 +94,70 @@
     :json {:label "JSON"}
     :form-data {:label "Form Data"}))
 
+(def ^:private status-codes
+  (array-map
+    100 "Continue"
+    101 "Switching Protocols"
+    102 "Processing"
+    103 "Early Hints"
+    200 "OK"
+    201 "Created"
+    202 "Accepted"
+    203 "Non-Authoritative Information"
+    204 "No Content"
+    205 "Reset Content"
+    206 "Partial Content"
+    207 "Multi-Status"
+    208 "Already Reported"
+    226 "IM Used"
+    300 "Multiple Choices"
+    301 "Moved Permanently"
+    302 "Found"
+    303 "See Other"
+    304 "Not Modified"
+    305 "Use Proxy"
+    307 "Temporary Redirect"
+    308 "Permanent Redirect"
+    400 "Bad Request"
+    401 "Unauthorized"
+    402 "Payment Required"
+    403 "Forbidden"
+    404 "Not Found"
+    405 "Method Not Allowed"
+    406 "Not Acceptable"
+    407 "Proxy Authentication Required"
+    408 "Request Timeout"
+    409 "Conflict"
+    410 "Gone"
+    411 "Length Required"
+    412 "Precondition Failed"
+    413 "Payload Too Large"
+    414 "URI Too Long"
+    415 "Unsupported Media Type"
+    416 "Range Not Satisfiable"
+    417 "Expectation Failed"
+    421 "Misdirected Request"
+    422 "Unprocessable Entity"
+    423 "Locked"
+    424 "Failed Dependency"
+    425 "Too Early"
+    426 "Upgrade Required"
+    428 "Precondition Required"
+    429 "Too Many Requests"
+    431 "Request Header Fields Too Large"
+    451 "Unavailable For Legal Reasons"
+    500 "Internal Server Error"
+    501 "Not Implemented"
+    502 "Bad Gateway"
+    503 "Service Unavailable"
+    504 "Gateway Timeout"
+    505 "HTTP Version Not Supported"
+    506 "Variant Also Negotiates"
+    507 "Insufficient Storage"
+    508 "Loop Detected"
+    510 "Not Extended"
+    511 "Network Authentication Required"))
+
 (defn- get-target-value [evt]
   (obj/getValueByKeys evt #js ["target" "value"]))
 
@@ -94,8 +166,41 @@
 (defmethod handler-component :default [_]
   [:div])
 
-(defmethod handler-component :mock [{{:keys [mock]} :handler}]
-  [:div "mock"])
+(defmethod handler-component :mock [{{{{:keys [headers status]} :res :as res} :mock} :handler
+                                     :keys [styles idx on-update]}]
+  [:<>
+    [:> Typography {:variant "caption"
+                    :component "p"
+                    :className (obj/get styles "template-caption")}
+      "You can write ${template-var} in any response header value or anywhere in the body"]
+    [:> FormControl {:margin "normal"
+                     :fullWidth true}
+      [:> InputLabel "Response status"]
+      [:> Select {:value (or status "")
+                  :fullWidth true
+                  :MenuProps #js {:PaperProps #js {:style #js {:max-height 250}}}
+                  :onChange #(on-update assoc-in [:matchers idx :handler :mock :res :status] (js/parseInt (get-target-value %) 10))}
+        (mapcat
+          (fn [[status label]]
+            [(when (zero? (mod status 100))
+               ^{:key (str "header-" status)}
+               [:> ListSubheader {:classes #js {:root (obj/get styles "subheader")}}
+                 (str (quot status 100) "xx")])
+             ^{:key status}
+             [(r/adapt-react-class MenuItem) {:value (str status)} (str status " - " label)]])
+          status-codes)]]
+    [req-parts/editable-headers-view
+      "Response headers"
+      (or headers {})
+      (fn [k v]
+        (if (nil? v)
+          (on-update update-in [:matchers idx :handler :mock :res :headers] dissoc (name k))
+          (on-update assoc-in [:matchers idx :handler :mock :res :headers (name k)] v)))]
+    [req-parts/base-body-view
+      {:title "Body"
+       :bodies (req-parts/make-bodies {:raw {:label "Raw" :body ""}})
+       :headers headers
+       :on-change (partial on-update assoc-in [:matchers idx :handler :mock :res :body])}]])
 
 (defmethod handler-component :proxy [{{:keys [proxy]} :handler :keys [idx on-update]}]
   (let [{:keys [remote-url]} proxy]
@@ -212,7 +317,7 @@
                            :margin "normal"}
             [:> InputLabel "Handle with"]
             [:> Select {:value (if handler-type (name handler-type) "")
-                        :onChange #(on-update assoc-in [:matchers idx :handler :type] (keyword (get-target-value %)))}
+                        :onChange #(on-update assoc-in [:matchers idx :handler] {:type (keyword (get-target-value %))})}
               (for [[rt {:keys [label]}] handler-types]
                 ^{:key rt}
                 [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]
@@ -348,7 +453,8 @@
                      :onClick #(on-update update :matchers conj new-matcher-template)}
               [:> AddIcon]]
             [:> Typography {:color "textSecondary"}
-              "Add a matcher."]]]))))
+              "Add a matcher."]]
+          [:div {:className (obj/get styles "bottom-container-spacer")}]]))))
 
 (defn component []
   [styled {} -component])
