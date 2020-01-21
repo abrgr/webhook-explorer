@@ -25,7 +25,8 @@ module.exports = {
   cognitoUserToUser,
   parseRequestCookies,
   parseResponseCookies,
-  fingerprintTagAndDateToUserVisibleTags
+  fingerprintTagAndDateToUserVisibleTags,
+  getHandlerKey
 };
 
 function getUserFromEvent(event) {
@@ -51,7 +52,8 @@ function getUserFromEvent(event) {
     email,
     uid,
     permissions: {
-      canAdminUsers: role === 'admin'
+      canAdminUsers: role === 'admin',
+      canCreateHandlers: role === 'admin' || role === 'eng'
     }
   };
 }
@@ -184,6 +186,11 @@ function auditKeyToFingerprintTagAndDate(auditKey) {
     tag: decodeURIComponent(tag),
     date: `${y}-${m}-${d}`
   };
+}
+
+function getHandlerKey(handlerConfig) {
+  const hash = hashMsg(handlerConfig);
+  return `handlers/${hash}`;
 }
 
 function parseRequestCookies(cookieStr) {
