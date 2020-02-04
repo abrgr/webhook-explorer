@@ -1,9 +1,13 @@
-const S3 = require('aws-sdk/clients/s3');
 const { keyForParts, response, hashMsg, parseRequestCookies } = require('./common');
+const S3 = require('aws-sdk/clients/s3');
+const DynamoDB = require('aws-sdk/clients/dynamodb');
 const Busboy = require('busboy');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
+const documentClient = new DynamoDB.DocumentClient({ apiVersion: '2019-09-21' });
+
 const bucket = process.env.BUCKET_NAME;
+const table = process.env.HANDLERS_TABLE_NAME;
 
 exports.handler = async function handler(event, context) {
   const now = new Date();
@@ -17,6 +21,14 @@ exports.handler = async function handler(event, context) {
   const qs = event.queryStringParameters || {};
   const status = 200;
   const form = await parseForm(event);
+
+  const protoMethod = `https:${method}`;
+  const handlerKey = await findHandlerKey(protoMethod, host, path.slice(1).split('/'));
+  console.log(JSON.stringify({
+    msg: 'found handler',
+    handlerKey
+  }));
+
   const msg = {
     host,
     protocol,
@@ -49,6 +61,68 @@ exports.handler = async function handler(event, context) {
   return response(status, {}, "OK");
 };
 
+async function findHandlerKey(protoMethod, domainPathPrefix, restPathParts) {
+  console.log('start findHandlerKey', {protoMethod, domainPathPrefix, restPathParts});
+
+  const pathPart = restPathParts[0];
+  const nextPathParts = restPathParts.slice(1);
+  const literalDomainPath = domainPathPrefix + '/' + pathPart;
+  const paramDomainPath = domainPathPrefix + '/{}';
+  const isLast = !nextPathParts.length;
+
+  const literalResult = await maybeHandleNode(literalDomainPath, protoMethod, isLast, nextPathParts);
+  if ( typeof literalResult !== 'undefined' ) {
+    return literalResult;
+  }
+
+  const paramResult = await maybeHandleNode(paramDomainPath, protoMethod, isLast, nextPathParts);
+
+  return paramResult || null;
+}
+
+async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
+  const node = await loadHandler(domainPath, protoMethod);
+  if ( !node ) {
+    return;
+  }
+
+  if ( isLast ) {
+    if ( node.exactKey ) {
+      return node.exactKey;
+    }
+  } else if ( node.exactSuffixCount || node.prefixSuffixCount ) {
+    const nextResult = await findHandlerKey(protoMethod, domainPath, nextPathParts);
+    if ( nextResult ) {
+      return nextResult;
+    }
+  }
+  
+  if ( node.prefixKey && !isLast ) {
+    return node.prefixKey;
+  }
+}
+
+async function loadHandler(domainPath, protoMethod) {
+  const { Item } = await documentClient.get({
+    TableName: table,
+    Key: {
+      domainPath,
+      protoMethod
+    }
+  }).promise();
+
+  return Item;
+}
+
+async function loadHandlerData(key) {
+  const { Body } = await s3.getObject({
+    Bucket: bucket,
+    Key: key
+  }).promise();
+
+  return Body;
+}
+
 async function parseForm(event) {
   return new Promise((resolve, reject) => {
     let busboy;
@@ -59,7 +133,8 @@ async function parseForm(event) {
         }
       });
     } catch ( e ) {
-      if ( e.message.startsWith('Unsupported content type') ) {
+      if ( e.message.startsWith('Unsupported content type')
+          || e.message === 'Missing Content-Type' ) {
         return resolve(null);
       }
       return reject(e);

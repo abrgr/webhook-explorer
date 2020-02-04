@@ -102,7 +102,12 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
+          HANDLERS_TABLE_NAME: !Ref HandlersTable
       Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HandlersTable
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
   WebhookHandlerPermissionFix:
@@ -1017,12 +1022,12 @@ Resources:
     Properties:
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: domain
+        - AttributeName: domainPath
           KeyType: HASH
-        - AttributeName: path
+        - AttributeName: protoMethod
           KeyType: RANGE
       AttributeDefinitions:
-        - AttributeName: domain
+        - AttributeName: domainPath
           AttributeType: S
-        - AttributeName: path
+        - AttributeName: protoMethod
           AttributeType: S

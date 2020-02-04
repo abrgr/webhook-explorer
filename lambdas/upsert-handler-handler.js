@@ -19,22 +19,19 @@ exports.handler = async function handler(event, context) {
   }
 
   const { expectNew, expectKey } = event.queryStringParameters || {};
-  const handlerConfig = JSON.parse(event.body);
+  const handlerConfig = JSON.parse(event.body).handler;
   const {
-    matchType,
+    "match-type": matchType,
+    proto,
     domain,
+    method,
     path: templatedPath
   } = handlerConfig;
 
   const path = templatedPath.replace(/[{][^}]+[}]/g, '{}');
+  const domainPath = `${domain}${path}`;
+  const protoMethod = `${proto}:${method}`;
   const key = getHandlerKey(handlerConfig);
-
-  console.log('s3 put', {
-    Bucket: bucket,
-    Key: key,
-    ContentType: 'application/json',
-    Body: JSON.stringify(handlerConfig)
-  });
 
   try {
     await s3.putObject({
@@ -48,25 +45,74 @@ exports.handler = async function handler(event, context) {
     return response(500, {}, JSON.stringify({ error: 'Unknown' }));
   }
 
-  const record = {
-    domain,
-    path,
-    matchType,
-    key
-  };
-
   try {
-    console.log('put doc', {
-      ...getConditionParams(expectNew, expectKey),
-      TableName: table,
-      Item: record
-    });
+    const keyName = `${matchType}Key`;
+    const suffixCountName = `${matchType}SuffixCount`;
+    const expParams = {
+      ExpressionAttributeNames: {
+        '#key': keyName
+      },
+      ExpressionAttributeValues: {
+        ':key': key
+      }
+    };
+    const conditionalParams = getConditionParams(keyName, expectNew, expectKey, expParams);
 
-    await documentClient.put({
-      ...getConditionParams(expectNew, expectKey),
+    console.log(JSON.stringify({
+      msg: 'initial',
       TableName: table,
-      Item: record
+      Key: {
+        domainPath,
+        protoMethod
+      },
+      UpdateExpression: 'set #key = :key',
+      ...conditionalParams
+    }));
+    await documentClient.update({
+      TableName: table,
+      Key: {
+        domainPath,
+        protoMethod
+      },
+      UpdateExpression: 'set #key = :key',
+      ...conditionalParams
     }).promise();
+
+    const pathParts = path.slice(1).split('/');
+    for ( let i = 0; i < pathParts.length; ++i ) {
+      const prefixKey = domain + '/' + pathParts.slice(0, i).join('/');
+      console.log(JSON.stringify({
+        TableName: table,
+        Key: {
+          domainPath: `${prefixKey}`,
+          protoMethod
+        },
+        UpdateExpression: 'set #suffixCount = if_not_exists(#suffixCount, :z) + :i',
+        ExpressionAttributeNames: {
+          '#suffixCount': suffixCountName
+        },
+        ExpressionAttributeValues: {
+          ':i': 1,
+          ':z': 0
+        }
+      }));
+
+      await documentClient.update({
+        TableName: table,
+        Key: {
+          domainPath: `${prefixKey}`,
+          protoMethod
+        },
+        UpdateExpression: 'set #suffixCount = if_not_exists(#suffixCount, :z) + :i',
+        ExpressionAttributeNames: {
+          '#suffixCount': suffixCountName
+        },
+        ExpressionAttributeValues: {
+          ':i': 1,
+          ':z': 0
+        }
+      }).promise();
+    }
   } catch ( err ) {
     if ( err.code === 'ConditionalCheckFailedException' ) {
       return response(409, {}, JSON.stringify({ error: 'Conflict' }));
@@ -80,27 +126,34 @@ exports.handler = async function handler(event, context) {
   return response(200, {}, JSON.stringify({ success: true }));
 };
 
-function getConditionParams(expectNew, expectKey) {
+function getConditionParams(keyName, expectNew, expectKey, expParams) {
   if ( expectNew ) {
     return {
+      ...expParams,
       ConditionExpression: 'attribute_not_exists(#key)',
       ExpressionAttributeNames: {
-        '#key': 'key'
+        ...expParams.ExpressionAttributeNames,
+        '#key': keyName
       }
     };
   }
 
   if ( expectKey ) {
     return {
+      ...expParams,
       ConditionExpression: '#key = :oldKey',
       ExpressionAttributeNames: {
-        '#key': 'key'
+        ...expParams.ExpressionAttributeNames,
+        '#key': keyName
       },
       ExpressionAttributeValues: {
+        ...expParams.ExpressionAttributeValues,
         ':oldKey': expectKey
       }
     };
   }
 
-  return {};
+  return {
+    ...expParams
+  };
 }

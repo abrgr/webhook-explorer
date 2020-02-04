@@ -179,7 +179,7 @@
       [:> InputLabel "Response status"]
       [:> Select {:value (or status "")
                   :fullWidth true
-                  :MenuProps #js {:PaperProps #js {:style #js {:max-height 250}}}
+                  :MenuProps #js {:PaperProps #js {:style #js {:maxHeight 250}}}
                   :onChange #(on-update assoc-in [:matchers idx :handler :mock :res :status] (js/parseInt (get-target-value %) 10))}
         (mapcat
           (fn [[status label]]
