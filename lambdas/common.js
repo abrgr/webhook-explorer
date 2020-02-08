@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const path = require('path');
-const stableStringify = require('json-stable-stringify')
+const stableStringify = require('json-stable-stringify');
 
 const EXPECTED_AUD = process.env.EXPECTED_AUD;
 
@@ -152,9 +152,9 @@ function isValidUserSpecifiedTag(tag) {
   return !/[*\/]/.exec(tag);
 }
 
-function response(statusCode, headers, body) {
+function response(statusCode, headers, body, isBase64Encoded) {
   return {
-    isBase64Encoded: false,
+    isBase64Encoded: !!isBase64Encoded,
     statusCode,
     headers: {
       'Access-Control-Allow-Origin': '*',
@@ -235,7 +235,7 @@ function parseResponseCookies(cookieStrs) {
 
 function fingerprintTagAndDateToUserVisibleTags(uid, items) {
   const favTag = getTagForFavorite(uid);
-  const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag))) 
+  const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag)));
   return filteredItems.reduce(
     (tagsForFingerprint, { fingerprint, tag }) => {
       const prev = tagsForFingerprint[fingerprint] || { fav: false, privateTags: [], publicTags: [] };
