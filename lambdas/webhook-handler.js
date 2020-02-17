@@ -34,10 +34,8 @@ exports.handler = async function handler(event, context) {
   const cookies = parseRequestCookies(headers.Cookie || headers.cookie);
 
   const protoMethod = `https:${method.toLowerCase()}`;
-  const {
-    key: handlerKey,
-    ...matchedHandler
-  } = await findHandlerKey(protoMethod, host, path.slice(1).split('/')) || {};
+  const matchedHandler = await findHandlerKey(protoMethod, host, path.slice(1).split('/')) || {};
+  const { key: handlerKey } = matchedHandler;
   if ( !handlerKey ) {
     console.log('No matching route', { protoMethod, host, path });
     return response(502, { "x-rogo-error": "No matching Rogo route" }, "No matching Rogo route");
@@ -72,7 +70,6 @@ exports.handler = async function handler(event, context) {
     qs,
     method,
     iso,
-    matchedHandler,
     req: {
       headers,
       body
@@ -91,7 +88,7 @@ exports.handler = async function handler(event, context) {
       }
     };
 
-    const enhancedMsg = await writeMsg(msg, startTime, matchEndTime, form, cookies);
+    const enhancedMsg = await writeMsg(msg, startTime, matchEndTime, form, cookies, matchedHandler);
 
     return response(enhancedMsg.status, result.headers, result.body, result.isBase64Encoded);
   } catch ( processingError ) {
@@ -103,16 +100,17 @@ exports.handler = async function handler(event, context) {
       processingError
     };
 
-    await writeMsg(msg, startTime, matchEndTime, form, cookies);
+    await writeMsg(msg, startTime, matchEndTime, form, cookies, matchedHandler);
 
     return response(502, { error: 'Error processing request' }, 'Error processing request');
   }
 
 };
 
-async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies) {
+async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies, matchedHandler) {
   const enhancedMsg = {
     ...msg,
+    matchedHandler,
     timing: {
       matchTimeMs: matchEndTime - startTime,
       processingTimeMs: Date.now() - matchEndTime
