@@ -20,7 +20,7 @@ exports.handler = async function handler(event, context) {
   }
 
   const { proto, method, token } = event.queryStringParameters || {};
-  const { LastEvaluatedKey: nextToken, Items: handlers } = await documentClient.query({
+  const { LastEvaluatedKey: nextToken, Items: rawHandlers } = await documentClient.query({
     TableName: table,
     KeyConditionExpression: '#protoMethod = :protoMethod',
     ExpressionAttributeNames: {
@@ -32,21 +32,24 @@ exports.handler = async function handler(event, context) {
     ...(token ? { ExclusiveStartKey: token } : {})
   }).promise();
 
+  const handlers = await Promise.all(rawHandlers.map(async function ({ domainPath, exactKey, prefixKey, tPath }) {
+    const firstSlashIdx = domainPath.indexOf('/');
+    const domain = domainPath.slice(0, firstSlashIdx);
+    const path = domainPath.slice(firstSlashIdx);
+    const exactDataUrl = exactKey ? await getSignedUrlForKey(exactKey) : null;
+    const prefixDataUrl = prefixKey ? await getSignedUrlForKey(prefixKey) : null;
+    return {
+      domain,
+      path,
+      exactDataUrl,
+      prefixDataUrl,
+      tPath
+    };
+  }));
+
   const result = {
     nextToken,
-    handlers: await Promise.all(handlers.map(async function ({ domainPath, exactKey, prefixKey }) {
-      const firstSlashIdx = domainPath.indexOf('/');
-      const domain = domainPath.slice(0, firstSlashIdx);
-      const path = domainPath.slice(firstSlashIdx);
-      const exactDataUrl = exactKey ? await getSignedUrlForKey(exactKey) : null;
-      const prefixDataUrl = prefixKey ? await getSignedUrlForKey(prefixKey) : null;
-      return {
-        domain,
-        path,
-        exactDataUrl,
-        prefixDataUrl
-      };
-    }))
+    handlers: handlers.filter(h => !!h.exactDataUrl || !!h.prefixDataUrl)
   };
 
   return response(200, { 'Cache-Control': 'max-age=30' }, JSON.stringify(result));

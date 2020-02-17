@@ -50,10 +50,12 @@ exports.handler = async function handler(event, context) {
     const suffixCountName = `${matchType}SuffixCount`;
     const expParams = {
       ExpressionAttributeNames: {
-        '#key': keyName
+        '#key': keyName,
+        '#tPath': 'tPath'
       },
       ExpressionAttributeValues: {
-        ':key': key
+        ':key': key,
+        ':tPath': templatedPath
       }
     };
     const conditionalParams = getConditionParams(keyName, expectNew, expectKey, expParams);
@@ -64,7 +66,7 @@ exports.handler = async function handler(event, context) {
         domainPath,
         protoMethod
       },
-      UpdateExpression: 'set #key = :key',
+      UpdateExpression: 'set #key = :key, #tPath = :tPath',
       ...conditionalParams
     }).promise();
 
