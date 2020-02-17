@@ -6,15 +6,13 @@
             [webhook-explorer.actions.reqs :as reqs-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.components.method-selector :as method-selector]
             [goog.object :as obj]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Snackbar" :default Snackbar]
-            ["@material-ui/core/InputLabel" :default InputLabel]
-            ["@material-ui/core/MenuItem" :default MenuItem]
             ["@material-ui/core/FormControlLabel" :default FormControlLabel]
             ["@material-ui/core/FormControl" :default FormControl]
-            ["@material-ui/core/Select" :default Select]
             ["@material-ui/core/Switch" :default Switch]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Dialog" :default Dialog]
@@ -74,17 +72,9 @@
                                                                         (if (obj/getValueByKeys % #js ["target" "checked"])
                                                                           "https"
                                                                           "http"))}])}]]
-            [:> FormControl {:fullWidth true
-                             :margin "normal"}
-              [:> InputLabel "Method"]
-              [:> Select {:value method
-                          :onChange #(reqs-actions/update-selected-item-in [:item :method] (obj/getValueByKeys % #js ["target" "value"]))}
-                [:> MenuItem {:value "GET"} "GET"]
-                [:> MenuItem {:value "POST"} "POST"]
-                [:> MenuItem {:value "PUT"} "PUT"]
-                [:> MenuItem {:value "PATCH"} "PATCH"]
-                [:> MenuItem {:value "DELETE"} "DELETE"]
-                [:> MenuItem {:value "OPTIONS"} "OPTIONS"]]]
+            [method-selector/component
+              {:value method
+               :on-change #(reqs-actions/update-selected-item-in [:item :method] %)}]
             [:> FormControl {:fullWidth true
                              :margin "normal"}
               [:> TextField {:fullWidth true

@@ -38,10 +38,9 @@
 (defn wrap-url-no-munge [client]
   (fn [{:keys [query-params] :as req}]
     (if-let [spec (parse-url-no-munge (:url req))]
-      (do (println spec)
       (client (-> (merge req spec)
                   (dissoc :url)
-                  (update-in [:query-params] #(merge %1 query-params)))))
+                  (update-in [:query-params] #(merge %1 query-params))))
       (client req))))
 
 ; from https://github.com/r0man/cljs-http/blob/3bde7ab4f6ee320486dd6801d6d034b6ad360ba2/src/cljs_http/client.cljs#L235
@@ -108,27 +107,27 @@
   (async/go-loop []
     (let [{:keys [next-tagged-req]} @app-state/reqs]
       (when-not (nil? next-tagged-req)
-        (let [res (async/<! (http/get
-                              (http-utils/make-url "/api/tagged-reqs")
-                              {:with-credentials? false
-                               :headers (http-utils/auth-headers)
+        (let [res (async/<! (http-utils/req
+                              {:method :get
+                               :path "tagged-reqs"
+                               :literal-res-paths #{[:tagsByFingerprint]}
                                :query-params next-tagged-req}))
-              {{:keys [earliestDate tagsByFingerprint nextReq]} :body} res]
+              {{:keys [earliest-date tags-by-fingerprint next-req]} :body} res]
           (swap!
             app-state/reqs
             (fn [{prev-tagged-reqs :tagged-reqs :as reqs}]
-              (let [tagged-reqs (->> tagsByFingerprint
+              (let [tagged-reqs (->> tags-by-fingerprint
                                      (reduce
-                                       (fn [tagged-reqs [fingerprint {:keys [fav privateTags publicTags]}]]
+                                       (fn [tagged-reqs [fingerprint {:keys [fav private-tags public-tags]}]]
                                          (let [prev (get tagged-reqs (name fingerprint))
                                                fav (or (:fav prev) fav)
                                                private-tags (->> prev
                                                                  :private-tags
-                                                                 (concat privateTags)
+                                                                 (concat private-tags)
                                                                  (into #{}))
                                                public-tags (->> prev
                                                                 :public-tags
-                                                                (concat publicTags)
+                                                                (concat public-tags)
                                                                 (into #{}))]
                                            (assoc
                                              tagged-reqs
@@ -140,20 +139,19 @@
                 (merge
                   reqs
                   {:tagged-reqs tagged-reqs
-                   :next-tagged-req nextReq
-                   :earliest-tagged-req earliestDate}))))
-          (when (and (some? nextReq)
-                     (< earliest-item-date earliestDate))
+                   :next-tagged-req next-req
+                   :earliest-tagged-req earliest-date}))))
+          (when (and (some? next-req)
+                     (< earliest-item-date earliest-date))
             (recur)))))))
 
 (defn- get-reqs [params]
   (if (nil? params)
     (async/to-chan [:stop])
     (async/go
-      (let [{{:keys [items nextReq]} :body} (async/<! (http/get
-                                                        (http-utils/make-url "/api/reqs")
-                                                        {:with-credentials? false
-                                                         :headers (http-utils/auth-headers)
+      (let [{{:keys [items next-req]} :body} (async/<! (http-utils/req
+                                                        {:method :get
+                                                         :path "reqs"
                                                          :query-params params}))
             earliest-item-date (-> items last :date)
             earliest-tag-req-date (:earliest-tagged-req @app-state/reqs)]
@@ -166,10 +164,9 @@
             (merge
               reqs
               {:items (->> items
-                           (map #(s/rename-keys % {:dataUrl :data-url}))
                            (concat prev-items)
                            (into []))
-               :next-req nextReq})))
+               :next-req next-req})))
         :done))))
 
 (defn- load-full-req [{:keys [id data-url] :as item}]
@@ -275,10 +272,14 @@
                {res-headers :headers
                 res-body :body} :res} :details} %
              {:keys [success]} (async/<!
-                                 (http/post
-                                   (http-utils/make-url "/api/tagged-reqs")
-                                   {:with-credentials? false
-                                    :headers (http-utils/auth-headers)
+                                 (http-utils/req
+                                   {:method :post
+                                    :path "tagged-reqs"
+                                    :literal-req-paths #{[:req :req :headers]
+                                                         [:req :req :cookies]
+                                                         [:req :req :form :fields]
+                                                         [:req :res :headers]
+                                                         [:req :qs]}
                                     :query-params opts
                                     :json-params
                                     {:req {:host host
@@ -399,14 +400,15 @@
 
 (defn load-req [slug]
   (async/go
-    (let [res (async/<! (http/get
-                          (http-utils/make-url (str "/api/reqs/" slug))
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)}))
+    (let [res (async/<! (http-utils/req
+                          {:method :get
+                           :path (str "reqs/" slug)
+                           :literal-res-paths #{[:details :req :headers]
+                                                [:details :res :headers]
+                                                [:details :req :form :fields]
+                                                [:details :res :form :fields]}}))
           {item :body} res
           adj-item (-> item
-                       (s/rename-keys {:dataUrl :data-url})
-                       (update :tags s/rename-keys {:privateTags :private-tags :publicTags :public-tags})
                        (update-in [:tags :private-tags] set)
                        (update-in [:tags :public-tags] set))]
       adj-item)))

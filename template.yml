@@ -310,6 +310,9 @@ Resources:
       AppWebDomain: !Ref WebhookExplorerAuthDomainName
       RedirectUri: !Sub "https://${WebhookExplorerDomainName}/"
       Bucket: !Ref WebhookRequestBucket
+      Version: "2020-03-01_1"
+      HandlerDomains:
+        - !Ref WebhookDomainName
   AdminUser:
     Type: AWS::Cognito::UserPoolUser
     Properties:
@@ -591,6 +594,15 @@ Resources:
                 - CognitoAuth: []
               x-amazon-apigateway-integration:
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpsertHandlerHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            get:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListHandlersHandler.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
                 httpMethod: "POST"
                 type: "aws_proxy"
@@ -879,6 +891,38 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref UpsertHandlerHandler
       Principal: apigateway.amazonaws.com
+  ListHandlersHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/list-handlers-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        CreateUser:
+          Type: Api
+          Properties:
+            Path: /api/handlers
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
+          HANDLERS_TABLE_NAME: !Ref HandlersTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HandlersTable
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  ListHandlersHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListHandlersHandler
+      Principal: apigateway.amazonaws.com
   UpdateUserHandler:
     Type: AWS::Serverless::Function
     Properties:
@@ -1021,10 +1065,13 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: exp
+        Enabled: true
       KeySchema:
-        - AttributeName: domainPath
-          KeyType: HASH
         - AttributeName: protoMethod
+          KeyType: HASH
+        - AttributeName: domainPath
           KeyType: RANGE
       AttributeDefinitions:
         - AttributeName: domainPath

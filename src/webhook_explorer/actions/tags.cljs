@@ -7,13 +7,12 @@
 
 (defn load-tags []
   (async/go
-    (let [res (async/<! (http/get
-                          (http-utils/make-url "/api/tags")
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)}))
-          {{:keys [userTags]
-            {:keys [readable writable]} :publicTags} :body} res]
-      (reset! app-state/tags {:user (set userTags)
+    (let [res (async/<! (http-utils/req
+                          {:method :get
+                           :path "tags"}))
+          {{:keys [user-tags]
+            {:keys [readable writable]} :public-tags} :body} res]
+      (reset! app-state/tags {:user (set user-tags)
                               :public {:readable (set readable)
                                        :writable (set writable)}}))))
 

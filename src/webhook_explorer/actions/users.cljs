@@ -10,7 +10,7 @@
     (async/to-chan [:stop])
     (async/go
       (let [{{:keys [users nextReq]} :body} (async/<! (http/get
-                                                        (http-utils/make-url "/api/users")
+                                                        (http-utils/make-api-url "users")
                                                         {:with-credentials? false
                                                          :headers (http-utils/auth-headers)
                                                          :query-params params}))]
@@ -43,7 +43,7 @@
 (defn create-user [{:keys [email role]}]
   (async/go
     (let [res (async/<! (http/post
-                          (http-utils/make-url "/api/users")
+                          (http-utils/make-api-url "users")
                           {:with-credentials? false
                            :headers (http-utils/auth-headers)
                            :json-params {:user {:email email
@@ -67,7 +67,7 @@
 (defn update-user [{:keys [username]} k v]
   (async/go
     (let [res (async/<! (http/post
-                          (http-utils/make-url (str "/api/users/" username))
+                          (http-utils/make-api-url (str "users/" username))
                           {:with-credentials? false
                            :headers (http-utils/auth-headers)
                            :json-params {:actions [{k v}]}}))

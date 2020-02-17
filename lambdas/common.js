@@ -156,12 +156,14 @@ function response(statusCode, headers, body, isBase64Encoded) {
   return {
     isBase64Encoded: !!isBase64Encoded,
     statusCode,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      ...headers
-    },
+    multiValueHeaders: Object.keys(headers).reduce((hs, h) => ({
+      ...hs,
+      [h]: Array.isArray(headers[h]) ? headers[h] : [headers[h]]
+    }), {
+      'Access-Control-Allow-Origin': ['*'],
+      'Access-Control-Allow-Headers': ['Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'],
+      'Access-Control-Allow-Methods': ['GET,POST,OPTIONS'],
+    }),
     body: body
   };
 }

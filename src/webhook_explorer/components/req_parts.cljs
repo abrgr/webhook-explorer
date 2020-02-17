@@ -3,6 +3,7 @@
             [webhook-explorer.init :as init]
             [webhook-explorer.styles :as styles]
             [goog.object :as obj]
+            ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Tabs" :default Tabs]
             ["@material-ui/core/Tab" :default Tab]
             ["@material-ui/core/IconButton" :default IconButton]
@@ -94,15 +95,26 @@
                       [:> TableCell ""])]]
                 [:> TableBody
                   (for [[k v] m]
-                    ^{:key k}
-                    [:> TableRow
-                      [:> TableCell k]
-                      [:> TableCell [value-component {:value v :key k :on-change on-change}]]
-                      (when editable
-                        [:> TableCell
-                          [:> IconButton {:aria-label "delete"
-                                          :onClick #(on-change k nil)}
-                            [:> DeleteIcon {:fontSize "small"}]]])])]
+                    (if (coll? v)
+                      (for [vv v]
+                        ^{:key vv}
+                        [:> TableRow
+                          [:> TableCell k]
+                          [:> TableCell [value-component {:value vv :key k :on-change on-change}]]
+                          (when editable
+                            [:> TableCell
+                              [:> IconButton {:aria-label "delete"
+                                              :onClick #(on-change k nil)}
+                                [:> DeleteIcon {:fontSize "small"}]]])])
+                      ^{:key k}
+                      [:> TableRow
+                        [:> TableCell k]
+                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]
+                        (when editable
+                          [:> TableCell
+                            [:> IconButton {:aria-label "delete"
+                                            :onClick #(on-change k nil)}
+                              [:> DeleteIcon {:fontSize "small"}]]])]))]
                 (when editable
                   [:> TableFooter
                     [:> TableRow
@@ -240,6 +252,7 @@
                                                    :body body
                                                    :content-type content-type
                                                    :on-change on-change}])
+          (empty? bodies) [:> Typography "Empty body"]
           :else [body-tabs {:bodies bodies
                             :content-type content-type
                             :on-visibility-toggled on-visibility-toggled

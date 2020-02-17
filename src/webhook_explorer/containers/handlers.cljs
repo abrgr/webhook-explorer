@@ -5,6 +5,8 @@
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
+            [webhook-explorer.components.method-selector :as method-selector]
+            [webhook-explorer.env :as env]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
@@ -212,7 +214,18 @@
        :value (or remote-url "")
        :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
 
-(defn- path-component [{:keys [styles match-type path on-update]}]
+(defn- domain-selector [{:keys [value on-change class-name]}]
+  [:> FormControl {:fullWidth true
+                   :margin "normal"
+                   :className class-name}
+    [:> InputLabel "Domain"]
+    [:> Select {:value (or value "")
+                :onChange #(on-change (obj/getValueByKeys % #js ["target" "value"]))}
+      (for [domain env/handler-domains]
+        ^{:key domain}
+        [(r/adapt-react-class MenuItem) {:value domain} domain])]])
+
+(defn- path-component [{:keys [styles match-type path method domain on-update]}]
   [:div {:className (obj/get styles "path-container")}
     [:> FormControl {:component "fieldset"
                      :margin "normal"}
@@ -227,20 +240,30 @@
             {:label label
              :value (name match-type)
              :control (r/as-element [:> Radio])}])]]
-    [:> FormControl {:margin "normal"
-                     :className (obj/get styles "full-flex")}
-      [:> TextField {:label "Path"
-                     :helperText (r/as-element
-                                   [:<>
-                                     [:span "Exact match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here', etc."]
-                                     [:br]
-                                     [:span "Prefix match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here/and/here', etc."]
-                                     [:br]
-                                     [:span "Exact and prefix matches are ranked by longest matching concrete prefix (without variables) first."]
-                                     [:br]
-                                     [:span "Exact matches are ranked before prefix matches."]])
-                     :value path
-                     :onChange #(on-update assoc :path (get-target-value %))}]]])
+    [:div
+      [:div {:style #js {:display "flex"}}
+        [domain-selector
+          {:class-name (obj/get styles "full-flex")
+           :value domain
+           :on-change #(on-update assoc :domain %)}]
+        [method-selector/component
+          {:class-name (obj/get styles "full-flex")
+           :value method
+           :on-change #(on-update assoc :method %)}]]
+      [:> FormControl {:margin "normal"
+                       :className (obj/get styles "full-flex")}
+        [:> TextField {:label "Path"
+                       :helperText (r/as-element
+                                     [:<>
+                                       [:span "Exact match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here', etc."]
+                                       [:br]
+                                       [:span "Prefix match against '/the/{path}/here' matches '/the/path/here', '/the/other-path/here/and/here', etc."]
+                                       [:br]
+                                       [:span "Exact and prefix matches are ranked by longest matching concrete prefix (without variables) first."]
+                                       [:br]
+                                       [:span "Exact matches are ranked before prefix matches."]])
+                       :value path
+                       :onChange #(on-update assoc :path (get-target-value %))}]]]])
 
 (defn- move-item [idx dir v]
   (let [op (case dir
@@ -404,11 +427,13 @@
   (let [state (r/atom {:proto :https
                        :match-type :exact
                        :path ""
+                       :method nil
+                       :domain (first env/handler-domains)
                        :matchers []})
         on-update (fn [& updater]
                     (apply swap! state updater))]
     (fn [{:keys [styles]}]
-      (let [{:keys [match-type path matchers]
+      (let [{:keys [match-type path method domain matchers]
              {header-captures :headers
               {body-capture-type :type
                body-captures :captures} :body} :captures} @state
@@ -427,6 +452,8 @@
           [path-component {:styles styles
                            :match-type match-type
                            :path path
+                           :method method
+                           :domain domain
                            :on-update on-update}]
           [captures {:styles styles
                      :path path

@@ -33,27 +33,27 @@ exports.handler = async function handler(event, context) {
   const form = await parseForm(event);
   const cookies = parseRequestCookies(headers.Cookie || headers.cookie);
 
-  const protoMethod = `https:${method}`;
+  const protoMethod = `https:${method.toLowerCase()}`;
   const {
     key: handlerKey,
     ...matchedHandler
-  } = await findHandlerKey(protoMethod, host, path.slice(1).split('/'));
+  } = await findHandlerKey(protoMethod, host, path.slice(1).split('/')) || {};
   if ( !handlerKey ) {
     console.log('No matching route', { protoMethod, host, path });
-    return response(502, { error: "No matching Rogo route" }, "No matching Rogo route");
+    return response(502, { "x-rogo-error": "No matching Rogo route" }, "No matching Rogo route");
   }
 
   const handlerDef = await loadHandlerData(handlerKey);
   if ( !handlerDef ) {
     console.error('No handler found for key', { protoMethod, host, path, handlerKey });
-    return response(502, { error: "No matching Rogo route" }, "No matching Rogo route");
+    return response(502, { "x-rogo-error": "No matching Rogo route" }, "No matching Rogo route");
   }
 
   const captures = getCaptures(handlerDef, event, form);
   const matcher = (handlerDef.matchers || []).find(doesMatch.bind(null, captures));
   if ( !matcher ) {
     console.error('No Rogo matcher satisfied', { captures, handlerDef });
-    return response(502, { error: "No Rogo matcher satisfied" }, "No Rogo matcher satisfied");
+    return response(502, { "x-rogo-error": "No Rogo matcher satisfied" }, "No Rogo matcher satisfied");
   }
 
   const matchEndTime = Date.now();
@@ -62,7 +62,7 @@ exports.handler = async function handler(event, context) {
   const handlerFn = handlers[handler.type];
   if ( !handlerFn ) {
     console.error('Unknown handler type', { handler, path, protoMethod });
-    return response(502, { error: 'Unknown Rogo handler type' }, 'Unknown Rogo handler type');
+    return response(502, { "x-rogo-error": 'Unknown Rogo handler type' }, 'Unknown Rogo handler type');
   }
 
   const baseMsg = {
@@ -188,7 +188,9 @@ async function handleProxy(captures, { proxy: { remoteUrl } }, { body, isBase64E
     });
     req.on('error', reject);
 
-    req.write(body, isBase64Encoded ? 'base64' : 'utf8');
+    if ( !!body ) {
+      req.write(body, isBase64Encoded ? 'base64' : 'utf8');
+    }
     req.end();
   });
 }
@@ -235,17 +237,17 @@ function doesMatch(captures, { matches }) {
 
 function getCaptures(
   { path: handlerPath, captures },
-  { path, headers, body, isBase64Encoded },
+  { path, headers, body, isBase64Encoded, ...restEvent },
   form
 ) {
   const { body: bodyCaptureSpec, headers: headerCaptureSpec } = captures || {};
   const bodies = {
     form: form,
-    raw: Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8')
+    raw: !!body ? Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8') : null
   };
   const pathCaptures = getPathCaptures(handlerPath, path);
-  const headerCaptures = headerCaptureSpec ? getHeaderCaptures(headerCaptureSpec, headers) : {};
-  const bodyCaptures = bodyCaptureSpec ? getBodyCaptures(bodyCaptureSpec, bodies) : {};
+  const headerCaptures = headerCaptureSpec && !!headers ? getHeaderCaptures(headerCaptureSpec, headers) : {};
+  const bodyCaptures = bodyCaptureSpec && !!body ? getBodyCaptures(bodyCaptureSpec, bodies) : {};
   return {
     ...pathCaptures,
     ...headerCaptures,
@@ -388,6 +390,10 @@ async function loadHandlerData(key) {
 
 async function parseForm(event) {
   return new Promise((resolve, reject) => {
+    if ( !event.headers ) {
+      return resolve(null);
+    }
+
     let busboy;
     try {
       busboy = new Busboy({

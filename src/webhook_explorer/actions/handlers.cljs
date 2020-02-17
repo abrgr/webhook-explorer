@@ -1,7 +1,6 @@
 (ns webhook-explorer.actions.handlers
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
-            [cljs-http.client :as http]
             [webhook-explorer.http-utils :as http-utils]
             [webhook-explorer.specs.handlers]
             [webhook-explorer.app-state :as app-state]
@@ -9,10 +8,9 @@
 
 (defn publish-handler [handler-config]
   (async/go
-    (let [res (async/<! (http/post
-                          (http-utils/make-url "/api/handlers")
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)
+    (let [res (async/<! (http-utils/req
+                          {:method :post
+                           :path "handlers"
                            :json-params {:handler (assoc handler-config :domain "api.easybetes.com")}}))
           {{:keys [success]} :body} res]
       (boolean success))))

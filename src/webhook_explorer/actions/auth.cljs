@@ -2,13 +2,11 @@
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.routes :as routes]
             [webhook-explorer.init :as init]
+            [webhook-explorer.env :as env]
             ["amazon-cognito-auth-js" :as cognito-auth]))
 
 (defn- make-cognito-auth []
-  (->> "cognito-config"
-       (js/document.getElementById)
-       (.-innerHTML)
-       (.parse js/JSON)
+  (->> env/cognito-cfg
        (cognito-auth/CognitoAuth.)))
 
 (declare current-user-data)

@@ -7,15 +7,15 @@ const s3 = new S3({ apiVersion });
 
 exports.handler = async function handler(event, context) {
   const { RequestType, ResourceProperties, RequestId, LogicalResourceId, StackId, PhysicalResourceId, ResponseURL } = event;
-  const { UserPoolId, ClientId, AppWebDomain, RedirectUri, Bucket } = ResourceProperties;
+  const { Version, HandlerDomains, UserPoolId, ClientId, AppWebDomain, RedirectUri, Bucket } = ResourceProperties;
 
   try {
-    const Key = '_web/index.html';
+    const Key = 'web/index.html';
     if ( RequestType === 'Create' || RequestType === 'Update' ) {
       await s3.putObject({
         Bucket,
         Key,
-        Body: getContent(ClientId, AppWebDomain, RedirectUri, UserPoolId),
+        Body: getContent(Version, HandlerDomains, ClientId, AppWebDomain, RedirectUri, UserPoolId),
         ContentType: 'text/html'
       }).promise();
     } else if ( RequestType === 'Delete' ) {
@@ -48,7 +48,10 @@ exports.handler = async function handler(event, context) {
   }
 }
 
-function getContent(clientId, appWebDomain, redirectUri, userPoolId) {
+function getContent(version, handlerDomains, clientId, appWebDomain, redirectUri, userPoolId) {
+  const rogoUrl = url.parse(redirectUri);
+  rogoUrl.path = "/api/";
+
   return `
     <!DOCTYPE html>
     <html style="width:100%;height:100%;">
@@ -57,15 +60,21 @@ function getContent(clientId, appWebDomain, redirectUri, userPoolId) {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="/styles/style.css" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
-        <script id="cognito-config" type="application/json">
+        <script id="config" type="application/json">
           {
-            "ClientId": "${clientId}",
-            "AppWebDomain": "${appWebDomain}",
-            "TokenScopesArray": ["email", "profile","openid", "aws.cognito.signin.user.admin"],
-            "RedirectUriSignIn": "${redirectUri}",
-            "RedirectUriSignOut": "${redirectUri}",
-            "IdentityProvider": "Cognito",
-            "UserPoolId": "${userPoolId}"
+            "version": "${version}",
+            "rogoDomain": "${rogoUrl.host}",
+            "rogoApiUrl": "${url.format(rogoUrl)}",
+            "handlerDomains": ${JSON.stringify(handlerDomains)},
+            "cognito": {
+              "ClientId": "${clientId}",
+              "AppWebDomain": "${appWebDomain}",
+              "TokenScopesArray": ["email", "profile","openid", "aws.cognito.signin.user.admin"],
+              "RedirectUriSignIn": "${redirectUri}",
+              "RedirectUriSignOut": "${redirectUri}",
+              "IdentityProvider": "Cognito",
+              "UserPoolId": "${userPoolId}"
+            }
           }
         </script>
       </head>
