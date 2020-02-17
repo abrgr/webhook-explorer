@@ -169,10 +169,21 @@
                :next-req next-req})))
         :done))))
 
+(defn- to-str-key [m]
+  (->> m
+       (map (fn [[k v]] [(name k) v]))
+       (into {})))
+
+(defn- fix-req-details [req-details]
+  (-> req-details
+      (update-in [:req :headers] to-str-key)
+      (update-in [:res :headers] to-str-key)))
+
 (defn- load-full-req [{:keys [id data-url] :as item}]
   (async/go
     (let [{req-details :body} (async/<!
-                                (request-no-munge {:method :get :url data-url :with-credentials? false}))]
+                                (request-no-munge {:method :get :url data-url :with-credentials? false}))
+          req-details (fix-req-details req-details)]
       (swap!
         app-state/reqs
         update
@@ -410,5 +421,6 @@
           {item :body} res
           adj-item (-> item
                        (update-in [:tags :private-tags] set)
-                       (update-in [:tags :public-tags] set))]
+                       (update-in [:tags :public-tags] set)
+                       (update :details fix-req-details))]
       adj-item)))
