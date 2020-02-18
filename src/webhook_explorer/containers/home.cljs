@@ -73,17 +73,10 @@
                         :style style}
         (fn [measurer]
           (let [measure (obj/get measurer "measure")]
-            (letfn [(advance-animation [ms-remaining]
-                      (measure)
-                      (when (pos? ms-remaining) (js/requestAnimationFrame (partial advance-animation (- ms-remaining 16))))) ; TODO: set deadline instead of assuming 16ms/frame
-                    (start-animating []
-                      (advance-animation (* 2 (obj/getValueByKeys theme #js ["transitions" "duration" "standard"]))))
-                    (load-details []
-                      (start-animating)
+            (letfn [(load-details []
                       (async/go
                         (async/<! (reqs-actions/load-full-req item))
-                        (on-row-updated idx)
-                        (start-animating)))]
+                        (on-row-updated idx)))]
               (r/as-element
                 [:div {:style style
                        :className (obj/get styles "card-container")
@@ -96,9 +89,8 @@
                              :favorited (:fav tagged-req)
                              :private-tags (:private-tags tagged-req)
                              :public-tags (:public-tags tagged-req)
-                             :on-visibility-toggled (if (some? details)
-                                                      start-animating
-                                                      load-details)}])]))))])))
+                             :on-visibility-toggled #(when-not (some? details)
+                                                       (load-details))}])]))))])))
 
 (defn- load-more-rows []
   (.then (reqs-actions/load-next-items)

@@ -48,7 +48,10 @@
          :status-server-error (merge
                                 (background-style theme (aget colors/red 500))
                                 status-style)
-         :fix-card-content {:marginBottom "-24px"}
+         :fix-card-content {:marginBottom "-24px"
+                            :max-height 320
+                            :overflow-y "auto"
+                            :overflow-x "hidden"}
          :send-btn {:margin-right 15
                     :margin-bottom 15
                     :margin-left "auto"}}))))
