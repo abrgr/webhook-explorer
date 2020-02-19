@@ -9,10 +9,9 @@
   (if (nil? params)
     (async/to-chan [:stop])
     (async/go
-      (let [{{:keys [users nextReq]} :body} (async/<! (http/get
-                                                        (http-utils/make-api-url "users")
-                                                        {:with-credentials? false
-                                                         :headers (http-utils/auth-headers)
+      (let [{{:keys [users nextReq]} :body} (async/<! (http-utils/req
+                                                        {:method :get
+                                                         :path "users"
                                                          :query-params params}))]
         (swap!
           app-state/users
