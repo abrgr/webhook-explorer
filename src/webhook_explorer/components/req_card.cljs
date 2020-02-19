@@ -81,8 +81,7 @@
     :else          (obj/get styles "status-server-error")))
 
 (defn- -component
-  ; TODO: we get camelCased BS because styled sends us through a react component and reagent knows best
-  [{:keys [styles favorited publicTags privateTags onVisibilityToggled]
+  [{:keys [styles favorited public-tags private-tags on-visibility-toggled]
     {:keys [id
             date
             host
@@ -98,57 +97,54 @@
       res-body :body} :res
      :as details} :details
     :as item} :item}]
-  (let [public-tags publicTags
-        private-tags privateTags
-        on-visibility-toggled onVisibilityToggled]
-    [:> Card {:className (obj/get styles "card")}
-      [:> CardHeader
-        {:avatar (r/as-element
-                    [:> Avatar {:aria-label status
-                                :className (status-class styles status)}
-                      status])
-         :action (r/as-element [:div
-                                 [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
-                                 [tag-selector/component
-                                   {:on-select-tag (partial reqs-actions/tag-req item)
-                                    :rw :writable
-                                    :target-component tag-action-btn
-                                    :private-tags private-tags
-                                    :public-tags public-tags
-                                    :allow-creation true
-                                    :selected-label "(Already tagged)"}]
-                                 [action-btn "Add to request collection" AddToCollectionIcon #()]
-                                 [action-btn "Share" ShareIcon #(reqs-actions/share-req item)]])
-         :title (str method " " host path)
-         :subheader date}]
-      [:> CardContent {:className (obj/get styles "fix-card-content")}
-        [req-parts/qs-view "Query Parameters" qs on-visibility-toggled]
-        [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
-        (let [cs (or
-                   (some->> req-cookies
-                            (map (fn [[k {:keys [value]}]] [k value]))
-                            (into {}))
-                   (and details {}))] ; cookies might be nil, set to {} if cookies nil but we have details
-          [req-parts/cookies-view
-            "Request Cookies"
-            cs
-            on-visibility-toggled])
-        [req-parts/body-view
-          "Request Body"
-          (req-parts/make-bodies
-            {:raw {:label "Raw" :body req-body}
-             :fields {:label "Form Fields" :body fields}
-             :files {:label "Files" :body (when-not (empty? files) files)}})
-          req-headers
-          on-visibility-toggled]
-        [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
-        [req-parts/body-view "Response Body" (req-parts/make-bodies {:raw {:label "Raw" :body res-body}}) res-headers on-visibility-toggled]]
-      [:> CardActions
-        [:> FloatingActionButton {:color "primary"
-                                  :className (obj/get styles "send-btn")
-                                  :aria-label "execute"
-                                  :onClick #(reqs-actions/select-item item)}
-          [:> SendIcon]]]]))
+  [:> Card {:className (obj/get styles "card")}
+    [:> CardHeader
+      {:avatar (r/as-element
+                  [:> Avatar {:aria-label status
+                              :className (status-class styles status)}
+                    status])
+       :action (r/as-element [:div
+                               [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
+                               [tag-selector/component
+                                 {:on-select-tag (partial reqs-actions/tag-req item)
+                                  :rw :writable
+                                  :target-component tag-action-btn
+                                  :private-tags private-tags
+                                  :public-tags public-tags
+                                  :allow-creation true
+                                  :selected-label "(Already tagged)"}]
+                               [action-btn "Add to request collection" AddToCollectionIcon #()]
+                               [action-btn "Share" ShareIcon #(reqs-actions/share-req item)]])
+       :title (str method " " host path)
+       :subheader date}]
+    [:> CardContent {:className (obj/get styles "fix-card-content")}
+      [req-parts/qs-view "Query Parameters" qs on-visibility-toggled]
+      [req-parts/headers-view "Request Headers" req-headers on-visibility-toggled]
+      (let [cs (or
+                 (some->> req-cookies
+                          (map (fn [[k {:keys [value]}]] [k value]))
+                          (into {}))
+                 (and details {}))] ; cookies might be nil, set to {} if cookies nil but we have details
+        [req-parts/cookies-view
+          "Request Cookies"
+          cs
+          on-visibility-toggled])
+      [req-parts/body-view
+        "Request Body"
+        (req-parts/make-bodies
+          {:raw {:label "Raw" :body req-body}
+           :fields {:label "Form Fields" :body fields}
+           :files {:label "Files" :body (when-not (empty? files) files)}})
+        req-headers
+        on-visibility-toggled]
+      [req-parts/headers-view "Response Headers" res-headers on-visibility-toggled]
+      [req-parts/body-view "Response Body" (req-parts/make-bodies {:raw {:label "Raw" :body res-body}}) res-headers on-visibility-toggled]]
+    [:> CardActions
+      [:> FloatingActionButton {:color "primary"
+                                :className (obj/get styles "send-btn")
+                                :aria-label "execute"
+                                :onClick #(reqs-actions/select-item item)}
+        [:> SendIcon]]]])
 
 (defn component [params]
   [styled params -component])

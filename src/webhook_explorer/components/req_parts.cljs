@@ -45,19 +45,19 @@
                                  :width "100%"
                                  :border "1px solid #eee"}}})))
 
-(defn- editor [{:keys [value content-type onChange styles] :as p}]
+(defn- editor [{:keys [value content-type on-change styles] :as p}]
   (let [mode (when-let [m (.findModeByMIME CM (or content-type "text/plain"))]
                (obj/get m "mode"))]
     (r/as-element
       [:> CodeMirror {:className (obj/get styles "code")
                       :value value
-                      :onChange onChange
+                      :onChange on-change
                       :options #js {:lineWrapping true
                                     :lineNumbers true
                                     :mode mode}}])))
 
 (defn- styled-editor [value content-type on-change]
-  [styled {:value value :content-type content-type :onChange on-change} editor])
+  [styled {:value value :content-type content-type :on-change on-change} editor])
 
 (defn- nop [] nil)
 

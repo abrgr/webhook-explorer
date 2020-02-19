@@ -1,6 +1,11 @@
 (ns webhook-explorer.styles
   (:require [reagent.core :as r]
-            ["@material-ui/core/styles" :as styles]))
+            ["@material-ui/core/styles" :as styles]
+            [camel-snake-kebab.core :as csk]
+            [camel-snake-kebab.extras :as cske]))
+
+(defn- kebab-case-props [p]
+  (cske/transform-keys csk/->kebab-case-keyword p))
 
 (defn style-wrapper [class-defs]
   (let [make-styles (styles/makeStyles
@@ -15,7 +20,8 @@
                               [wrapped
                                 (-> props
                                     (assoc :styles s)
-                                    (dissoc :wrapped))])))
+                                    (dissoc :wrapped)
+                                    kebab-case-props)])))
         wrapper (fn [props wrapped]
                   [:> react-component (assoc props :wrapped wrapped)])]
     wrapper))
