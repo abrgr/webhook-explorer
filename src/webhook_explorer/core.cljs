@@ -12,6 +12,7 @@
             [webhook-explorer.containers.home :as home]
             [webhook-explorer.containers.users :as users]
             [webhook-explorer.containers.handlers :as handlers]
+            [webhook-explorer.containers.edit-handler :as edit-handler]
             [webhook-explorer.containers.req :as req]
             [webhook-explorer.containers.auth :as auth]))
 
@@ -22,6 +23,7 @@
       :reqs [home/component]
       :users [users/component]
       :handlers [handlers/component]
+      :edit-handler [edit-handler/component]
       :req [req/component params]
       [auth/component])))
 

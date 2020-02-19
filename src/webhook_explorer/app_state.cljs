@@ -20,6 +20,10 @@
                         :next-req {}
                         :error nil}))
 
+(defonce handlers (r/atom {:handlers[]
+                           :next-req {:proto "https" :method "get"}
+                           :error nil}))
+
 (defn logged-in? []
   (some? (:cognito-session @auth)))
 
