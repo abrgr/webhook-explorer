@@ -587,6 +587,43 @@ Resources:
                 requestTemplates:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
+          /api/handler:
+            get:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetHandlerHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              consumes:
+                - "application/json"
+              produces:
+                - "application/json"
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                    Access-Control-Allow-Methods:
+                      type: "string"
+                    Access-Control-Allow-Headers:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
+                type: "mock"
           /api/handlers:
             post:
               responses: {}
@@ -702,6 +739,38 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref GetRequestHandler
+      Principal: apigateway.amazonaws.com
+  GetHandlerHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: lambdas/get-handler-handler.handler
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: live
+      Events:
+        ListRequests:
+          Type: Api
+          Properties:
+            Path: /api/handler
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref WebhookRequestBucket
+          EXPECTED_AUD: !Ref WebhookExplorerApp
+          COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
+          HANDLERS_TABLE_NAME: !Ref HandlersTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HandlersTable
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+  GetHandlerHandlerPermissionFix:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GetHandlerHandler
       Principal: apigateway.amazonaws.com
   TagRequestHandler:
     Type: AWS::Serverless::Function

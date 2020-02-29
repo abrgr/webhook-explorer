@@ -36,7 +36,7 @@
                    keys
                    (into []))
         col (get colsv col-index)]
-    (inner-renderer {:col col :cell-data cell-data :empty-row? (nil? row-data)})))
+    (inner-renderer {:col col :row-data row-data :cell-data cell-data :empty-row? (nil? row-data)})))
 
 (defn- -component [{:keys [styles row-height items next-req load-more-items get-row-by-idx cols header-renderer cell-renderer] :as p}]
   (let [row-count (if (nil? next-req) (count items) (inc (count items)))]

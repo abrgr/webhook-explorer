@@ -1,16 +1,12 @@
 const {
   response,
-  getUserFromEvent,
-  cognitoUserToUser,
+  getUserFromEvent
 } = require('./common');
-const S3 = require('aws-sdk/clients/s3');
 const DynamoDB = require('aws-sdk/clients/dynamodb');
 
 const documentClient = new DynamoDB.DocumentClient({ apiVersion: '2019-09-21' });
-const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 const table = process.env.HANDLERS_TABLE_NAME;
-const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event, context) {
   const { permissions: { canCreateHandlers }} = getUserFromEvent(event);
@@ -32,43 +28,28 @@ exports.handler = async function handler(event, context) {
     ...(token ? { ExclusiveStartKey: token } : {})
   }).promise();
 
-  const handlers = await Promise.all(rawHandlers.map(async function ({ domainPath, exactKey, prefixKey, tPath }) {
+  console.log(JSON.stringify({ rawHandlers }));
+
+  const handlers = rawHandlers.map(({ domainPath, exactKey, prefixKey, tPath, protoMethod }) => {
+    const [proto, method] = protoMethod.split(':');
     const firstSlashIdx = domainPath.indexOf('/');
     const domain = domainPath.slice(0, firstSlashIdx);
     const path = domainPath.slice(firstSlashIdx);
-    const exactDataUrl = exactKey ? await getSignedUrlForKey(exactKey) : null;
-    const prefixDataUrl = prefixKey ? await getSignedUrlForKey(prefixKey) : null;
     return {
+      proto,
+      method,
       domain,
       path,
-      exactDataUrl,
-      prefixDataUrl,
+      hasExactHandler: !!exactKey,
+      hasPrefixHandler: !!prefixKey,
       tPath
     };
-  }));
+  });
 
   const result = {
     nextToken,
-    handlers: handlers.filter(h => !!h.exactDataUrl || !!h.prefixDataUrl)
+    handlers: handlers.filter(h => h.hasExactHandler || h.hasPrefixHandler)
   };
 
   return response(200, { 'Cache-Control': 'max-age=30' }, JSON.stringify(result));
 };
-
-async function getSignedUrlForKey(key) {
-  const method = 'getObject';
-  const params = {
-    Bucket: bucket,
-    Key: key,
-    Expires: ONE_HOUR_IN_SECONDS
-  };
-  return new Promise((resolve, reject) => {
-    s3.getSignedUrl(method, params, (err, url) => {
-      if ( err ) {
-        return reject(err);
-      }
-
-      resolve(url);
-    });
-  });
-}

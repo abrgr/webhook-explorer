@@ -49,8 +49,17 @@
 (defextroute hist handlers-path nav-to-handlers [require-login] "/handlers" []
   (reset! app-state/nav {:page :handlers}))
 
-(defextroute hist edit-handler-path nav-to-edit-handler [require-login] "/edit-handler" []
-  (reset! app-state/nav {:page :edit-handler}))
+(defextroute
+  hist
+  edit-handler-path
+  nav-to-edit-handler
+  [require-login]
+  "/edit-handler/:match-type/:domain/*handler-path"
+  [match-type domain handler-path]
+  (reset! app-state/nav {:page :edit-handler
+                         :params {:match-type match-type
+                                  :domain domain
+                                  :handler-path handler-path}}))
 
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))
