@@ -3,6 +3,8 @@
             [reagent.core :as r]
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.xstate :as xs]
+            [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.components.method-selector :as method-selector]
@@ -423,20 +425,20 @@
                                      :className (obj/get styles "chip")
                                      :variant "outlined"}]))])
 
-(defn- -component []
-  (let [state (r/atom {:proto :https
+(defn- -component* []
+  (let [s (r/atom {:proto :https
                        :match-type :exact
                        :path ""
                        :method nil
                        :domain (first env/handler-domains)
                        :matchers []})
         on-update (fn [& updater]
-                    (apply swap! state updater))]
-    (fn [{:keys [styles]}]
+                    (apply swap! s updater))]
+    (fn [{:keys [styles state]}]
       (let [{:keys [match-type path method domain matchers]
              {header-captures :headers
               {body-capture-type :type
-               body-captures :captures} :body} :captures} @state
+               body-captures :captures} :body} :captures} @s
             template-vars (get-all-template-vars path header-captures body-captures)]
         [:div {:className (obj/get styles "container")}
           [:> Paper {:className (obj/get styles "bottom-container")}
@@ -446,7 +448,7 @@
               [:> Fab {:variant "extended"
                        :label "Save"
                        :color "secondary"
-                       :onClick #(handlers-actions/publish-handler @state)}
+                       :onClick #(handlers-actions/publish-handler @s)}
                 [:> SaveIcon {:className (obj/get styles "extended-icon")}]
                 "Publish changes"]]]
           [path-component {:styles styles
@@ -487,6 +489,11 @@
             [:> Typography {:color "textSecondary"}
               "Add a matcher."]]
           [:div {:className (obj/get styles "bottom-container-spacer")}]]))))
+
+(defn -component [{:keys [styles]}]
+  [xs/with-svc {:svc app-state/handler}
+    (fn [state]
+      [-component* {:state state :styles styles}])])
 
 (defn component []
   [styled {} -component])

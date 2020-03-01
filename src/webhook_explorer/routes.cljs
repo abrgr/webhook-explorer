@@ -8,6 +8,7 @@
             [goog.history.EventType :as EventType]
             [reagent.core :as reagent]
             [webhook-explorer.init :as init]
+            [webhook-explorer.xstate :as xs]
             [webhook-explorer.app-state :as app-state]))
 
 (def ^:private hist
@@ -56,10 +57,12 @@
   [require-login]
   "/edit-handler/:match-type/:domain/*handler-path"
   [match-type domain handler-path]
-  (reset! app-state/nav {:page :edit-handler
-                         :params {:match-type match-type
-                                  :domain domain
-                                  :handler-path handler-path}}))
+  (let [params {:match-type match-type
+                :domain domain
+                :handler-path handler-path}]
+    (reset! app-state/nav {:page :edit-handler
+                           :params params})
+    (xs/send app-state/handler {:type :reset :params params})))
 
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))

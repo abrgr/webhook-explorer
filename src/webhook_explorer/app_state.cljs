@@ -1,6 +1,7 @@
 (ns webhook-explorer.app-state
   (:require [reagent.core :as r]
-            [clojure.string :as s]))
+            [clojure.string :as s]
+            [webhook-explorer.state-machines.handlers :as handler-machine]))
 
 (defonce nav (r/atom {:page :home
                       :params {}}))
@@ -20,9 +21,11 @@
                         :next-req {}
                         :error nil}))
 
-(defonce handlers (r/atom {:handlers[]
+(defonce handlers (r/atom {:handlers []
                            :next-req {:proto "https" :method "get"}
                            :error nil}))
+
+(defonce handler (handler-machine/svc))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))
