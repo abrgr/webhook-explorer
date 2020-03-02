@@ -21,10 +21,14 @@
     :path {:label "Path"}
     :match-type {:label "Edit"}))
 
-(defn- edit-links [{{:keys [domain path has-exact-handler has-prefix-handler]} :handler}]
+(defn- edit-links [{{:keys [domain path method has-exact-handler has-prefix-handler]} :handler}]
   [:<>
     (when has-exact-handler
-      [:> Button {:on-click #(routes/nav-to-edit-handler {:domain domain :handler-path path :match-type "exact"})
+      [:> Button
+        {:on-click #(routes/nav-to-edit-handler {:domain domain
+                                                 :path path
+                                                 :method method
+                                                 :match-type "exact"})
                   :color "primary"}
         "Exact"])
     (when has-prefix-handler

@@ -55,11 +55,13 @@
   edit-handler-path
   nav-to-edit-handler
   [require-login]
-  "/edit-handler/:match-type/:domain/*handler-path"
-  [match-type domain handler-path]
-  (let [params {:match-type match-type
+  "/edit-handler/:match-type/:domain/:method/*path"
+  [match-type domain method path]
+  (let [params {:proto "https"
+                :match-type match-type
                 :domain domain
-                :handler-path handler-path}]
+                :method method
+                :path path}]
     (reset! app-state/nav {:page :edit-handler
                            :params params})
     (xs/send app-state/handler {:type :reset :params params})))

@@ -1,5 +1,8 @@
 (ns webhook-explorer.state-machines.handlers
-  (:require [webhook-explorer.xstate :as xs]))
+  (:require [webhook-explorer.xstate :as xs]
+            [webhook-explorer.env :as env]
+            [webhook-explorer.remote.handlers :as remote-handlers]
+            [goog.object :as obj]))
 
 (def machine
   (xs/machine
@@ -10,14 +13,16 @@
                  :handler nil
                  :error nil}
        :on {
-         :reset {:actions []}}
+         :reset {:target :start
+                 :actions :reset-params}}
        :states {
          :idle {}
          :start {
            :on {
              "" [{:target :fetch-handler
                   :cond :has-params}
-                 {:target :ready}]}}
+                 {:target :ready
+                  :actions :set-default-handler}]}}
          :fetch-handler {
            :invoke {
              :id :fetch-handler
@@ -26,7 +31,9 @@
                       :actions :receive-handler}
              :onError {:target :failed
                        :actions :receive-handler-error}}}
-         :ready {}
+         :ready {
+           :on {
+             :update-handler {:actions :update-handler}}}
          :failed {}}}
      :opts
       {:actions
@@ -40,11 +47,24 @@
           (xs/assign-ctx-from-evt {:evt-prop :params
                                    :ctx-prop :params
                                    :static-ctx {:handler nil
-                                                :error nil}})}
+                                                :error nil}})
+         :update-handler
+          (xs/update-ctx-from-evt {:ctx-prop :handler
+                                   :updater-prop :updater})
+         :set-default-handler
+          (xs/assign-ctx {:ctx-prop :handler
+                          :static-ctx {:proto :https
+                                       :match-type :exact
+                                       :path ""
+                                       :method nil
+                                       :domain (first env/handler-domains)
+                                       :matchers []}})}
        :guards
-        {:has-params (fn [ctx] (contains? ctx :params))}
+        {:has-params (fn [ctx] (obj/containsKey ctx "params"))}
        :services
-        {:fetch-handler (fn [ctx, evt] nil)}}}))
+        {:fetch-handler (fn [ctx, evt]
+                          (remote-handlers/get-handler
+                            (obj/get ctx "params")))}}}))
 
 (defn svc
   ([]
@@ -52,4 +72,5 @@
   ([opts]
     (-> machine
         (xs/interpret machine opts)
-        (.start))))
+        (.start)
+        (.onTransition js/console.log))))

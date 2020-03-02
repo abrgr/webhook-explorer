@@ -9,6 +9,7 @@
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.components.method-selector :as method-selector]
             [webhook-explorer.env :as env]
+            ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
@@ -425,75 +426,80 @@
                                      :className (obj/get styles "chip")
                                      :variant "outlined"}]))])
 
-(defn- -component* []
-  (let [s (r/atom {:proto :https
-                       :match-type :exact
-                       :path ""
-                       :method nil
-                       :domain (first env/handler-domains)
-                       :matchers []})
-        on-update (fn [& updater]
-                    (apply swap! s updater))]
-    (fn [{:keys [styles state]}]
-      (let [{:keys [match-type path method domain matchers]
-             {header-captures :headers
-              {body-capture-type :type
-               body-captures :captures} :body} :captures} @s
-            template-vars (get-all-template-vars path header-captures body-captures)]
-        [:div {:className (obj/get styles "container")}
-          [:> Paper {:className (obj/get styles "bottom-container")}
-            [template-var-container {:styles styles
-                                     :template-vars template-vars}]
-            [:div {:className (obj/get styles "publish-container")}
-              [:> Fab {:variant "extended"
-                       :label "Save"
-                       :color "secondary"
-                       :onClick #(handlers-actions/publish-handler @s)}
-                [:> SaveIcon {:className (obj/get styles "extended-icon")}]
-                "Publish changes"]]]
-          [path-component {:styles styles
-                           :match-type match-type
-                           :path path
-                           :method method
-                           :domain domain
-                           :on-update on-update}]
-          [captures {:styles styles
+(defn- main-component [{:keys [styles state on-update send]}]
+  (let [{:keys [match-type path method domain matchers]
+         {header-captures :headers
+          {body-capture-type :type
+           body-captures :captures} :body} :captures} (obj/getValueByKeys state #js ["context" "handler"])
+        template-vars (get-all-template-vars path header-captures body-captures)]
+  [:div {:className (obj/get styles "container")}
+    [:> Paper {:className (obj/get styles "bottom-container")}
+      [template-var-container {:styles styles
+                               :template-vars template-vars}]
+      [:div {:className (obj/get styles "publish-container")}
+        [:> Fab {:variant "extended"
+                 :label "Save"
+                 :color "secondary"
+                 :onClick (r/partial send :publish)}
+          [:> SaveIcon {:className (obj/get styles "extended-icon")}]
+          "Publish changes"]]]
+    [path-component {:styles styles
+                     :match-type match-type
                      :path path
-                     :header-captures header-captures
-                     :body-capture-type body-capture-type
-                     :body-captures body-captures
+                     :method method
+                     :domain domain
                      :on-update on-update}]
-          [:div {:className (obj/get styles "caption-container")}
-            [:> Typography {:variant "caption"
-                            :className (obj/get styles "caption")}
-            "Matchers are processed in order, top to bottom. First match wins."]]
-          (map-indexed
-            (fn [idx {:keys [path matches handler]}]
-              ^{:key idx}
-              [matcher {:styles styles
-                        :idx idx
-                        :total-matcher-count (count matchers)
-                        :template-vars template-vars
-                        :handler handler
-                        :matches matches
-                        :on-update on-update}])
-            matchers)
-          [:> Paper {:elevation 3
-                     :className (str
-                                  (obj/get styles "add-matcher-container")
-                                  " "
-                                  (obj/get styles "matcher-container"))}
-            [:> Fab {:color "primary"
-                     :onClick #(on-update update :matchers conj new-matcher-template)}
-              [:> AddIcon]]
-            [:> Typography {:color "textSecondary"}
-              "Add a matcher."]]
-          [:div {:className (obj/get styles "bottom-container-spacer")}]]))))
+    [captures {:styles styles
+               :path path
+               :header-captures header-captures
+               :body-capture-type body-capture-type
+               :body-captures body-captures
+               :on-update on-update}]
+    [:div {:className (obj/get styles "caption-container")}
+      [:> Typography {:variant "caption"
+                      :className (obj/get styles "caption")}
+      "Matchers are processed in order, top to bottom. First match wins."]]
+    (map-indexed
+      (fn [idx {:keys [path matches handler]}]
+        ^{:key idx}
+        [matcher {:styles styles
+                  :idx idx
+                  :total-matcher-count (count matchers)
+                  :template-vars template-vars
+                  :handler handler
+                  :matches matches
+                  :on-update on-update}])
+      matchers)
+    [:> Paper {:elevation 3
+               :className (str
+                            (obj/get styles "add-matcher-container")
+                            " "
+                            (obj/get styles "matcher-container"))}
+      [:> Fab {:color "primary"
+               :onClick #(on-update update :matchers conj new-matcher-template)}
+        [:> AddIcon]]
+      [:> Typography {:color "textSecondary"}
+        "Add a matcher."]]
+    [:div {:className (obj/get styles "bottom-container-spacer")}]]))
+
+(defn- -component* [{:keys [styles svc state]}]
+  (let [on-update (fn [& updater]
+                    (xs/send svc {:type :update-handler
+                                  :updater updater}))]
+    (xs/case state
+      :failed [:div "Failed"]
+      :ready [main-component {:styles styles
+                              :state state
+                              :on-update on-update
+                              :send (r/partial xs/send svc)}]
+      [:> CircularProgress])))
 
 (defn -component [{:keys [styles]}]
   [xs/with-svc {:svc app-state/handler}
     (fn [state]
-      [-component* {:state state :styles styles}])])
+      [-component* {:svc app-state/handler
+                    :state state
+                    :styles styles}])])
 
 (defn component []
   [styled {} -component])

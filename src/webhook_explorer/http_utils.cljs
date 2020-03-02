@@ -1,6 +1,6 @@
 (ns webhook-explorer.http-utils
   (:require [clojure.core.async :as async]
-            [webhook-explorer.actions.auth :as auth-actions]
+            [webhook-explorer.auth :as core-auth]
             [webhook-explorer.env :as env]
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
@@ -10,12 +10,23 @@
   (str env/api-base path))
 
 (defn auth-headers []
-  {"Authorization" (auth-actions/auth-header)})
+  {"Authorization" (core-auth/auth-header)})
 
-(defn req [{:keys [json-params path literal-res-paths literal-req-paths] :as opts}]
+(defn error-for-status [status]
+  (cond
+    (= status 0)   (js/Error. "Network issue")
+    (= status 400) (js/Error. "Bad request")
+    (= status 401) (js/Error. "Unauthorized")
+    (= status 404) (js/Error. "Not found")
+    (= status 409) (js/Error. "Conflict")
+    (> status 399) (js/Error. "Error")
+    :else nil))
+
+(defn req [{:keys [json-params query-params path literal-res-paths literal-req-paths] :as opts}]
   (async/go
     (let [opts' (cond-> opts
                   (contains? opts :json-params) (assoc :json-params (cske/transform-keys csk/->camelCase json-params))
+                  (contains? opts :query-params) (assoc :query-params (cske/transform-keys csk/->camelCase query-params))
                   true (dissoc :path)
                   true (dissoc :literal-res-paths)
                   true (assoc :url (make-api-url path))
@@ -34,5 +45,6 @@
                   (cske/transform-keys csk/->kebab-case-keyword body)
                   literal-res-paths)]
       {:body body'
+       :error (error-for-status status)
        :status status
        :headers headers})))

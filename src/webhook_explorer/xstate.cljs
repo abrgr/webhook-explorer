@@ -1,4 +1,5 @@
 (ns webhook-explorer.xstate
+  (:require-macros [webhook-explorer.xstate :refer [case]])
   (:require ["xstate" :as xs]
             [goog.object :as obj]
             [reagent.core :as r]))
@@ -30,9 +31,27 @@
         (update :services xform-opt-fns)
         clj->js)))
 
+(defn assign-ctx [{:keys [ctx-prop static-ctx]}]
+  (-> {ctx-prop (constantly static-ctx)}
+      clj->js
+      xs/assign))
+
 (defn assign-ctx-from-evt [{:keys [evt-prop ctx-prop static-ctx]}]
   (-> static-ctx
       (assoc ctx-prop (fn [_ e] (obj/get e (name evt-prop))))
+      clj->js
+      xs/assign))
+
+(defn update-ctx-from-evt [{:keys [ctx-prop updater-prop static-ctx]}]
+  (-> static-ctx
+      (assoc
+        ctx-prop
+        (fn [ctx e]
+          (let [[update-fn & update-args] (obj/get e (name updater-prop))]
+            (apply
+              update-fn
+              (obj/get ctx (name ctx-prop))
+              update-args))))
       clj->js
       xs/assign))
 
@@ -43,7 +62,13 @@
       (r/as-element (child @s)))))
 
 (defn send [interpreter evt]
-  (.send interpreter (clj->js evt)))
+  (.send
+    interpreter
+    (->> evt
+         (mapcat
+           (fn [[k v]]
+             [(name k) (if (ident? v) (name v) v)]))
+         (apply js-obj))))
 
 (defn matches? [state test-state]
   (.matches state (name test-state)))

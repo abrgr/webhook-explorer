@@ -5,7 +5,11 @@
 
 (s/def :handlers/path string?)
 
+(s/def :handlers/domain string?)
+
 (s/def :handlers/proto #{:https})
+
+(s/def :handlers/method #{:get :post :put :patch :delete :options})
 
 (s/def :handlers.handler/type #{:proxy :mock})
 
@@ -84,7 +88,27 @@
 (s/def :handlers/config
   (s/keys
     :req-un [:handlers/match-type
+             :handlers/domain
              :handlers/path
              :handlers/proto
+             :handlers/method
              :handlers/matchers
              :handlers/captures]))
+
+(s/def :get-handler-params/proto :handlers/proto)
+
+(s/def :get-handler-params/method :handlers/method)
+
+(s/def :get-handler-params/domain :handlers/domain)
+
+(s/def :get-handler-params/match-type :handlers/match-type)
+
+(s/def :get-handler-params/path :handlers/path)
+
+(s/def :handlers/get-handler-params
+  (s/keys
+    :req-un [:get-handler-params/proto
+             :get-handler-params/method
+             :get-handler-params/domain
+             :get-handler-params/match-type
+             :get-handler-params/path]))

@@ -2,66 +2,37 @@
   (:require [webhook-explorer.app-state :as app-state]
             [webhook-explorer.routes :as routes]
             [webhook-explorer.init :as init]
-            [webhook-explorer.env :as env]
+            [webhook-explorer.auth :as core-auth]
             ["amazon-cognito-auth-js" :as cognito-auth]))
 
-(defn- make-cognito-auth []
-  (->> env/cognito-cfg
-       (cognito-auth/CognitoAuth.)))
+(reset! core-auth/on-login-success
+  (fn [sess]
+    (reset!
+      app-state/auth
+      {:user-data (core-auth/current-user-data sess)
+       :cognito-session sess})
+    (routes/nav-to-reqs)))
 
-(declare current-user-data)
-
-(defn- with-user-handler [c]
-  (set!
-    (.-userhandler c)
-    #js {:onSuccess #(do (reset! app-state/auth {:user-data (current-user-data %) :cognito-session %})
-                         (routes/nav-to-reqs))
-         :onFailure #(routes/nav-to-auth {:query-params {:failure true}})})
-  c)
-
-(def ^:private ca (->> (make-cognito-auth) with-user-handler))
-
-(defn- unexpired? []
-  (-> ca
-      (.getSignInUserSession)
-      (.getIdToken)
-      (.getExpiration)
-      (* 1000)
-      (> (js/Date.now))))
-
-(defn- logged-in? []
-  (and
-    (.isUserSignedIn ca)
-    (unexpired?)))
-
-(defn- current-user-data
-  ([]
-    (current-user-data (.getSignInUserSession ca)))
-  ([sess]
-    (-> sess
-        (.getIdToken)
-        (.decodePayload)
-        (js->clj :keywordize-keys true))))
+(reset! core-auth/on-login-failure
+  (fn [] (routes/nav-to-auth {:query-params {:failure true}})))
 
 (init/register-init
   0
   (fn []
-    (when (logged-in?)
-      (reset! app-state/auth {:user-data (current-user-data) :cognito-session (.getSignInUserSession ca)}))))
+    (when (core-auth/logged-in?)
+      (reset! app-state/auth {:user-data (core-auth/current-user-data)
+                              :cognito-session (core-auth/signed-in-user-session)}))))
 
 (init/register-init
   2
   (fn []
-    (.parseCognitoWebResponse ca js/window.location.href)))
+    (core-auth/parse-web-response)))
 
 (defn sign-in []
-  (.getSession ca))
+  (core-auth/sign-in))
 
 (defn auth-header []
-  (-> ca
-      (.getSignInUserSession)
-      (.getIdToken)
-      (.getJwtToken)))
+  (core-auth/auth-header))
 
 (defn sign-out []
-  (.signOut ca))
+  (core-auth/sign-out))

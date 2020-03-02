@@ -18,6 +18,7 @@ exports.handler = async function handler(event, context) {
   }
 
   const { proto, method, domain, matchType, path } = event.queryStringParameters || {};
+
   const { Item: handler } = await documentClient.get({
     TableName: table,
     Key: {
@@ -27,10 +28,18 @@ exports.handler = async function handler(event, context) {
   }).promise();
 
   const { prefixKey, exactKey } = handler;
-  const fullHandler = await s3.getObject({
+  const key = matchType === 'exact' ? exactKey : prefixKey;
+
+  if ( !key ) {
+    return response(404, {}, JSON.stringify({ error: 'Missing' }));
+  }
+
+  const { Body: fullHandlerJson } = await s3.getObject({
     Bucket: bucket,
-    Key: matchType === 'exact' ? exactKey : prefixKey
+    Key: key
   }).promise();
+
+  const fullHandler = JSON.parse(fullHandlerJson);
 
   return response(200, {}, JSON.stringify({ handler: fullHandler }));
 };
