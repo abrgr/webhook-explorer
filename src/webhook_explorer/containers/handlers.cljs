@@ -9,10 +9,22 @@
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.infinite-table :as infinite-table]
             ["@material-ui/core/Button" :default Button]
+            ["@material-ui/core/Typography" :default Typography]
+            ["@material-ui/icons/SettingsInputComponent" :default HandlerConfigIcon]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/TableCell" :default TableCell]))
 
 (def ^:private row-height 64)
+
+(def ^:private styled
+  (styles/style-wrapper
+    (fn [theme]
+      {:no-items-container {:display "flex"
+                            :flexDirection "column"
+                            :height "100%"
+                            :alignItems "center"
+                            :justifyContent "center"}
+         :disabled {:color "rgba(0, 0, 0, 0.26)"}})))
 
 (def ^:private cols
   (array-map
@@ -50,7 +62,16 @@
           :method (-> cell-data str string/capitalize)
           (str cell-data)))]))
 
-(defn component [{:keys [styles]}]
+(defn- no-rows-renderer [styles]
+  (r/as-element
+    [:div {:className (obj/get styles "no-items-container")}
+      [:> HandlerConfigIcon {:style #js {:fontSize 100}
+                             :color "disabled"}]
+      [:> Typography {:variant "h4"
+                      :className (obj/get styles "disabled")}
+        "No handlers configured yet"]]))
+
+(defn- -component [{:keys [styles]}]
   (let [{:keys [handlers next-req error]} @app-state/handlers]
     [infinite-table/component
       {:row-height row-height
@@ -59,4 +80,8 @@
        :load-more-items handlers-actions/load-next-handlers
        :get-row-by-idx #(get-in @app-state/handlers [:handlers %])
        :cols cols
+       :no-rows-renderer (partial no-rows-renderer styles)
        :cell-renderer cell-renderer}]))
+
+(defn component []
+  [styled {} -component])

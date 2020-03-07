@@ -8,7 +8,8 @@
 
 (defn- get-handlers [params]
   (if (nil? params)
-    (async/to-chan [:stop])
+    (do (swap! app-state/handlers assoc :next-req nil)
+        (async/to-chan [:stop]))
     (async/go
       (let [{{:keys [handlers nextReq]} :body} (async/<! (http-utils/req
                                                         {:method :get

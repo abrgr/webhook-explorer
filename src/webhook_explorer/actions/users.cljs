@@ -7,7 +7,8 @@
 
 (defn- get-users [params]
   (if (nil? params)
-    (async/to-chan [:stop])
+    (do (swap! app-state/users assoc :next-req nil)
+        (async/to-chan [:stop]))
     (async/go
       (let [{{:keys [users nextReq]} :body} (async/<! (http-utils/req
                                                         {:method :get

@@ -38,7 +38,16 @@
         col (get colsv col-index)]
     (inner-renderer {:col col :row-data row-data :cell-data cell-data :empty-row? (nil? row-data)})))
 
-(defn- -component [{:keys [styles row-height items next-req load-more-items get-row-by-idx cols header-renderer cell-renderer] :as p}]
+(defn- -component [{:keys [styles
+                           row-height
+                           items
+                           next-req
+                           load-more-items
+                           get-row-by-idx
+                           cols
+                           header-renderer
+                           cell-renderer
+                           no-rows-renderer] :as p}]
   (let [row-count (if (nil? next-req) (count items) (inc (count items)))]
     [:> AutoSizer
       (fn [size]
@@ -59,6 +68,7 @@
                      :height height
                      :width width
                      :rowClassName (obj/get styles "flex-container")
+                     :noRowsRenderer no-rows-renderer
                      :onRowsRendered (obj/get scroll-info "onRowsRendered")
                      :rowCount row-count
                      :rowHeight row-height
