@@ -73,7 +73,7 @@
                                                                     "https"
                                                                     "http"))}])}]]
          [method-selector/component
-          {:value method
+          {:value (string/lower-case method)
            :on-change #(reqs-actions/update-selected-item-in [:item :method] %)}]
          [:> FormControl {:fullWidth true
                           :margin "normal"}
