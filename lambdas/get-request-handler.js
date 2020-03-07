@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const S3 = require('aws-sdk/clients/s3');
 const {
   response,
@@ -14,7 +13,7 @@ const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { key: encodedKey } = event.pathParameters || {};
   const { uid } = getUserFromEvent(event);
 
@@ -62,7 +61,7 @@ async function listAll(params, prev) {
   const keys = data.Contents.map(c => c.Key);
   const next = (prev || []).concat(keys);
   if ( data.NextContinuationToken ) {
-    return await listAll({ ...params, ContinuationToken: data.NextContinuationToken }, next);
+    return listAll({ ...params, ContinuationToken: data.NextContinuationToken }, next);
   }
 
   return next;
@@ -72,7 +71,8 @@ async function getSignedUrl(method, params) {
   return new Promise((resolve, reject) => {
     s3.getSignedUrl(method, params, (err, url) => {
       if ( err ) {
-        return reject(err);
+        reject(err);
+        return;
       }
 
       resolve(url);

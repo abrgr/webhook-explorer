@@ -15,11 +15,11 @@ const {
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { uid } = getUserFromEvent(event);
-  const isFav = event.queryStringParameters['fav'];
-  const isPublic = event.queryStringParameters['pub'];
-  const userProvidedTag = event.queryStringParameters['tag'];
+  const isFav = event.queryStringParameters.fav;
+  const isPublic = event.queryStringParameters.pub;
+  const userProvidedTag = event.queryStringParameters.tag;
 
   if ( !isFav && !isValidUserSpecifiedTag(userProvidedTag) ) {
     console.error('Invalid user-specified tag', { tag, event });
@@ -28,7 +28,7 @@ exports.handler = async function handler(event, context) {
 
   const tag = isFav
             ? getTagForFavorite(uid)
-            : (isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag));
+            : isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag);
   const folder = folderForTag(tag);
 
   if ( !isUserAuthorizedToWriteFolder(uid, folder) ) {

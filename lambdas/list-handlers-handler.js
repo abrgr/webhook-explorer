@@ -5,11 +5,10 @@ const {
 const DynamoDB = require('aws-sdk/clients/dynamodb');
 
 const documentClient = new DynamoDB.DocumentClient({ apiVersion: '2019-09-21' });
-const bucket = process.env.BUCKET_NAME;
 const table = process.env.HANDLERS_TABLE_NAME;
 
-exports.handler = async function handler(event, context) {
-  const { permissions: { canCreateHandlers }} = getUserFromEvent(event);
+exports.handler = async function handler(event) {
+  const { permissions: { canCreateHandlers } } = getUserFromEvent(event);
 
   if ( !canCreateHandlers ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
@@ -25,7 +24,7 @@ exports.handler = async function handler(event, context) {
     ExpressionAttributeValues: {
       ':protoMethod': `${proto}:${method}`
     },
-    ...(token ? { ExclusiveStartKey: token } : {})
+    ...token ? { ExclusiveStartKey: token } : {}
   }).promise();
 
   console.log(JSON.stringify({ rawHandlers }));

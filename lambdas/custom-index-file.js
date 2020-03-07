@@ -5,7 +5,7 @@ const S3 = require('aws-sdk/clients/s3');
 const apiVersion = '2019-09-21';
 const s3 = new S3({ apiVersion });
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { RequestType, ResourceProperties, RequestId, LogicalResourceId, StackId, PhysicalResourceId, ResponseURL } = event;
   const { Version, HandlerDomains, UserPoolId, ClientId, AppWebDomain, RedirectUri, Bucket } = ResourceProperties;
 
@@ -32,7 +32,7 @@ exports.handler = async function handler(event, context) {
       StackId,
       PhysicalResourceId: Bucket ? `s3://${Bucket}/${Key}` : PhysicalResourceId
     };
-    
+
     await sendResponse(response, ResponseURL);
   } catch ( err ) {
     console.error('Failed', err);
@@ -46,7 +46,7 @@ exports.handler = async function handler(event, context) {
     };
     await sendResponse(errResponse, ResponseURL);
   }
-}
+};
 
 function getContent(version, handlerDomains, clientId, appWebDomain, redirectUri, userPoolId) {
   const rogoUrl = url.parse(redirectUri);

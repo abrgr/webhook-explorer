@@ -4,7 +4,7 @@ const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 
 exports.getNextListing = async function getNextListing(folder, ymd, token, makeItemFromKey) {
-  return await nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token, makeItemFromKey);
+  return nextListing(folder, normalizePrefix(ymd) || currentPrefix(), token, makeItemFromKey);
 };
 
 function normalizePrefix(ymd) {
@@ -30,13 +30,13 @@ async function nextListing(folder, prefix, token, makeItemFromKey) {
     }
   }
 
-  const pageForPrefix = await getItemPage(folder, prefix, undefined, makeItemFromKey);
+  const pageForPrefix = await getItemPage(folder, prefix, void 0, makeItemFromKey);
   if ( pageForPrefix ) {
     return pageForPrefix;
   }
 
   const nextPrefix = await getNextPrefix(folder, prefix);
-  return await getItemPage(folder, nextPrefix, undefined, makeItemFromKey);
+  return getItemPage(folder, nextPrefix, void 0, makeItemFromKey);
 }
 
 async function getItemPage(folder, prefix, token, makeItemFromKey) {
@@ -69,7 +69,7 @@ async function getNextPrefix(folder, prevPrefix) {
   if ( !!y && !!m ) {
     const ymPrefix = `${folder}/${[y, m].join('/')}/`;
     const { CommonPrefixes: daysForMonth } = await s3List(ymPrefix);
-    const nextDay = !!d
+    const nextDay = d
                   ? firstLessThan(daysForMonth.map(d => d.Prefix), `${ymPrefix}${d}/`)
                   : get(last(daysForMonth), 'Prefix');
     if ( nextDay ) {
@@ -77,10 +77,10 @@ async function getNextPrefix(folder, prevPrefix) {
     }
   }
 
-  if ( !!y ) {
+  if ( y ) {
     const yPrefix = `${folder}/${y}/`;
     const { CommonPrefixes: monthsForYear } = await s3List(yPrefix);
-    const nextMonth = !!m
+    const nextMonth = m
                     ? firstLessThan(monthsForYear.map(m => m.Prefix), `${yPrefix}${m}/`)
                     : get(last(monthsForYear), 'Prefix');
     if ( nextMonth ) {
@@ -89,7 +89,7 @@ async function getNextPrefix(folder, prevPrefix) {
   }
 
   const { CommonPrefixes: years } = await s3List(`${folder}/`);
-  const nextYear = !!y
+  const nextYear = y
                  ? firstLessThan(years.map(m => m.Prefix), `${folder}/${y}/`)
                  : get(last(years), 'Prefix');
   if ( nextYear ) {
@@ -107,7 +107,7 @@ async function s3List(prefix, opts) {
     Prefix: prefix
   };
 
-  return await s3.listObjectsV2(params).promise();
+  return s3.listObjectsV2(params).promise();
 }
 
 function removeFolderFromPrefix(folder, prefix) {
@@ -131,7 +131,7 @@ function firstLessThan(l, x) {
 }
 
 function get(m, k) {
-  return !!m ? m[k] : null;
+  return m ? m[k] : null;
 }
 
 function last(l) {

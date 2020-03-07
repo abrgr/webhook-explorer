@@ -6,6 +6,8 @@ extends: 'eslint:recommended'
 globals:
   Atomics: readonly
   SharedArrayBuffer: readonly
+  Buffer: readonly
+  process: readonly
 parserOptions:
   ecmaVersion: 2018
 rules:
@@ -84,7 +86,7 @@ rules:
     - error
     - after: true
       before: true
-  line-comment-position: error
+  line-comment-position: 'off'
   linebreak-style:
     - error
     - unix
@@ -95,10 +97,10 @@ rules:
   max-depth: error
   max-len: 'off'
   max-lines: 'off'
-  max-lines-per-function: error
+  max-lines-per-function: 'off'
   max-nested-callbacks: error
   max-params: 'off'
-  max-statements: error
+  max-statements: 'off'
   max-statements-per-line: error
   multiline-comment-style: error
   new-cap: error
@@ -127,12 +129,12 @@ rules:
   no-extend-native: error
   no-extra-bind: error
   no-extra-label: error
-  no-extra-parens: error
+  no-extra-parens: 'off'
   no-floating-decimal: error
   no-implicit-globals: error
   no-implied-eval: error
   no-import-assign: error
-  no-inline-comments: error
+  no-inline-comments: 'off'
   no-invalid-this: error
   no-iterator: error
   no-label-var: error
@@ -150,7 +152,7 @@ rules:
   no-native-reassign: error
   no-negated-condition: error
   no-negated-in-lhs: error
-  no-nested-ternary: error
+  no-nested-ternary: 'off'
   no-new: error
   no-new-func: error
   no-new-object: error
@@ -159,10 +161,11 @@ rules:
   no-octal-escape: error
   no-param-reassign: error
   no-path-concat: error
-  no-plusplus: error
+  no-plusplus: 'off'
   no-process-env: 'off'
   no-process-exit: error
   no-proto: error
+  no-prototype-builtins: 'off' 
   no-restricted-globals: error
   no-restricted-imports: error
   no-restricted-modules: error
@@ -188,11 +191,16 @@ rules:
   no-unmodified-loop-condition: error
   no-unneeded-ternary: error
   no-unused-expressions: error
+  no-unused-vars:
+    - error
+    - argsIgnorePattern: "^_"
+      varsIgnorePattern: "^_"
   no-use-before-define: 'off'
   no-useless-call: error
   no-useless-computed-key: error
   no-useless-concat: error
   no-useless-constructor: error
+  no-useless-escape: 'off'
   no-useless-rename: error
   no-useless-return: error
   no-var: error

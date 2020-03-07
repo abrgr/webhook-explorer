@@ -21,7 +21,7 @@ const handlers = {
   proxy: handleProxy
 };
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const startTime = Date.now();
   const now = new Date();
   const iso = now.toISOString();
@@ -135,8 +135,8 @@ async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies, match
 }
 
 async function handleMock(captures, { mock: { res: mockRes } }) {
-  const headers = Object.keys(mockRes.headers)
-    .reduce((h, headerKey) => ({
+  const headers = Object.keys(mockRes.headers).
+    reduce((h, headerKey) => ({
       ...h,
       [headerKey]: fillTemplate(captures, mockRes.headers[headerKey])
     }), {});
@@ -148,16 +148,16 @@ async function handleMock(captures, { mock: { res: mockRes } }) {
 }
 
 async function handleProxy(captures, { proxy: { remoteUrl } }, { body, isBase64Encoded, headers, httpMethod }) {
-  const adjHeaders = Object.keys(headers)
-                     .filter(h => h.toLowerCase() !== 'host')
-                     .reduce((hs, h) => ({
+  const adjHeaders = Object.keys(headers).
+                     filter(h => h.toLowerCase() !== 'host').
+                     reduce((hs, h) => ({
                         ...hs,
                         [h]: headers[h]
-                      }, {}));
+                      }), {});
   const proxyUrl = fillTemplate(captures, remoteUrl);
   const bodyBuffer = Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8');
 
-  return await executeRequest(httpMethod, proxyUrl, adjHeaders, bodyBuffer);
+  return executeRequest(httpMethod, proxyUrl, adjHeaders, bodyBuffer);
 }
 
 class MissingTemplateVarError extends Error {
@@ -189,13 +189,13 @@ function doesMatch(captures, { matches }) {
 
 function getCaptures(
   { path: handlerPath, captures },
-  { path, headers, body, isBase64Encoded, ...restEvent },
+  { path, headers, body, isBase64Encoded },
   form
 ) {
   const { body: bodyCaptureSpec, headers: headerCaptureSpec } = captures || {};
   const bodies = {
     form: form,
-    raw: !!body ? Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8') : null
+    raw: body ? Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8') : null
   };
   const pathCaptures = getPathCaptures(handlerPath, path);
   const headerCaptures = headerCaptureSpec && !!headers ? getHeaderCaptures(headerCaptureSpec, headers) : {};
@@ -231,7 +231,7 @@ function getJsonBodyCaptures(captures, { json: jsonBuffer }) {
   }
 }
 
-function getFormBodyCaptures(captures, { form: { fields }}) {
+function getFormBodyCaptures(captures, { form: { fields } }) {
   return Object.keys(captures).reduce((field, caps) => ({
     ...caps,
     [captures[field].templateVar]: (fields || {})[field]
@@ -290,7 +290,7 @@ async function findHandlerKey(protoMethod, domainPathPrefix, restPathParts) {
 async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
   const node = await loadHandler(domainPath, protoMethod);
   if ( !node ) {
-    return;
+    return void 0;
   }
 
   if ( isLast ) {
@@ -308,7 +308,7 @@ async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
       return nextResult;
     }
   }
-  
+
   if ( node.prefixKey && !isLast ) {
     return {
       key: node.prefixKey,
@@ -317,6 +317,8 @@ async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
       matchType: 'prefix'
     };
   }
+
+  return void 0;
 }
 
 async function loadHandler(domainPath, protoMethod) {
@@ -343,56 +345,57 @@ async function loadHandlerData(key) {
 async function parseForm(event) {
   return new Promise((resolve, reject) => {
     if ( !event.headers ) {
-      return resolve(null);
+      resolve(null);
+      return;
     }
 
-    let busboy;
     try {
-      busboy = new Busboy({
+      const busboy = new Busboy({
         headers: {
           'content-type': event.headers['Content-Type'] || event.headers['content-type']
         }
       });
-    } catch ( e ) {
-      if ( e.message.startsWith('Unsupported content type')
-          || e.message === 'Missing Content-Type' ) {
-        return resolve(null);
-      }
-      return reject(e);
-    }
 
-    const result = {
-      files: [],
-      fields: {}
-    };
+      const result = {
+        files: [],
+        fields: {}
+      };
 
-    busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
-      let fileData = null;
-      file.on('data', (data) => {
-        fileData = data.toString('base64');
-      });
+      busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
+        let fileData = null;
+        file.on('data', data => {
+          fileData = data.toString('base64');
+        });
 
-      file.on('end', () => {
-        result.files.push({
-          filename,
-          mimetype,
-          originalEncoding: encoding,
-          dataEncoding: 'base64',
-          data: fileData
+        file.on('end', () => {
+          result.files.push({
+            filename,
+            mimetype,
+            originalEncoding: encoding,
+            dataEncoding: 'base64',
+            data: fileData
+          });
         });
       });
-    });
 
-    busboy.on('field', (fieldname, value) => {
-      result.fields[fieldname] = value;
-    });
+      busboy.on('field', (fieldname, value) => {
+        result.fields[fieldname] = value;
+      });
 
-    busboy.on('error', reject);
-    busboy.on('finish', () => {
-      resolve(result);
-    });
+      busboy.on('error', reject);
+      busboy.on('finish', () => {
+        resolve(result);
+      });
 
-    busboy.write(event.body, event.isBase64Encoded ? 'base64' : 'binary');
-    busboy.end();
+      busboy.write(event.body, event.isBase64Encoded ? 'base64' : 'binary');
+      busboy.end();
+    } catch ( e ) {
+      if ( e.message.startsWith('Unsupported content type') ||
+          e.message === 'Missing Content-Type' ) {
+        resolve(null);
+        return;
+      }
+      reject(e);
+    }
   });
 }

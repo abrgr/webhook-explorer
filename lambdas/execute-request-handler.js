@@ -1,15 +1,12 @@
-const url = require('url');
-const http = require('http');
-const https = require('https');
 const {
   response,
   getUserFromEvent,
   executeRequest
 } = require('./common');
 
-exports.handler = async function handler(event, context) {
-  const { req: { method, url: remoteUrl, headers, body }} = JSON.parse(event.body) || {};
-  const { permissions: { canExecuteArbitraryRequests }} = getUserFromEvent(event);
+exports.handler = async function handler(event) {
+  const { req: { method, url: remoteUrl, headers, body } } = JSON.parse(event.body) || {};
+  const { permissions: { canExecuteArbitraryRequests } } = getUserFromEvent(event);
 
   if ( !canExecuteArbitraryRequests ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
@@ -17,6 +14,6 @@ exports.handler = async function handler(event, context) {
 
   const res = await executeRequest(method, remoteUrl, headers, Buffer.from(body, 'utf8'));
 
-  return response(200, {}, JSON.stringify({ res })); 
+  return response(200, {}, JSON.stringify({ res }));
 };
 

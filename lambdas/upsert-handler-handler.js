@@ -11,8 +11,8 @@ const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 const table = process.env.HANDLERS_TABLE_NAME;
 
-exports.handler = async function handler(event, context) {
-  const { permissions: { canCreateHandlers }} = getUserFromEvent(event);
+exports.handler = async function handler(event) {
+  const { permissions: { canCreateHandlers } } = getUserFromEvent(event);
 
   if ( !canCreateHandlers ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
@@ -71,12 +71,12 @@ exports.handler = async function handler(event, context) {
     }).promise();
 
     const pathParts = path.slice(1).split('/');
-    for ( let i = 0; i < pathParts.length; ++i ) {
+    await Promise.all(pathParts.map((_, i) => {
       const prefixKey = domain + '/' + pathParts.slice(0, i).join('/');
-      await documentClient.update({
+      return documentClient.update({
         TableName: table,
         Key: {
-          domainPath: `${prefixKey}`,
+          domainPath: prefixKey,
           protoMethod
         },
         UpdateExpression: 'set #suffixCount = if_not_exists(#suffixCount, :z) + :i',
@@ -88,7 +88,7 @@ exports.handler = async function handler(event, context) {
           ':z': 0
         }
       }).promise();
-    }
+    }));
   } catch ( err ) {
     if ( err.code === 'ConditionalCheckFailedException' ) {
       return response(409, {}, JSON.stringify({ error: 'Conflict' }));

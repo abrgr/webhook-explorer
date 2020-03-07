@@ -111,7 +111,7 @@ function keyForParts(folder, iso, method, host, path, status, fingerprint) {
 
 function partsForKey(key) {
   const filename = path.basename(key);
-  const [sort, encodedIso, method, encodedHost, encodedUrlPath, status, fingerprint] = filename.split(':');
+  const [_sort, encodedIso, method, encodedHost, encodedUrlPath, status, fingerprint] = filename.split(':');
   return {
     id: fingerprint,
     fingerprint,
@@ -297,7 +297,7 @@ async function executeRequest(method, remoteUrl, headers, body) {
     });
     req.on('error', reject);
 
-    if ( !!body ) {
+    if ( body ) {
       req.write(body);
     }
     req.end();

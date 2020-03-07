@@ -1,4 +1,3 @@
-const path = require('path');
 const S3 = require('aws-sdk/clients/s3');
 const {
   response,
@@ -13,7 +12,7 @@ const {
 const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { uid } = getUserFromEvent(event);
 
   // TODO: handle continuation token
@@ -44,5 +43,5 @@ async function s3List(prefix, opts) {
     Prefix: prefix
   };
 
-  return await s3.listObjectsV2(params).promise();
+  return s3.listObjectsV2(params).promise();
 }

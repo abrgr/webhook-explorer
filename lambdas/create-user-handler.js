@@ -8,9 +8,9 @@ const {
 const cognito = new Cognito({ apiVersion: '2019-09-21' });
 const poolId = process.env.COGNITO_USER_POOL_ID;
 
-exports.handler = async function handler(event, context) {
-  const { user: { email, role }} = JSON.parse(event.body) || {};
-  const { permissions: { canAdminUsers }} = getUserFromEvent(event);
+exports.handler = async function handler(event) {
+  const { user: { email, role } } = JSON.parse(event.body) || {};
+  const { permissions: { canAdminUsers } } = getUserFromEvent(event);
 
   if ( !canAdminUsers ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
@@ -42,8 +42,8 @@ exports.handler = async function handler(event, context) {
   } catch ( err ) {
     console.error('Failed to create user', err);
     const errors = err.errors ? err.errors : [err];
-    const errMsgs = errors.filter(e => e.code === 'InvalidParameterType')
-                          .map(e => e.message);
-    return response(400, {}, JSON.stringify({ error: { msg: "Could not create user", messages: errMsgs }}));
+    const errMsgs = errors.filter(e => e.code === 'InvalidParameterType').
+                          map(e => e.message);
+    return response(400, {}, JSON.stringify({ error: { msg: "Could not create user", messages: errMsgs } }));
   }
 };

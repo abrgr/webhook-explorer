@@ -4,7 +4,7 @@
   "description": "Lambdas for Rogo",
   "main": "index.js",
   "scripts": {
-    "lint-fix": "eslint --fix"
+    "lint-fix": "eslint --fix ."
   },
   "author": "Ratchet Designs",
   "license": "UNLICENSED",

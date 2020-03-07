@@ -7,7 +7,7 @@ const apiVersion = '2019-09-21';
 const acm = new ACM({ apiVersion });
 const route53 = new Route53({ apiVersion });
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { RequestType, RequestId, ResponseURL, StackId, LogicalResourceId } = event;
 
   try {
@@ -138,7 +138,7 @@ async function createCert(HostedZoneId, DomainName) {
 }
 
 async function delay(seconds) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     setTimeout(resolve, seconds * 1000);
   });
 }
@@ -158,17 +158,21 @@ async function verifyDomain(HostedZoneId, cnameRecord) {
       HostedZoneId,
       ChangeBatch: {
         Comment: 'Domain Verification',
-        Changes: [{
+        Changes: [
+{
           Action: 'CREATE',
           ResourceRecordSet: {
             Name: cnameRecord.Name,
-            ResourceRecords: [{
+            ResourceRecords: [
+{
               Value: cnameRecord.Value
-            }],
+            }
+],
             TTL: 300,
             Type: 'CNAME'
           }
-        }]
+        }
+]
       }
     }).promise();
   } catch ( err ) {
@@ -181,21 +185,25 @@ async function verifyDomain(HostedZoneId, cnameRecord) {
 }
 
 async function deleteDomain(HostedZoneId, cnameRecord) {
-  return await route53.changeResourceRecordSets({
+  return route53.changeResourceRecordSets({
     HostedZoneId,
     ChangeBatch: {
       Comment: 'Domain Verification',
-      Changes: [{
+      Changes: [
+{
         Action: 'DELETE',
         ResourceRecordSet: {
           Name: cnameRecord.Name,
-          ResourceRecords: [{
+          ResourceRecords: [
+{
             Value: cnameRecord.Value
-          }],
+          }
+],
           TTL: 300,
           Type: 'CNAME'
         }
-      }]
+      }
+]
     }
   }).promise();
 }

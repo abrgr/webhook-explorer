@@ -10,8 +10,8 @@ const s3 = new S3({ apiVersion: '2019-09-21' });
 const bucket = process.env.BUCKET_NAME;
 const table = process.env.HANDLERS_TABLE_NAME;
 
-exports.handler = async function handler(event, context) {
-  const { permissions: { canCreateHandlers }} = getUserFromEvent(event);
+exports.handler = async function handler(event) {
+  const { permissions: { canCreateHandlers } } = getUserFromEvent(event);
 
   if ( !canCreateHandlers ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));

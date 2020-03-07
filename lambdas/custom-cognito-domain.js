@@ -5,12 +5,12 @@ const CognitoIdentityServiceProvider = require('aws-sdk/clients/cognitoidentitys
 const apiVersion = '2019-09-21';
 const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider({ apiVersion });
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { RequestType, ResourceProperties, RequestId, LogicalResourceId, StackId, PhysicalResourceId, ResponseURL } = event;
   const { UserPoolId, Domain, CertificateArn } = ResourceProperties;
 
   try {
-    let physicalId = null
+    let physicalId = null;
     if ( RequestType === 'Create' ) {
       const response = await cognitoIdentityServiceProvider.createUserPoolDomain({
         UserPoolId,
@@ -22,7 +22,7 @@ exports.handler = async function handler(event, context) {
       physicalId = response.CloudFrontDomain;
     } else if ( RequestType === 'Update' ) {
       await deleteUserPoolDomain(event.OldResourceProperties.Domain);
-      
+
       const response = await cognitoIdentityServiceProvider.createUserPoolDomain({
         UserPoolId,
         Domain,
@@ -42,7 +42,7 @@ exports.handler = async function handler(event, context) {
       StackId,
       PhysicalResourceId: physicalId || PhysicalResourceId
     };
-    
+
     await sendResponse(response, ResponseURL);
   } catch ( err ) {
     console.error('Failed', err);
@@ -56,13 +56,13 @@ exports.handler = async function handler(event, context) {
     };
     await sendResponse(errResponse, ResponseURL);
   }
-}
+};
 
 async function deleteUserPoolDomain(Domain) {
-  var response = await cognitoIdentityServiceProvider.describeUserPoolDomain({
+  const response = await cognitoIdentityServiceProvider.describeUserPoolDomain({
     Domain
   }).promise();
-  
+
   if (response.DomainDescription.Domain) {
     await cognitoIdentityServiceProvider.deleteUserPoolDomain({
       UserPoolId: response.DomainDescription.UserPoolId,

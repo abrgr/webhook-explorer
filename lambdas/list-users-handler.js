@@ -8,9 +8,9 @@ const {
 const cognito = new Cognito({ apiVersion: '2019-09-21' });
 const poolId = process.env.COGNITO_USER_POOL_ID;
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   const { token } = event.queryStringParameters || {};
-  const { permissions: { canAdminUsers }} = getUserFromEvent(event);
+  const { permissions: { canAdminUsers } } = getUserFromEvent(event);
 
   if ( !canAdminUsers ) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
