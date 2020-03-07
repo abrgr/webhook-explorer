@@ -60,7 +60,7 @@
                                        :domain (first env/handler-domains)
                                        :matchers []}})}
        :guards
-        {:has-params (fn [ctx] (obj/containsKey ctx "params"))}
+        {:has-params (fn [ctx] (some? (obj/get ctx "params")))}
        :services
         {:fetch-handler (fn [ctx, evt]
                           (remote-handlers/get-handler

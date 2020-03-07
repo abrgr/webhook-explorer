@@ -55,7 +55,7 @@
   edit-handler-path
   nav-to-edit-handler
   [require-login]
-  "/edit-handler/:match-type/:domain/:method/*path"
+  "/handlers/edit/:match-type/:domain/:method/*path"
   [match-type domain method path]
   (let [params {:proto "https"
                 :match-type match-type
@@ -65,6 +65,16 @@
     (reset! app-state/nav {:page :edit-handler
                            :params params})
     (xs/send app-state/handler {:type :reset :params params})))
+
+(defextroute
+  hist
+  new-handler-path
+  nav-to-new-handler
+  [require-login]
+  "/handlers/new"
+  []
+  (reset! app-state/nav {:page :edit-handler})
+  (xs/send app-state/handler {:type :reset}))
 
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))

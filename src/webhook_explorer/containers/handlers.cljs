@@ -8,7 +8,7 @@
             [webhook-explorer.styles :as styles]
             [webhook-explorer.icons :as icons]
             [webhook-explorer.actions.handlers :as handlers-actions]
-            [webhook-explorer.components.infinite-table :as infinite-table]
+            [webhook-explorer.components.table-page :as table-page]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
@@ -24,7 +24,7 @@
                             :height "100%"
                             :alignItems "center"
                             :justifyContent "center"}
-         :disabled {:color "rgba(0, 0, 0, 0.26)"}})))
+       :disabled {:color "rgba(0, 0, 0, 0.26)"}})))
 
 (def ^:private cols
   (array-map
@@ -73,8 +73,10 @@
 
 (defn- -component [{:keys [styles]}]
   (let [{:keys [handlers next-req error]} @app-state/handlers]
-    [infinite-table/component
-      {:row-height row-height
+    [table-page/component
+      {:create-btn-content "Create handler"
+       :on-create routes/nav-to-new-handler
+       :row-height row-height
        :items handlers
        :next-req next-req
        :load-more-items handlers-actions/load-next-handlers
