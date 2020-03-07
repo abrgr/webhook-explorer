@@ -64,5 +64,4 @@
   ([opts]
    (-> machine
        (xs/interpret machine opts)
-       (.start)
-       (.onTransition js/console.log))))
+       (.start))))
