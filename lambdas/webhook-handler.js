@@ -1,8 +1,10 @@
-const { keyForParts, response, hashMsg, parseRequestCookies } = require('./common');
-const http = require('http');
-const https = require('https');
-const url = require('url');
-const zlib = require('zlib');
+const {
+  keyForParts,
+  response,
+  hashMsg,
+  parseRequestCookies,
+  executeRequest
+} = require('./common');
 const S3 = require('aws-sdk/clients/s3');
 const DynamoDB = require('aws-sdk/clients/dynamodb');
 const Busboy = require('busboy');
@@ -104,7 +106,6 @@ exports.handler = async function handler(event, context) {
 
     return response(502, { error: 'Error processing request' }, 'Error processing request');
   }
-
 };
 
 async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies, matchedHandler) {
@@ -147,63 +148,16 @@ async function handleMock(captures, { mock: { res: mockRes } }) {
 }
 
 async function handleProxy(captures, { proxy: { remoteUrl } }, { body, isBase64Encoded, headers, httpMethod }) {
-  return new Promise((resolve, reject) => {
-    const proxyUrl = fillTemplate(captures, remoteUrl);
-    const parsedUrl = url.parse(proxyUrl);
-    const isHttps = (parsedUrl.protocol || 'https').indexOf('https') >= 0;
-    const opts = {
-      auth: parsedUrl.auth || void 0,
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || void 0,
-      path: parsedUrl.path,
-      method: httpMethod,
-      headers: Object.keys(headers)
+  const adjHeaders = Object.keys(headers)
                      .filter(h => h.toLowerCase() !== 'host')
                      .reduce((hs, h) => ({
                         ...hs,
                         [h]: headers[h]
-                      }, {}))
-    };
+                      }, {}));
+  const proxyUrl = fillTemplate(captures, remoteUrl);
+  const bodyBuffer = Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8');
 
-    const protoHandler = isHttps ? https : http;
-    const req = protoHandler.request(opts, res => {
-      let respBody = Buffer.from([]);
-      res.on('data', chunk => {
-        respBody = Buffer.concat([respBody, chunk]);
-      });
-      res.on('end', () => {
-        const enc = res.headers['content-encoding'];
-        const ct = res.headers['content-type'];
-        const decompressedRespBody = decompress(enc, respBody);
-        const isUtf = !!/^text|^multipart|[\/](javascript|json|edn|xml|xhtml)/.exec(ct);
-        return resolve({
-          status: res.statusCode,
-          headers: res.headers,
-          body: decompressedRespBody.toString(isUtf ? 'utf8' : 'base64'),
-          isBase64Encoded: !isUtf
-        });
-      });
-    });
-    req.on('error', reject);
-
-    if ( !!body ) {
-      req.write(body, isBase64Encoded ? 'base64' : 'utf8');
-    }
-    req.end();
-  });
-}
-
-function decompress(encoding, body) {
-  switch ( encoding ) {
-    case 'br':
-      return zlib.brotliDecompressSync(body);
-    case 'gzip':
-      return zlib.gunzipSync(body);
-    case 'deflate':
-      return zlib.deflateSync(body);
-    default:
-      return body;
-  }
+  return await executeRequest(httpMethod, proxyUrl, adjHeaders, bodyBuffer);
 }
 
 class MissingTemplateVarError extends Error {

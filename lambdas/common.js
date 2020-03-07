@@ -1,5 +1,9 @@
 const crypto = require('crypto');
 const path = require('path');
+const http = require('http');
+const https = require('https');
+const url = require('url');
+const zlib = require('zlib');
 const stableStringify = require('json-stable-stringify');
 
 const EXPECTED_AUD = process.env.EXPECTED_AUD;
@@ -26,7 +30,8 @@ module.exports = {
   parseRequestCookies,
   parseResponseCookies,
   fingerprintTagAndDateToUserVisibleTags,
-  getHandlerKey
+  getHandlerKey,
+  executeRequest
 };
 
 function getUserFromEvent(event) {
@@ -53,7 +58,8 @@ function getUserFromEvent(event) {
     uid,
     permissions: {
       canAdminUsers: role === 'admin',
-      canCreateHandlers: role === 'admin' || role === 'eng'
+      canCreateHandlers: role === 'admin' || role === 'eng',
+      canExecuteArbitraryRequests: role === 'admin' || role === 'eng'
     }
   };
 }
@@ -256,4 +262,57 @@ function fingerprintTagAndDateToUserVisibleTags(uid, items) {
     },
     {}
   );
+}
+
+async function executeRequest(method, remoteUrl, headers, body) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = url.parse(remoteUrl);
+    const opts = {
+      auth: parsedUrl.auth || void 0,
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || void 0,
+      path: parsedUrl.path,
+      method,
+      headers
+    };
+    const isHttps = (parsedUrl.protocol || 'https').indexOf('https') >= 0;
+    const protoHandler = isHttps ? https : http;
+    const req = protoHandler.request(opts, res => {
+      let respBody = Buffer.from([]);
+      res.on('data', chunk => {
+        respBody = Buffer.concat([respBody, chunk]);
+      });
+      res.on('end', () => {
+        const enc = res.headers['content-encoding'];
+        const ct = res.headers['content-type'];
+        const decompressedRespBody = decompress(enc, respBody);
+        const isUtf = !!/^text|^multipart|[\/](javascript|json|edn|xml|xhtml)/.exec(ct);
+        return resolve({
+          status: res.statusCode,
+          headers: res.headers,
+          body: decompressedRespBody.toString(isUtf ? 'utf8' : 'base64'),
+          isBase64Encoded: !isUtf
+        });
+      });
+    });
+    req.on('error', reject);
+
+    if ( !!body ) {
+      req.write(body);
+    }
+    req.end();
+  });
+}
+
+function decompress(encoding, body) {
+  switch ( encoding ) {
+    case 'br':
+      return zlib.brotliDecompressSync(body);
+    case 'gzip':
+      return zlib.gunzipSync(body);
+    case 'deflate':
+      return zlib.deflateSync(body);
+    default:
+      return body;
+  }
 }

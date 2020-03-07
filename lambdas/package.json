@@ -4,7 +4,7 @@
   "description": "Lambdas for Rogo",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint-fix": "eslint --fix"
   },
   "author": "Ratchet Designs",
   "license": "UNLICENSED",
@@ -12,5 +12,9 @@
     "busboy": "^0.3.1",
     "json-stable-stringify": "^1.0.1",
     "jsonpath": "^1.0.2"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "prettier": "^1.19.1"
   }
 }

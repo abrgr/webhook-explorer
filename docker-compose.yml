@@ -42,3 +42,14 @@ services:
       - "./.aws:/root/.aws:ro"
     entrypoint: ["npm"]
     working_dir: "/usr/src/app"
+  lambda-npm:
+    image: webhook-explorer/lein
+    build:
+      context: .
+      dockerfile: lein.dockerfile
+    volumes:
+      - ".:/usr/src/app"
+      - "${M2_DIR}:/root/.m2"
+      - "./.aws:/root/.aws:ro"
+    entrypoint: ["npm"]
+    working_dir: "/usr/src/app/lambdas"
