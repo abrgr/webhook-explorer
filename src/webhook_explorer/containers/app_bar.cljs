@@ -12,13 +12,10 @@
             ["@material-ui/core/ListItemIcon" :default ListItemIcon]
             ["@material-ui/core/ListItemText" :default ListItemText]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
-            ["@material-ui/icons/Menu" :default MenuIcon]
-            ["@material-ui/icons/Dashboard" :default RequestsIcon]
-            ["@material-ui/icons/Group" :default UsersIcon]
-            ["@material-ui/icons/SettingsInputComponent" :default HandlerConfigIcon]
             ["@material-ui/core/Drawer" :default Drawer]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Avatar" :default Avatar]
+            [webhook-explorer.icons :as icons]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.routes :as routes]
@@ -67,7 +64,7 @@
                               :color "inherit"
                               :aria-label "menu"
                               :onClick #(swap! drawer-open not)}
-                [:> MenuIcon]])
+                [:> icons/MenuIcon]])
             [:> Typography {:variant "h6" :className (obj/get styles "title")} "Webhook Explorer"]
             (if (app-state/logged-in?)
               [avatar]
@@ -83,19 +80,19 @@
               [:> ListItem {:button true
                             :onClick #(nav-from-drawer routes/nav-to-reqs)}
                 [:> ListItemIcon
-                  [:> RequestsIcon]]
+                  [:> icons/RequestsIcon]]
                 [:> ListItemText
                   "Requests"]]
               [:> ListItem {:button true
                             :onClick #(nav-from-drawer routes/nav-to-handlers)}
                 [:> ListItemIcon
-                  [:> HandlerConfigIcon]]
+                  [:> icons/HandlerConfigIcon]]
                 [:> ListItemText
                   "Handlers"]]
               [:> ListItem {:button true
                             :onClick #(nav-from-drawer routes/nav-to-users)}
                 [:> ListItemIcon
-                  [:> UsersIcon]]
+                  [:> icons/UsersIcon]]
                 [:> ListItemText
                   "Users"]]]])
         [:div {:className (obj/get styles "toolbar-offset")}]])))

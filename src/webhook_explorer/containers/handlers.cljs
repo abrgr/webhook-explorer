@@ -6,11 +6,11 @@
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.routes :as routes]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.icons :as icons]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.infinite-table :as infinite-table]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Typography" :default Typography]
-            ["@material-ui/icons/SettingsInputComponent" :default HandlerConfigIcon]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/TableCell" :default TableCell]))
 
@@ -65,8 +65,8 @@
 (defn- no-rows-renderer [styles]
   (r/as-element
     [:div {:className (obj/get styles "no-items-container")}
-      [:> HandlerConfigIcon {:style #js {:fontSize 100}
-                             :color "disabled"}]
+      [:> icons/HandlerConfigIcon {:style #js {:fontSize 100}
+                                   :color "disabled"}]
       [:> Typography {:variant "h4"
                       :className (obj/get styles "disabled")}
         "No handlers configured yet"]]))

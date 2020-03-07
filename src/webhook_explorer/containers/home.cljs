@@ -8,6 +8,7 @@
             [webhook-explorer.components.req-card :as req-card]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.actions.reqs :as reqs-actions]
+            [webhook-explorer.icons :as icons]
             ["moment" :as moment]
             ["react-virtualized/dist/commonjs/AutoSizer" :default AutoSizer]
             ["react-virtualized/dist/commonjs/CellMeasurer" :refer [CellMeasurer CellMeasurerCache]]
@@ -24,8 +25,7 @@
             ["@material-ui/core/InputLabel" :default InputLabel]
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/styles" :refer [withTheme] :rename {withTheme with-theme}]
-            ["@material-ui/core/MenuItem" :default MenuItem]
-            ["@material-ui/icons/Dashboard" :default RequestsIcon]))
+            ["@material-ui/core/MenuItem" :default MenuItem]))
 
 (def ^:private styled
   (styles/style-wrapper
@@ -99,8 +99,8 @@
 (defn- no-rows-renderer [styles]
   (r/as-element
     [:div {:className (obj/get styles "no-items-container")}
-      [:> RequestsIcon {:style #js {:fontSize 100}
-                        :color "disabled"}]
+      [:> icons/RequestsIcon {:style #js {:fontSize 100}
+                              :color "disabled"}]
       [:> Typography {:variant "h4"
                       :className (obj/get styles "disabled")}
         "No matching requests"]]))
