@@ -93,7 +93,7 @@
             :handlers/proto
             :handlers/method
             :handlers/matchers]
-    :opt-un [:handlers/captures]))
+   :opt-un [:handlers/captures]))
 
 (s/def :get-handler-params/proto :handlers/proto)
 

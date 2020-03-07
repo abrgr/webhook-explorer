@@ -13,11 +13,11 @@
           (update :match-type keyword)
           (update :method (comp keyword string/lower-case))
           (update
-            :matchers
-            (fn [ms]
-              (mapv
-                #(update-in % [:handler :type] keyword)
-                ms)))))
+           :matchers
+           (fn [ms]
+             (mapv
+              #(update-in % [:handler :type] keyword)
+              ms)))))
 
 (s/fdef adapt-handler
   :args (s/cat :handler map?)
