@@ -29,10 +29,10 @@
 
 (defn- page []
   [:div {:style #js {:display "flex" :flexDirection "column" :height "100%"}}
-    [:> pickers/MuiPickersUtilsProvider {:utils MomentUtils}
-      [:> CssBaseline]
-      [app-bar/component]
-      [current-page]]])
+   [:> pickers/MuiPickersUtilsProvider {:utils MomentUtils}
+    [:> CssBaseline]
+    [app-bar/component]
+    [current-page]]])
 
 (defn- mount []
   (r/render [page]

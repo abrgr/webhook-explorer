@@ -37,24 +37,24 @@
 
 (def ^:private styled
   (styles/style-wrapper
-    (fn [theme]
-      {:code {:width "100%"
-              :marginTop 16
-              "& .CodeMirror-scroll" {:maxHeight 500}
-              "& > .CodeMirror" {:height "auto"
-                                 :width "100%"
-                                 :border "1px solid #eee"}}})))
+   (fn [theme]
+     {:code {:width "100%"
+             :marginTop 16
+             "& .CodeMirror-scroll" {:maxHeight 500}
+             "& > .CodeMirror" {:height "auto"
+                                :width "100%"
+                                :border "1px solid #eee"}}})))
 
 (defn- editor [{:keys [value content-type on-change styles] :as p}]
   (let [mode (when-let [m (.findModeByMIME CM (or content-type "text/plain"))]
                (obj/get m "mode"))]
     (r/as-element
-      [:> CodeMirror {:className (obj/get styles "code")
-                      :value value
-                      :onChange on-change
-                      :options #js {:lineWrapping true
-                                    :lineNumbers true
-                                    :mode mode}}])))
+     [:> CodeMirror {:className (obj/get styles "code")
+                     :value value
+                     :onChange on-change
+                     :options #js {:lineWrapping true
+                                   :lineNumbers true
+                                   :mode mode}}])))
 
 (defn- styled-editor [value content-type on-change]
   [styled {:value value :content-type content-type :on-change on-change} editor])
@@ -81,75 +81,75 @@
                             :TransitionProps #js {:onEntered on-visibility-toggled
                                                   :onExit on-visibility-toggled
                                                   :unmountOnExit true}}
-          [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-            title]
-          [:> ExpansionPanelDetails
-            (if (nil? m)
-              [:> CircularProgress]
-              [:> Table {:aria-label title}
-                [:> TableHead
-                  [:> TableRow
-                    [:> TableCell k-title]
-                    [:> TableCell v-title]
-                    (when editable
-                      [:> TableCell ""])]]
-                [:> TableBody
-                  (for [[k v] m]
-                    (if (coll? v)
-                      (for [vv v]
-                        ^{:key vv}
-                        [:> TableRow
-                          [:> TableCell k]
-                          [:> TableCell [value-component {:value vv :key k :on-change on-change}]]
-                          (when editable
-                            [:> TableCell
-                              [:> IconButton {:aria-label "delete"
-                                              :onClick #(on-change k nil)}
-                                [:> DeleteIcon {:fontSize "small"}]]])])
-                      ^{:key k}
-                      [:> TableRow
-                        [:> TableCell k]
-                        [:> TableCell [value-component {:value v :key k :on-change on-change}]]
-                        (when editable
-                          [:> TableCell
-                            [:> IconButton {:aria-label "delete"
-                                            :onClick #(on-change k nil)}
-                              [:> DeleteIcon {:fontSize "small"}]]])]))]
-                (when editable
-                  [:> TableFooter
+         [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+          title]
+         [:> ExpansionPanelDetails
+          (if (nil? m)
+            [:> CircularProgress]
+            [:> Table {:aria-label title}
+             [:> TableHead
+              [:> TableRow
+               [:> TableCell k-title]
+               [:> TableCell v-title]
+               (when editable
+                 [:> TableCell ""])]]
+             [:> TableBody
+              (for [[k v] m]
+                (if (coll? v)
+                  (for [vv v]
+                    ^{:key vv}
                     [:> TableRow
-                      [:> TableCell
-                        [key-editor-component {:value new-k
-                                               :on-change #(swap! new-kv assoc :new-k %)}]]
-                      [:> TableCell
-                        [:> TextField {:value new-v
-                                       :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]
-                      [:> TableCell
-                        [:> IconButton {:aria-label "add"
-                                        :onClick #(do (on-change (keyword new-k) new-v)
-                                                      (reset! new-kv {:new-k "" :new-v ""}))}
-                          [:> AddIcon {:color "primary"
-                                       :fontSize "small"}]]]]])])]]))))
+                     [:> TableCell k]
+                     [:> TableCell [value-component {:value vv :key k :on-change on-change}]]
+                     (when editable
+                       [:> TableCell
+                        [:> IconButton {:aria-label "delete"
+                                        :onClick #(on-change k nil)}
+                         [:> DeleteIcon {:fontSize "small"}]]])])
+                  ^{:key k}
+                  [:> TableRow
+                   [:> TableCell k]
+                   [:> TableCell [value-component {:value v :key k :on-change on-change}]]
+                   (when editable
+                     [:> TableCell
+                      [:> IconButton {:aria-label "delete"
+                                      :onClick #(on-change k nil)}
+                       [:> DeleteIcon {:fontSize "small"}]]])]))]
+             (when editable
+               [:> TableFooter
+                [:> TableRow
+                 [:> TableCell
+                  [key-editor-component {:value new-k
+                                         :on-change #(swap! new-kv assoc :new-k %)}]]
+                 [:> TableCell
+                  [:> TextField {:value new-v
+                                 :onChange #(swap! new-kv assoc :new-v (obj/getValueByKeys % #js ["target" "value"]))}]]
+                 [:> TableCell
+                  [:> IconButton {:aria-label "add"
+                                  :onClick #(do (on-change (keyword new-k) new-v)
+                                                (reset! new-kv {:new-k "" :new-v ""}))}
+                   [:> AddIcon {:color "primary"
+                                :fontSize "small"}]]]]])])]]))))
 
 (defn headers-view
   ([title headers]
-    [headers-view title headers nop])
+   [headers-view title headers nop])
   ([title headers on-visibility-toggled]
-    [base-kv-view {:title title
-                   :k-title "Header"
-                   :v-title "Value"
-                   :m headers
-                   :on-visibility-toggled on-visibility-toggled}]))
+   [base-kv-view {:title title
+                  :k-title "Header"
+                  :v-title "Value"
+                  :m headers
+                  :on-visibility-toggled on-visibility-toggled}]))
 
 (defn cookies-view
   ([title cookies]
-    [cookies-view title cookies nop])
+   [cookies-view title cookies nop])
   ([title cookies on-visibility-toggled]
-    [base-kv-view {:title title
-                   :k-title "Cookie"
-                   :v-title "Value"
-                   :m cookies
-                   :on-visibility-toggled on-visibility-toggled}]))
+   [base-kv-view {:title title
+                  :k-title "Cookie"
+                  :v-title "Value"
+                  :m cookies
+                  :on-visibility-toggled on-visibility-toggled}]))
 
 (defn- editable-value [{:keys [key value on-change]}]
   ^{:key key}
@@ -198,88 +198,88 @@
 
 (defmethod inner-body-view :files [{:keys [body]}]
   [:> Table {:aria-label "Files"}
-    [:> TableHead
+   [:> TableHead
+    [:> TableRow
+     [:> TableCell "Filename"]
+     [:> TableCell "Mime Type"]
+     [:> TableCell "Encoding"]
+     [:> TableCell ""]]]
+   [:> TableBody
+    (for [{:keys [filename mimetype originalEncoding data]} body]
+      ^{:key filename}
       [:> TableRow
-        [:> TableCell "Filename"]
-        [:> TableCell "Mime Type"]
-        [:> TableCell "Encoding"]
-        [:> TableCell ""]]]
-    [:> TableBody
-      (for [{:keys [filename mimetype originalEncoding data]} body]
-        ^{:key filename}
-        [:> TableRow
-          [:> TableCell filename]
-          [:> TableCell mimetype]
-          [:> TableCell originalEncoding]
-          [:> TableCell
-            [:> IconButton {:aria-label "download"
-                            :download filename
-                            :href (str "data:" mimetype ";base64," data)}
-              [:> DownloadIcon {:fontSize "small"}]]]])]])
+       [:> TableCell filename]
+       [:> TableCell mimetype]
+       [:> TableCell originalEncoding]
+       [:> TableCell
+        [:> IconButton {:aria-label "download"
+                        :download filename
+                        :href (str "data:" mimetype ";base64," data)}
+         [:> DownloadIcon {:fontSize "small"}]]]])]])
 
 (defn- body-tabs [{:keys [bodies content-type on-visibility-toggled on-change]}]
   (let [tab (r/atom (-> bodies first))]
     (fn [{:keys [bodies content-type on-change]}]
       (let [{:keys [type label] :as t} @tab]
         [:div {:style #js {:width "100%"}}
-          [:> Tabs {:value type
-                    :label label
-                    :indicatorColor "primary"
-                    :textColor "primary"
-                    :variant "fullWidth"
-                    :onChange (fn [_ v]
-                                (->> bodies
-                                     (filter #(= (:type %) (keyword v)))
-                                     first
-                                     (reset! tab))
-                                (on-visibility-toggled))}
-            (for [{:keys [type label] :as body} bodies]
-              ^{:key label}
-              [(r/adapt-react-class Tab) {:value type :label label}])]
-          [inner-body-view (merge t {:content-type content-type :on-change on-change})]]))))
+         [:> Tabs {:value type
+                   :label label
+                   :indicatorColor "primary"
+                   :textColor "primary"
+                   :variant "fullWidth"
+                   :onChange (fn [_ v]
+                               (->> bodies
+                                    (filter #(= (:type %) (keyword v)))
+                                    first
+                                    (reset! tab))
+                               (on-visibility-toggled))}
+          (for [{:keys [type label] :as body} bodies]
+            ^{:key label}
+            [(r/adapt-react-class Tab) {:value type :label label}])]
+         [inner-body-view (merge t {:content-type content-type :on-change on-change})]]))))
 
 (defn base-body-view [{:keys [title bodies headers on-change on-visibility-toggled]
                        :or {on-change nop on-visibility-changed nop}}]
   (let [content-type (get headers "Content-Type")]
     [:> ExpansionPanel {:elevation 0 :onChange on-visibility-toggled}
-      [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
-        title]
-      [:> ExpansionPanelDetails
-        (cond
-          (and (nil? bodies) (nil? headers)) [:> CircularProgress]
-          (= (count bodies) 1) (let [{:keys [type body]} (-> bodies first)]
-                                 [inner-body-view {:type type
-                                                   :body body
-                                                   :content-type content-type
-                                                   :on-change on-change}])
-          (empty? bodies) [:> Typography "Empty body"]
-          :else [body-tabs {:bodies bodies
-                            :content-type content-type
-                            :on-visibility-toggled on-visibility-toggled
-                            :on-change on-change}])]]))
+     [:> ExpansionPanelSummary {:expandIcon (r/as-element [:> ExpandMoreIcon])}
+      title]
+     [:> ExpansionPanelDetails
+      (cond
+        (and (nil? bodies) (nil? headers)) [:> CircularProgress]
+        (= (count bodies) 1) (let [{:keys [type body]} (-> bodies first)]
+                               [inner-body-view {:type type
+                                                 :body body
+                                                 :content-type content-type
+                                                 :on-change on-change}])
+        (empty? bodies) [:> Typography "Empty body"]
+        :else [body-tabs {:bodies bodies
+                          :content-type content-type
+                          :on-visibility-toggled on-visibility-toggled
+                          :on-change on-change}])]]))
 
 (defn make-bodies [bodies-by-type]
   (->> bodies-by-type
        (reduce
-         (fn [bodies [type {:keys [label body]}]]
-           (if body
-             (conj (or bodies []) {:type type :label label :body body})
-             bodies))
-         nil)))
+        (fn [bodies [type {:keys [label body]}]]
+          (if body
+            (conj (or bodies []) {:type type :label label :body body})
+            bodies))
+        nil)))
 
 (defn body-view
   ([title bodies headers]
-    [body-view title bodies headers nop])
+   [body-view title bodies headers nop])
   ([title bodies headers on-visibility-toggled]
-    [base-body-view
-      {:title title
-       :bodies bodies
-       :headers headers
-       :on-visibility-toggled on-visibility-toggled}]))
-
-(defn editable-body-view [title bodies headers on-change]
-  [base-body-view
+   [base-body-view
     {:title title
      :bodies bodies
      :headers headers
-     :on-change on-change}])
+     :on-visibility-toggled on-visibility-toggled}]))
+
+(defn editable-body-view [title bodies headers on-change]
+  [base-body-view
+   {:title title
+    :bodies bodies
+    :headers headers
+    :on-change on-change}])

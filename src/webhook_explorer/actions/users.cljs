@@ -11,18 +11,18 @@
         (async/to-chan [:stop]))
     (async/go
       (let [{{:keys [users nextReq]} :body} (async/<! (http-utils/req
-                                                        {:method :get
-                                                         :path "users"
-                                                         :query-params params}))]
+                                                       {:method :get
+                                                        :path "users"
+                                                        :query-params params}))]
         (swap!
-          app-state/users
-          (fn [{prev-users :users :as prev}]
-            (merge
-              prev
-              {:users (->> users
-                           (concat prev-users)
-                           (into []))
-               :next-req nextReq})))
+         app-state/users
+         (fn [{prev-users :users :as prev}]
+           (merge
+            prev
+            {:users (->> users
+                         (concat prev-users)
+                         (into []))
+             :next-req nextReq})))
         :done))))
 
 (def ^:private req-chan (async/chan))
@@ -43,45 +43,45 @@
 (defn create-user [{:keys [email role]}]
   (async/go
     (let [res (async/<! (http/post
-                          (http-utils/make-api-url "users")
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)
-                           :json-params {:user {:email email
-                                                :role role}}}))
+                         (http-utils/make-api-url "users")
+                         {:with-credentials? false
+                          :headers (http-utils/auth-headers)
+                          :json-params {:user {:email email
+                                               :role role}}}))
           {{:keys [user]
             {err-msg :msg} :error} :body} res]
       (if user
         (swap!
-          app-state/users
-          update
-          :users
-          conj
-          user)
+         app-state/users
+         update
+         :users
+         conj
+         user)
         (swap!
-          app-state/users
-          assoc
-          :error
-          (or err-msg "Failed to create user")))
+         app-state/users
+         assoc
+         :error
+         (or err-msg "Failed to create user")))
       (some? user))))
 
 (defn update-user [{:keys [username]} k v]
   (async/go
     (let [res (async/<! (http/post
-                          (http-utils/make-api-url (str "users/" username))
-                          {:with-credentials? false
-                           :headers (http-utils/auth-headers)
-                           :json-params {:actions [{k v}]}}))
+                         (http-utils/make-api-url (str "users/" username))
+                         {:with-credentials? false
+                          :headers (http-utils/auth-headers)
+                          :json-params {:actions [{k v}]}}))
           {:keys [status]} res
           success (= status 200)]
       (when success
         (swap!
-          app-state/users
-          update
-          :users
-          (fn [prev-users]
-            (mapv
-              #(if (= (:username %) username)
-                (assoc % k v)
-                %)
-              prev-users))))
+         app-state/users
+         update
+         :users
+         (fn [prev-users]
+           (mapv
+            #(if (= (:username %) username)
+               (assoc % k v)
+               %)
+            prev-users))))
       success)))

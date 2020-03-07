@@ -49,6 +49,6 @@
 (defn user-info []
   (let [user-data (:user-data @auth)]
     (merge
-      (user-name user-data)
-      {:pic-url (:picture user-data)
-       :email (:email user-data)})))
+     (user-name user-data)
+     {:pic-url (:picture user-data)
+      :email (:email user-data)})))

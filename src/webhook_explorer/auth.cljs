@@ -11,9 +11,9 @@
 
 (defn- with-user-handler [c]
   (set!
-    (.-userhandler c)
-    #js {:onSuccess #(@on-login-success %)
-         :onFailure #(@on-login-failure)})
+   (.-userhandler c)
+   #js {:onSuccess #(@on-login-success %)
+        :onFailure #(@on-login-failure)})
   c)
 
 (def ^:private ca (->> (make-cognito-auth) with-user-handler))
@@ -28,17 +28,17 @@
 
 (defn logged-in? []
   (and
-    (.isUserSignedIn ca)
-    (unexpired?)))
+   (.isUserSignedIn ca)
+   (unexpired?)))
 
 (defn current-user-data
   ([]
-    (current-user-data (.getSignInUserSession ca)))
+   (current-user-data (.getSignInUserSession ca)))
   ([sess]
-    (-> sess
-        (.getIdToken)
-        (.decodePayload)
-        (js->clj :keywordize-keys true))))
+   (-> sess
+       (.getIdToken)
+       (.decodePayload)
+       (js->clj :keywordize-keys true))))
 
 (defn sign-in []
   (.getSession ca))

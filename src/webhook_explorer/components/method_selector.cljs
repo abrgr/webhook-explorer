@@ -10,12 +10,12 @@
   [:> FormControl {:fullWidth true
                    :margin "normal"
                    :className class-name}
-    [:> InputLabel "Method"]
-    [:> Select {:value (or value "")
-                :onChange #(on-change (obj/getValueByKeys % #js ["target" "value"]))}
-      [:> MenuItem {:value "GET"} "GET"]
-      [:> MenuItem {:value "POST"} "POST"]
-      [:> MenuItem {:value "PUT"} "PUT"]
-      [:> MenuItem {:value "PATCH"} "PATCH"]
-      [:> MenuItem {:value "DELETE"} "DELETE"]
-      [:> MenuItem {:value "OPTIONS"} "OPTIONS"]]])
+   [:> InputLabel "Method"]
+   [:> Select {:value (or value "")
+               :onChange #(on-change (obj/getValueByKeys % #js ["target" "value"]))}
+    [:> MenuItem {:value "GET"} "GET"]
+    [:> MenuItem {:value "POST"} "POST"]
+    [:> MenuItem {:value "PUT"} "PUT"]
+    [:> MenuItem {:value "PATCH"} "PATCH"]
+    [:> MenuItem {:value "DELETE"} "DELETE"]
+    [:> MenuItem {:value "OPTIONS"} "OPTIONS"]]])

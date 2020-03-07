@@ -8,8 +8,8 @@
 (defn load-tags []
   (async/go
     (let [res (async/<! (http-utils/req
-                          {:method :get
-                           :path "tags"}))
+                         {:method :get
+                          :path "tags"}))
           {{:keys [user-tags]
             {:keys [readable writable]} :public-tags} :body} res]
       (reset! app-state/tags {:user (set user-tags)
@@ -20,28 +20,28 @@
   (when tag
     (if pub
       (swap!
-        app-state/tags
-        update
-        :public
-        #(-> %
-             (update :readable conj tag)
-             (update :writable conj tag)))
+       app-state/tags
+       update
+       :public
+       #(-> %
+            (update :readable conj tag)
+            (update :writable conj tag)))
       (swap!
-        app-state/tags
-        update
-        :user
-        conj
-        tag))))
+       app-state/tags
+       update
+       :user
+       conj
+       tag))))
 
 (init/register-init
-  10
-  (fn []
-    (if (app-state/logged-in?)
-      (load-tags)
-      (add-watch
-        app-state/auth
-        ::load-tags
-        (fn [_ _ _ _]
-          (when (app-state/logged-in?)
-            (remove-watch app-state/auth ::load-tags)
-            (load-tags)))))))
+ 10
+ (fn []
+   (if (app-state/logged-in?)
+     (load-tags)
+     (add-watch
+      app-state/auth
+      ::load-tags
+      (fn [_ _ _ _]
+        (when (app-state/logged-in?)
+          (remove-watch app-state/auth ::load-tags)
+          (load-tags)))))))

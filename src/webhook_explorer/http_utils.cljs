@@ -33,17 +33,17 @@
                   true (update :headers merge (auth-headers))
                   true (assoc :with-credentials? false))
           opts' (reduce
-                  (fn [opts' lit-req-path]
-                    (assoc-in opts' (concat [:json-params] (map csk/->camelCase lit-req-path)) (get-in json-params lit-req-path)))
-                  opts'
-                  literal-req-paths)
+                 (fn [opts' lit-req-path]
+                   (assoc-in opts' (concat [:json-params] (map csk/->camelCase lit-req-path)) (get-in json-params lit-req-path)))
+                 opts'
+                 literal-req-paths)
           res (async/<! (http/request opts'))
           {:keys [status headers body]} res
           body' (reduce
-                  (fn [body' lit-resp-path]
-                    (assoc-in body' (map csk/->kebab-case-keyword lit-resp-path) (get-in body lit-resp-path)))
-                  (cske/transform-keys csk/->kebab-case-keyword body)
-                  literal-res-paths)]
+                 (fn [body' lit-resp-path]
+                   (assoc-in body' (map csk/->kebab-case-keyword lit-resp-path) (get-in body lit-resp-path)))
+                 (cske/transform-keys csk/->kebab-case-keyword body)
+                 literal-res-paths)]
       {:body body'
        :error (error-for-status status)
        :status status

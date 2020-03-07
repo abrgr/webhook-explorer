@@ -13,23 +13,23 @@
 
 (def ^:private hist
   (Html5History.
-    nil
-    #js {:retrieveToken (fn [prefix loc]
-                          (subs (obj/get loc "pathname") (count prefix)))
-         :createUrl (fn [token prefix url]
-                      (str prefix token))}))
+   nil
+   #js {:retrieveToken (fn [prefix loc]
+                         (subs (obj/get loc "pathname") (count prefix)))
+        :createUrl (fn [token prefix url]
+                     (str prefix token))}))
 
 (defn- hook-browser-navigation! []
   (doto hist
-        (.setPathPrefix (str js/window.location.protocol
-                             "//"
-                             js/window.location.host))
-        (.setUseFragment false)
-        (events/listen
-           EventType/NAVIGATE
-           (fn [event]
-             (secretary/dispatch! (str js/window.location.pathname js/window.location.search))))
-        (.setEnabled true)))
+    (.setPathPrefix (str js/window.location.protocol
+                         "//"
+                         js/window.location.host))
+    (.setUseFragment false)
+    (events/listen
+     EventType/NAVIGATE
+     (fn [event]
+       (secretary/dispatch! (str js/window.location.pathname js/window.location.search))))
+    (.setEnabled true)))
 
 (defextroute hist auth-path nav-to-auth nil "/" [query-params]
   (reset! app-state/nav {:page :auth

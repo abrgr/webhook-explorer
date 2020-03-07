@@ -6,27 +6,27 @@
             ["amazon-cognito-auth-js" :as cognito-auth]))
 
 (reset! core-auth/on-login-success
-  (fn [sess]
-    (reset!
-      app-state/auth
-      {:user-data (core-auth/current-user-data sess)
-       :cognito-session sess})
-    (routes/nav-to-reqs)))
+        (fn [sess]
+          (reset!
+           app-state/auth
+           {:user-data (core-auth/current-user-data sess)
+            :cognito-session sess})
+          (routes/nav-to-reqs)))
 
 (reset! core-auth/on-login-failure
-  (fn [] (routes/nav-to-auth {:query-params {:failure true}})))
+        (fn [] (routes/nav-to-auth {:query-params {:failure true}})))
 
 (init/register-init
-  0
-  (fn []
-    (when (core-auth/logged-in?)
-      (reset! app-state/auth {:user-data (core-auth/current-user-data)
-                              :cognito-session (core-auth/signed-in-user-session)}))))
+ 0
+ (fn []
+   (when (core-auth/logged-in?)
+     (reset! app-state/auth {:user-data (core-auth/current-user-data)
+                             :cognito-session (core-auth/signed-in-user-session)}))))
 
 (init/register-init
-  2
-  (fn []
-    (core-auth/parse-web-response)))
+ 2
+ (fn []
+   (core-auth/parse-web-response)))
 
 (defn sign-in []
   (core-auth/sign-in))

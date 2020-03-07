@@ -7,15 +7,15 @@
 
 (defn get-handler [params]
   (putil/chan->promise
-    (async/go
-      (let [ps (-> params
-                   (select-keys [:proto :method :domain :match-type :path]))
-            res (async/<! (http-utils/req
-                            {:method :get
-                             :path "handler"
-                             :query-params ps}))
-            {:keys [error] {:keys [handler]} :body} res]
-        (or error handler)))))
+   (async/go
+     (let [ps (-> params
+                  (select-keys [:proto :method :domain :match-type :path]))
+           res (async/<! (http-utils/req
+                          {:method :get
+                           :path "handler"
+                           :query-params ps}))
+           {:keys [error] {:keys [handler]} :body} res]
+       (or error handler)))))
 
 (s/fdef get-handler
   :args (s/cat :params :handlers/get-handler-params))

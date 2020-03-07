@@ -12,18 +12,18 @@
         (async/to-chan [:stop]))
     (async/go
       (let [{{:keys [handlers nextReq]} :body} (async/<! (http-utils/req
-                                                        {:method :get
-                                                         :path "handlers"
-                                                         :query-params params}))]
+                                                          {:method :get
+                                                           :path "handlers"
+                                                           :query-params params}))]
         (swap!
-          app-state/handlers
-          (fn [{prev-handlers :handlers :as prev}]
-            (merge
-              prev
-              {:handlers (->> handlers
-                              (concat prev-handlers)
-                              (into []))
-               :next-req nextReq})))
+         app-state/handlers
+         (fn [{prev-handlers :handlers :as prev}]
+           (merge
+            prev
+            {:handlers (->> handlers
+                            (concat prev-handlers)
+                            (into []))
+             :next-req nextReq})))
         :done))))
 
 (def ^:private req-chan (async/chan))
@@ -44,9 +44,9 @@
 (defn publish-handler [handler-config]
   (async/go
     (let [res (async/<! (http-utils/req
-                          {:method :post
-                           :path "handlers"
-                           :json-params {:handler (assoc handler-config :domain "api.easybetes.com")}}))
+                         {:method :post
+                          :path "handlers"
+                          :json-params {:handler (assoc handler-config :domain "api.easybetes.com")}}))
           {{:keys [success]} :body} res]
       (boolean success))))
 

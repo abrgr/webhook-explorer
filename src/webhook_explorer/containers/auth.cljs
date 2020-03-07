@@ -5,6 +5,6 @@
 (defn component []
   (let [{{:keys [failure]} :params} @app-state/nav]
     [:<>
-      (when failure
-        [:div "Failed to sign in"])
-      [:div "Sign in!"]]))
+     (when failure
+       [:div "Failed to sign in"])
+     [:div "Sign in!"]]))

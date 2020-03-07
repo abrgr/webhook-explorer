@@ -11,6 +11,7 @@
                  [cljs-http "0.1.46"]
                  [camel-snake-kebab "0.4.1"]
                  [org.clojure/data.json "0.2.7"]]
+  :plugins [[lein-cljfmt "0.6.7"]]
   :source-paths ["src"]
   :profiles {:dev
               {:dependencies []}}

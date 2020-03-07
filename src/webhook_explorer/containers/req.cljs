@@ -10,10 +10,10 @@
 
 (def ^:private styled
   (styles/style-wrapper
-    (fn [theme]
-      (let [status-style {:width 60 :height 60 :margin 10}]
-        {:card-container {:display "flex"
-                          :justifyContent "center"}}))))
+   (fn [theme]
+     (let [status-style {:width 60 :height 60 :margin 10}]
+       {:card-container {:display "flex"
+                         :justifyContent "center"}}))))
 
 (defn- -component [{:keys [styles slug]}]
   (let [req-chan (reqs-actions/load-req slug)
@@ -24,16 +24,16 @@
     (fn []
       (let [{:keys [tags] :as item} @req-atom]
         [:div {:className (obj/get styles "card-container")}
-          (if (nil? item)
-            [:> CircularProgress]
-            [:<>
-              [req-editor/component]
-              [req-card/component
-                {:item item
-                 :favorited (:fav tags)
-                 :private-tags (:private-tags tags)
-                 :public-tags (:public-tags tags)
-                 :on-visibility-toggled #()}]])]))))
+         (if (nil? item)
+           [:> CircularProgress]
+           [:<>
+            [req-editor/component]
+            [req-card/component
+             {:item item
+              :favorited (:fav tags)
+              :private-tags (:private-tags tags)
+              :public-tags (:public-tags tags)
+              :on-visibility-toggled #()}]])]))))
 
 (defn component [params]
   [styled params -component])

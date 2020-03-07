@@ -9,19 +9,19 @@
 
 (defn style-wrapper [class-defs]
   (let [make-styles (styles/makeStyles
-                      (fn [theme]
-                        (clj->js (if (fn? class-defs)
-                                     (class-defs theme)
-                                     class-defs))))
+                     (fn [theme]
+                       (clj->js (if (fn? class-defs)
+                                  (class-defs theme)
+                                  class-defs))))
         react-component (fn [js-props]
                           (let [s (make-styles)
                                 {:keys [wrapped] :as props} (js->clj js-props :keywordize-keys true)]
                             (r/as-element
-                              [wrapped
-                                (-> props
-                                    (assoc :styles s)
-                                    (dissoc :wrapped)
-                                    kebab-case-props)])))
+                             [wrapped
+                              (-> props
+                                  (assoc :styles s)
+                                  (dissoc :wrapped)
+                                  kebab-case-props)])))
         wrapper (fn [props wrapped]
                   [:> react-component (assoc props :wrapped wrapped)])]
     wrapper))

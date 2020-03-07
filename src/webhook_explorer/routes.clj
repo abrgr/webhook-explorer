@@ -6,4 +6,4 @@
         body-with-actions `(cond ~@action-invocations :else (do ~@body))]
     `(do (defroute ~path-name ~matcher ~params ~body-with-actions)
          (defn ~nav-name [& args#]
-            (.setToken ~hist (apply ~path-name args#))))))
+           (.setToken ~hist (apply ~path-name args#))))))
