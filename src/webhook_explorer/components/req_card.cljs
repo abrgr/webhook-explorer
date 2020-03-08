@@ -113,7 +113,7 @@
                               :public-tags public-tags
                               :allow-creation true
                               :selected-label "(Already tagged)"}]
-                            [action-btn "Add to request collection" AddToCollectionIcon #()]
+                            [action-btn "Add to request package" AddToCollectionIcon #()]
                             [action-btn "Share" ShareIcon #(reqs-actions/share-req item)]])
      :title (str method " " host path)
      :subheader date}]
