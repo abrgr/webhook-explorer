@@ -15,40 +15,45 @@ const bucket = process.env.BUCKET_NAME;
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 
 exports.handler = async function handler(event) {
-  const { folder, fav, pub, tag, ymd, token } = event.queryStringParameters || {};
+  const { folder, fav, pub, tag, ymd, token } =
+    event.queryStringParameters || {};
   const { uid } = getUserFromEvent(event);
-  const fullTag = pub
-                ? tag
-                : tag ? getPrivateTag(uid, tag) : null;
-  const resolvedTag = fav
-                    ? getTagForFavorite(uid)
-                    : fullTag;
+  const fullTag = pub ? tag : tag ? getPrivateTag(uid, tag) : null;
+  const resolvedTag = fav ? getTagForFavorite(uid) : fullTag;
   const resolvedFolder = resolvedTag
-                       ? folderForTag(resolvedTag)
-                       : folder || 'all';
+    ? folderForTag(resolvedTag)
+    : folder || 'all';
 
-  if ( !isUserAuthorizedToReadFolder(uid, resolvedFolder) ) {
+  if (!isUserAuthorizedToReadFolder(uid, resolvedFolder)) {
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
   }
 
   const page = await getNextListing(resolvedFolder, ymd, token, makeItem);
   const cacheSeconds = ymd || token ? 300 : 5;
 
-  return response(200, { 'Cache-Control': `max-age=${cacheSeconds}` }, JSON.stringify(page));
+  return response(
+    200,
+    { 'Cache-Control': `max-age=${cacheSeconds}` },
+    JSON.stringify(page)
+  );
 };
 
 async function makeItem(key) {
   const parts = partsForKey(key);
   return {
     ...parts,
-    dataUrl: await getSignedUrl('getObject', { Bucket: bucket, Key: key, Expires: ONE_HOUR_IN_SECONDS })
+    dataUrl: await getSignedUrl('getObject', {
+      Bucket: bucket,
+      Key: key,
+      Expires: ONE_HOUR_IN_SECONDS
+    })
   };
 }
 
 async function getSignedUrl(method, params) {
   return new Promise((resolve, reject) => {
     s3.getSignedUrl(method, params, (err, url) => {
-      if ( err ) {
+      if (err) {
         reject(err);
         return;
       }

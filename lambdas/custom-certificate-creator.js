@@ -8,26 +8,34 @@ const acm = new ACM({ apiVersion });
 const route53 = new Route53({ apiVersion });
 
 exports.handler = async function handler(event) {
-  const { RequestType, RequestId, ResponseURL, StackId, LogicalResourceId } = event;
+  const {
+    RequestType,
+    RequestId,
+    ResponseURL,
+    StackId,
+    LogicalResourceId
+  } = event;
 
   try {
-    if ( RequestType === 'Create' ) {
+    if (RequestType === 'Create') {
       const response = await handleCreate(event);
       await sendResponse(response, ResponseURL);
-    } else if ( RequestType === 'Update' ) {
+    } else if (RequestType === 'Update') {
       await handleDelete(event);
       const response = await handleCreate(event);
       await sendResponse(response, ResponseURL);
-    } else if ( RequestType === 'Delete' ) {
+    } else if (RequestType === 'Delete') {
       const response = await handleDelete(event);
       await sendResponse(response, ResponseURL);
     }
-  } catch ( err ) {
+  } catch (err) {
     console.error('Failed', err);
     const errResponse = {
       Status: 'FAILED',
       Reason: err.toString(),
-      PhysicalResourceId: ['fake', StackId, LogicalResourceId, RequestId].join('/'),
+      PhysicalResourceId: ['fake', StackId, LogicalResourceId, RequestId].join(
+        '/'
+      ),
       StackId,
       RequestId,
       LogicalResourceId
@@ -40,21 +48,23 @@ async function handleDelete(event) {
   const { RequestId, StackId, LogicalResourceId, PhysicalResourceId } = event;
   const { HostedZoneId } = event.ResourceProperties;
 
-  if ( !PhysicalResourceId.startsWith('fake/') ) {
+  if (!PhysicalResourceId.startsWith('fake/')) {
     const cnameRecord = await getCertCname(PhysicalResourceId);
 
     try {
       await deleteDomain(HostedZoneId, cnameRecord);
-    } catch ( err ) {
+    } catch (err) {
       // ignore the error if domain isn't found
-      if ( (err.message || '').indexOf('not found') <= 0) {
+      if ((err.message || '').indexOf('not found') <= 0) {
         throw err;
       }
     }
 
-    await acm.deleteCertificate({
-      CertificateArn: PhysicalResourceId
-    }).promise();
+    await acm
+      .deleteCertificate({
+        CertificateArn: PhysicalResourceId
+      })
+      .promise();
   }
 
   const response = {
@@ -112,7 +122,7 @@ async function sendResponse(response, ResponseURL) {
     });
 
     request.on('error', error => {
-      console.error("Failed to send response", error);
+      console.error('Failed to send response', error);
       reject(error);
     });
 
@@ -123,10 +133,12 @@ async function sendResponse(response, ResponseURL) {
 }
 
 async function createCert(HostedZoneId, DomainName) {
-  const { CertificateArn } = await acm.requestCertificate({
-    DomainName,
-    ValidationMethod: 'DNS'
-  }).promise();
+  const { CertificateArn } = await acm
+    .requestCertificate({
+      DomainName,
+      ValidationMethod: 'DNS'
+    })
+    .promise();
 
   const cnameRecord = await getCertCname(CertificateArn);
 
@@ -145,38 +157,47 @@ async function delay(seconds) {
 
 async function getCertCname(CertificateArn) {
   await delay(10); // wait for aws to generate the cname we need
-  const cert = await acm.describeCertificate({
-    CertificateArn
-  }).promise();
+  const cert = await acm
+    .describeCertificate({
+      CertificateArn
+    })
+    .promise();
 
-  return cert.Certificate.DomainValidationOptions.find(x => !!x.ResourceRecord).ResourceRecord;
+  return cert.Certificate.DomainValidationOptions.find(x => !!x.ResourceRecord)
+    .ResourceRecord;
 }
 
 async function verifyDomain(HostedZoneId, cnameRecord) {
   try {
-    return await route53.changeResourceRecordSets({
-      HostedZoneId,
-      ChangeBatch: {
-        Comment: 'Domain Verification',
-        Changes: [
-{
-          Action: 'CREATE',
-          ResourceRecordSet: {
-            Name: cnameRecord.Name,
-            ResourceRecords: [
-{
-              Value: cnameRecord.Value
+    return await route53
+      .changeResourceRecordSets({
+        HostedZoneId,
+        ChangeBatch: {
+          Comment: 'Domain Verification',
+          Changes: [
+            {
+              Action: 'CREATE',
+              ResourceRecordSet: {
+                Name: cnameRecord.Name,
+                ResourceRecords: [
+                  {
+                    Value: cnameRecord.Value
+                  }
+                ],
+                TTL: 300,
+                Type: 'CNAME'
+              }
             }
-],
-            TTL: 300,
-            Type: 'CNAME'
-          }
+          ]
         }
-]
-      }
-    }).promise();
-  } catch ( err ) {
-    if ( err.code === 'InvalidChangeBatch' && err.message && err.message.indexOf('already exists') >= 0 ) {
+      })
+      .promise();
+  } catch (err) {
+    if (
+      err.code === 'InvalidChangeBatch' &&
+      err.message &&
+      err.message.indexOf('already exists') >= 0
+    ) {
       return Promise.resolve();
     }
 
@@ -185,25 +206,27 @@ async function verifyDomain(HostedZoneId, cnameRecord) {
 }
 
 async function deleteDomain(HostedZoneId, cnameRecord) {
-  return route53.changeResourceRecordSets({
-    HostedZoneId,
-    ChangeBatch: {
-      Comment: 'Domain Verification',
-      Changes: [
-{
-        Action: 'DELETE',
-        ResourceRecordSet: {
-          Name: cnameRecord.Name,
-          ResourceRecords: [
-{
-            Value: cnameRecord.Value
+  return route53
+    .changeResourceRecordSets({
+      HostedZoneId,
+      ChangeBatch: {
+        Comment: 'Domain Verification',
+        Changes: [
+          {
+            Action: 'DELETE',
+            ResourceRecordSet: {
+              Name: cnameRecord.Name,
+              ResourceRecords: [
+                {
+                  Value: cnameRecord.Value
+                }
+              ],
+              TTL: 300,
+              Type: 'CNAME'
+            }
           }
-],
-          TTL: 300,
-          Type: 'CNAME'
-        }
+        ]
       }
-]
-    }
-  }).promise();
+    })
+    .promise();
 }

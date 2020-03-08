@@ -6,23 +6,50 @@ const apiVersion = '2019-09-21';
 const s3 = new S3({ apiVersion });
 
 exports.handler = async function handler(event) {
-  const { RequestType, ResourceProperties, RequestId, LogicalResourceId, StackId, PhysicalResourceId, ResponseURL } = event;
-  const { Version, HandlerDomains, UserPoolId, ClientId, AppWebDomain, RedirectUri, Bucket } = ResourceProperties;
+  const {
+    RequestType,
+    ResourceProperties,
+    RequestId,
+    LogicalResourceId,
+    StackId,
+    PhysicalResourceId,
+    ResponseURL
+  } = event;
+  const {
+    Version,
+    HandlerDomains,
+    UserPoolId,
+    ClientId,
+    AppWebDomain,
+    RedirectUri,
+    Bucket
+  } = ResourceProperties;
 
   try {
     const Key = 'web/index.html';
-    if ( RequestType === 'Create' || RequestType === 'Update' ) {
-      await s3.putObject({
-        Bucket,
-        Key,
-        Body: getContent(Version, HandlerDomains, ClientId, AppWebDomain, RedirectUri, UserPoolId),
-        ContentType: 'text/html'
-      }).promise();
-    } else if ( RequestType === 'Delete' ) {
-      await s3.deleteObject({
-        Bucket,
-        Key
-      }).promise();
+    if (RequestType === 'Create' || RequestType === 'Update') {
+      await s3
+        .putObject({
+          Bucket,
+          Key,
+          Body: getContent(
+            Version,
+            HandlerDomains,
+            ClientId,
+            AppWebDomain,
+            RedirectUri,
+            UserPoolId
+          ),
+          ContentType: 'text/html'
+        })
+        .promise();
+    } else if (RequestType === 'Delete') {
+      await s3
+        .deleteObject({
+          Bucket,
+          Key
+        })
+        .promise();
     }
 
     const response = {
@@ -34,7 +61,7 @@ exports.handler = async function handler(event) {
     };
 
     await sendResponse(response, ResponseURL);
-  } catch ( err ) {
+  } catch (err) {
     console.error('Failed', err);
     const errResponse = {
       Status: 'FAILED',
@@ -48,9 +75,16 @@ exports.handler = async function handler(event) {
   }
 };
 
-function getContent(version, handlerDomains, clientId, appWebDomain, redirectUri, userPoolId) {
+function getContent(
+  version,
+  handlerDomains,
+  clientId,
+  appWebDomain,
+  redirectUri,
+  userPoolId
+) {
   const rogoUrl = url.parse(redirectUri);
-  rogoUrl.path = "/api/";
+  rogoUrl.path = '/api/';
 
   return `
     <!DOCTYPE html>
@@ -114,7 +148,7 @@ async function sendResponse(response, ResponseURL) {
     });
 
     request.on('error', error => {
-      console.error("Failed to send response", error);
+      console.error('Failed to send response', error);
       reject(error);
     });
 

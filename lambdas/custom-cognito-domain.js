@@ -3,35 +3,49 @@ const https = require('https');
 const CognitoIdentityServiceProvider = require('aws-sdk/clients/cognitoidentityserviceprovider');
 
 const apiVersion = '2019-09-21';
-const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider({ apiVersion });
+const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider({
+  apiVersion
+});
 
 exports.handler = async function handler(event) {
-  const { RequestType, ResourceProperties, RequestId, LogicalResourceId, StackId, PhysicalResourceId, ResponseURL } = event;
+  const {
+    RequestType,
+    ResourceProperties,
+    RequestId,
+    LogicalResourceId,
+    StackId,
+    PhysicalResourceId,
+    ResponseURL
+  } = event;
   const { UserPoolId, Domain, CertificateArn } = ResourceProperties;
 
   try {
     let physicalId = null;
-    if ( RequestType === 'Create' ) {
-      const response = await cognitoIdentityServiceProvider.createUserPoolDomain({
-        UserPoolId,
-        Domain,
-        CustomDomainConfig: {
-          CertificateArn
-        }
-      }).promise();
+    if (RequestType === 'Create') {
+      const response = await cognitoIdentityServiceProvider
+        .createUserPoolDomain({
+          UserPoolId,
+          Domain,
+          CustomDomainConfig: {
+            CertificateArn
+          }
+        })
+        .promise();
       physicalId = response.CloudFrontDomain;
-    } else if ( RequestType === 'Update' ) {
+    } else if (RequestType === 'Update') {
       await deleteUserPoolDomain(event.OldResourceProperties.Domain);
 
-      const response = await cognitoIdentityServiceProvider.createUserPoolDomain({
-        UserPoolId,
-        Domain,
-        CustomDomainConfig: {
-          CertificateArn
-        }
-      }).promise();
+      const response = await cognitoIdentityServiceProvider
+        .createUserPoolDomain({
+          UserPoolId,
+          Domain,
+          CustomDomainConfig: {
+            CertificateArn
+          }
+        })
+        .promise();
       physicalId = response.CloudFrontDomain;
-    } else if ( RequestType === 'Delete' ) {
+    } else if (RequestType === 'Delete') {
       await deleteUserPoolDomain(cognitoIdentityServiceProvider, Domain);
     }
 
@@ -44,7 +58,7 @@ exports.handler = async function handler(event) {
     };
 
     await sendResponse(response, ResponseURL);
-  } catch ( err ) {
+  } catch (err) {
     console.error('Failed', err);
     const errResponse = {
       Status: 'FAILED',
@@ -59,15 +73,19 @@ exports.handler = async function handler(event) {
 };
 
 async function deleteUserPoolDomain(Domain) {
-  const response = await cognitoIdentityServiceProvider.describeUserPoolDomain({
-    Domain
-  }).promise();
+  const response = await cognitoIdentityServiceProvider
+    .describeUserPoolDomain({
+      Domain
+    })
+    .promise();
 
   if (response.DomainDescription.Domain) {
-    await cognitoIdentityServiceProvider.deleteUserPoolDomain({
-      UserPoolId: response.DomainDescription.UserPoolId,
-      Domain
-    }).promise();
+    await cognitoIdentityServiceProvider
+      .deleteUserPoolDomain({
+        UserPoolId: response.DomainDescription.UserPoolId,
+        Domain
+      })
+      .promise();
   }
 }
 
@@ -98,7 +116,7 @@ async function sendResponse(response, ResponseURL) {
     });
 
     request.on('error', error => {
-      console.error("Failed to send response", error);
+      console.error('Failed to send response', error);
       reject(error);
     });
 

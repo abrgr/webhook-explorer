@@ -11,7 +11,9 @@ const Busboy = require('busboy');
 const jp = require('jsonpath');
 
 const s3 = new S3({ apiVersion: '2019-09-21' });
-const documentClient = new DynamoDB.DocumentClient({ apiVersion: '2019-09-21' });
+const documentClient = new DynamoDB.DocumentClient({
+  apiVersion: '2019-09-21'
+});
 
 const bucket = process.env.BUCKET_NAME;
 const table = process.env.HANDLERS_TABLE_NAME;
@@ -30,39 +32,67 @@ exports.handler = async function handler(event) {
   const headers = event.headers || {};
   const host = headers.Host || headers.host;
   const body = event.body;
-  const protocol = (headers['X-Forwarded-Proto'] || headers['x-forwarded-proto'] || '').toLowerCase();
+  const protocol = (
+    headers['X-Forwarded-Proto'] ||
+    headers['x-forwarded-proto'] ||
+    ''
+  ).toLowerCase();
   const qs = event.queryStringParameters || {};
   const form = await parseForm(event);
   const cookies = parseRequestCookies(headers.Cookie || headers.cookie);
 
   const protoMethod = `https:${method.toLowerCase()}`;
-  const matchedHandler = await findHandlerKey(protoMethod, host, path.slice(1).split('/')) || {};
+  const matchedHandler =
+    (await findHandlerKey(protoMethod, host, path.slice(1).split('/'))) || {};
   const { key: handlerKey } = matchedHandler;
-  if ( !handlerKey ) {
+  if (!handlerKey) {
     console.log('No matching route', { protoMethod, host, path });
-    return response(502, { "x-rogo-error": "No matching Rogo route" }, "No matching Rogo route");
+    return response(
+      502,
+      { 'x-rogo-error': 'No matching Rogo route' },
+      'No matching Rogo route'
+    );
   }
 
   const handlerDef = await loadHandlerData(handlerKey);
-  if ( !handlerDef ) {
-    console.error('No handler found for key', { protoMethod, host, path, handlerKey });
-    return response(502, { "x-rogo-error": "No matching Rogo route" }, "No matching Rogo route");
+  if (!handlerDef) {
+    console.error('No handler found for key', {
+      protoMethod,
+      host,
+      path,
+      handlerKey
+    });
+    return response(
+      502,
+      { 'x-rogo-error': 'No matching Rogo route' },
+      'No matching Rogo route'
+    );
   }
 
   const captures = getCaptures(handlerDef, event, form);
-  const matcher = (handlerDef.matchers || []).find(doesMatch.bind(null, captures));
-  if ( !matcher ) {
+  const matcher = (handlerDef.matchers || []).find(
+    doesMatch.bind(null, captures)
+  );
+  if (!matcher) {
     console.error('No Rogo matcher satisfied', { captures, handlerDef });
-    return response(502, { "x-rogo-error": "No Rogo matcher satisfied" }, "No Rogo matcher satisfied");
+    return response(
+      502,
+      { 'x-rogo-error': 'No Rogo matcher satisfied' },
+      'No Rogo matcher satisfied'
+    );
   }
 
   const matchEndTime = Date.now();
 
   const { handler } = matcher;
   const handlerFn = handlers[handler.type];
-  if ( !handlerFn ) {
+  if (!handlerFn) {
     console.error('Unknown handler type', { handler, path, protoMethod });
-    return response(502, { "x-rogo-error": 'Unknown Rogo handler type' }, 'Unknown Rogo handler type');
+    return response(
+      502,
+      { 'x-rogo-error': 'Unknown Rogo handler type' },
+      'Unknown Rogo handler type'
+    );
   }
 
   const baseMsg = {
@@ -90,10 +120,22 @@ exports.handler = async function handler(event) {
       }
     };
 
-    const enhancedMsg = await writeMsg(msg, startTime, matchEndTime, form, cookies, matchedHandler);
+    const enhancedMsg = await writeMsg(
+      msg,
+      startTime,
+      matchEndTime,
+      form,
+      cookies,
+      matchedHandler
+    );
 
-    return response(enhancedMsg.status, result.headers, result.body, result.isBase64Encoded);
-  } catch ( processingError ) {
+    return response(
+      enhancedMsg.status,
+      result.headers,
+      result.body,
+      result.isBase64Encoded
+    );
+  } catch (processingError) {
     console.error('Error processing handler', processingError);
 
     const msg = {
@@ -104,11 +146,22 @@ exports.handler = async function handler(event) {
 
     await writeMsg(msg, startTime, matchEndTime, form, cookies, matchedHandler);
 
-    return response(502, { error: 'Error processing request' }, 'Error processing request');
+    return response(
+      502,
+      { error: 'Error processing request' },
+      'Error processing request'
+    );
   }
 };
 
-async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies, matchedHandler) {
+async function writeMsg(
+  msg,
+  startTime,
+  matchEndTime,
+  reqForm,
+  reqCookies,
+  matchedHandler
+) {
   const enhancedMsg = {
     ...msg,
     matchedHandler,
@@ -123,23 +176,35 @@ async function writeMsg(msg, startTime, matchEndTime, reqForm, reqCookies, match
       cookies: reqCookies
     }
   };
-  const key = keyForParts('all', msg.iso, msg.method, msg.host, msg.path, msg.status, enhancedMsg.fingerprint);
-  await s3.putObject({
-    Body: JSON.stringify(enhancedMsg),
-    Bucket: bucket,
-    Key: key,
-    ContentType: 'application/json'
-  }).promise();
+  const key = keyForParts(
+    'all',
+    msg.iso,
+    msg.method,
+    msg.host,
+    msg.path,
+    msg.status,
+    enhancedMsg.fingerprint
+  );
+  await s3
+    .putObject({
+      Body: JSON.stringify(enhancedMsg),
+      Bucket: bucket,
+      Key: key,
+      ContentType: 'application/json'
+    })
+    .promise();
 
   return enhancedMsg;
 }
 
 async function handleMock(captures, { mock: { res: mockRes } }) {
-  const headers = Object.keys(mockRes.headers).
-    reduce((h, headerKey) => ({
+  const headers = Object.keys(mockRes.headers).reduce(
+    (h, headerKey) => ({
       ...h,
       [headerKey]: fillTemplate(captures, mockRes.headers[headerKey])
-    }), {});
+    }),
+    {}
+  );
   return {
     headers,
     status: mockRes.status,
@@ -147,13 +212,20 @@ async function handleMock(captures, { mock: { res: mockRes } }) {
   };
 }
 
-async function handleProxy(captures, { proxy: { remoteUrl } }, { body, isBase64Encoded, headers, httpMethod }) {
-  const adjHeaders = Object.keys(headers).
-                     filter(h => h.toLowerCase() !== 'host').
-                     reduce((hs, h) => ({
-                        ...hs,
-                        [h]: headers[h]
-                      }), {});
+async function handleProxy(
+  captures,
+  { proxy: { remoteUrl } },
+  { body, isBase64Encoded, headers, httpMethod }
+) {
+  const adjHeaders = Object.keys(headers)
+    .filter(h => h.toLowerCase() !== 'host')
+    .reduce(
+      (hs, h) => ({
+        ...hs,
+        [h]: headers[h]
+      }),
+      {}
+    );
   const proxyUrl = fillTemplate(captures, remoteUrl);
   const bodyBuffer = Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8');
 
@@ -171,11 +243,11 @@ class MissingTemplateVarError extends Error {
   }
 }
 
-MissingTemplateVarError.name = "MissingTemplateVarError";
+MissingTemplateVarError.name = 'MissingTemplateVarError';
 
 function fillTemplate(captures, template) {
   return template.replace(/\${([^}]+)}/g, (_, c) => {
-    if ( !captures.hasOwnProperty(c) ) {
+    if (!captures.hasOwnProperty(c)) {
       throw new MissingTemplateVarError(c);
     }
     return captures[c];
@@ -198,8 +270,12 @@ function getCaptures(
     raw: body ? Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8') : null
   };
   const pathCaptures = getPathCaptures(handlerPath, path);
-  const headerCaptures = headerCaptureSpec && !!headers ? getHeaderCaptures(headerCaptureSpec, headers) : {};
-  const bodyCaptures = bodyCaptureSpec && !!body ? getBodyCaptures(bodyCaptureSpec, bodies) : {};
+  const headerCaptures =
+    headerCaptureSpec && !!headers
+      ? getHeaderCaptures(headerCaptureSpec, headers)
+      : {};
+  const bodyCaptures =
+    bodyCaptureSpec && !!body ? getBodyCaptures(bodyCaptureSpec, bodies) : {};
   return {
     ...pathCaptures,
     ...headerCaptures,
@@ -221,26 +297,32 @@ function getJsonBodyCaptures(captures, { json: jsonBuffer }) {
   const json = jsonBuffer.toString('utf8');
   try {
     const obj = JSON.parse(json);
-    return Object.keys(captures).reduce((caps, jsonPath) => ({
-      ...caps,
-      [captures[jsonPath].templateVar]: jp.query(obj, jsonPath)
-    }), {});
-  } catch ( err ) {
+    return Object.keys(captures).reduce(
+      (caps, jsonPath) => ({
+        ...caps,
+        [captures[jsonPath].templateVar]: jp.query(obj, jsonPath)
+      }),
+      {}
+    );
+  } catch (err) {
     console.error('Failed to parse JSON body');
     return {};
   }
 }
 
 function getFormBodyCaptures(captures, { form: { fields } }) {
-  return Object.keys(captures).reduce((field, caps) => ({
-    ...caps,
-    [captures[field].templateVar]: (fields || {})[field]
-  }), {});
+  return Object.keys(captures).reduce(
+    (field, caps) => ({
+      ...caps,
+      [captures[field].templateVar]: (fields || {})[field]
+    }),
+    {}
+  );
 }
 
 function getHeaderCaptures(headerCaptures, headers) {
   return Object.keys(headerCaptures).reduce((caps, h) => {
-    if ( !headers.hasOwnProperty(h) ) {
+    if (!headers.hasOwnProperty(h)) {
       return caps;
     }
 
@@ -259,10 +341,10 @@ function getPathCaptures(pathCaptures, path) {
   const len = Math.min(capParts.length, pathParts.length);
 
   const caps = {};
-  for ( let i = 0; i < len; ++i ) {
+  for (let i = 0; i < len; ++i) {
     const [, capName] = /[{]([^}]+)[}]/.exec(capParts[i]) || [];
     const capVal = pathParts[i];
-    if ( capName ) {
+    if (capName) {
       caps[capName] = capVal;
     }
   }
@@ -277,24 +359,34 @@ async function findHandlerKey(protoMethod, domainPathPrefix, restPathParts) {
   const paramDomainPath = domainPathPrefix + '/{}';
   const isLast = !nextPathParts.length;
 
-  const literalResult = await maybeHandleNode(literalDomainPath, protoMethod, isLast, nextPathParts);
-  if ( typeof literalResult !== 'undefined' ) {
+  const literalResult = await maybeHandleNode(
+    literalDomainPath,
+    protoMethod,
+    isLast,
+    nextPathParts
+  );
+  if (typeof literalResult !== 'undefined') {
     return literalResult;
   }
 
-  const paramResult = await maybeHandleNode(paramDomainPath, protoMethod, isLast, nextPathParts);
+  const paramResult = await maybeHandleNode(
+    paramDomainPath,
+    protoMethod,
+    isLast,
+    nextPathParts
+  );
 
   return paramResult || null;
 }
 
 async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
   const node = await loadHandler(domainPath, protoMethod);
-  if ( !node ) {
+  if (!node) {
     return void 0;
   }
 
-  if ( isLast ) {
-    if ( node.exactKey ) {
+  if (isLast) {
+    if (node.exactKey) {
       return {
         key: node.exactKey,
         domainPath: node.domainPath,
@@ -302,14 +394,18 @@ async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
         matchType: 'exact'
       };
     }
-  } else if ( node.exactSuffixCount || node.prefixSuffixCount ) {
-    const nextResult = await findHandlerKey(protoMethod, domainPath, nextPathParts);
-    if ( nextResult ) {
+  } else if (node.exactSuffixCount || node.prefixSuffixCount) {
+    const nextResult = await findHandlerKey(
+      protoMethod,
+      domainPath,
+      nextPathParts
+    );
+    if (nextResult) {
       return nextResult;
     }
   }
 
-  if ( node.prefixKey && !isLast ) {
+  if (node.prefixKey && !isLast) {
     return {
       key: node.prefixKey,
       handlerPath: node.domainPath,
@@ -322,29 +418,33 @@ async function maybeHandleNode(domainPath, protoMethod, isLast, nextPathParts) {
 }
 
 async function loadHandler(domainPath, protoMethod) {
-  const { Item } = await documentClient.get({
-    TableName: table,
-    Key: {
-      domainPath,
-      protoMethod
-    }
-  }).promise();
+  const { Item } = await documentClient
+    .get({
+      TableName: table,
+      Key: {
+        domainPath,
+        protoMethod
+      }
+    })
+    .promise();
 
   return Item;
 }
 
 async function loadHandlerData(key) {
-  const { Body } = await s3.getObject({
-    Bucket: bucket,
-    Key: key
-  }).promise();
+  const { Body } = await s3
+    .getObject({
+      Bucket: bucket,
+      Key: key
+    })
+    .promise();
 
   return JSON.parse(Body);
 }
 
 async function parseForm(event) {
   return new Promise((resolve, reject) => {
-    if ( !event.headers ) {
+    if (!event.headers) {
       resolve(null);
       return;
     }
@@ -352,7 +452,8 @@ async function parseForm(event) {
     try {
       const busboy = new Busboy({
         headers: {
-          'content-type': event.headers['Content-Type'] || event.headers['content-type']
+          'content-type':
+            event.headers['Content-Type'] || event.headers['content-type']
         }
       });
 
@@ -389,9 +490,11 @@ async function parseForm(event) {
 
       busboy.write(event.body, event.isBase64Encoded ? 'base64' : 'binary');
       busboy.end();
-    } catch ( e ) {
-      if ( e.message.startsWith('Unsupported content type') ||
-          e.message === 'Missing Content-Type' ) {
+    } catch (e) {
+      if (
+        e.message.startsWith('Unsupported content type') ||
+        e.message === 'Missing Content-Type'
+      ) {
         resolve(null);
         return;
       }

@@ -38,17 +38,12 @@ function getUserFromEvent(event) {
   const {
     requestContext: {
       authorizer: {
-        claims: {
-          aud,
-          "cognito:username": uid,
-          "custom:role": role,
-          email
-        }
+        claims: { aud, 'cognito:username': uid, 'custom:role': role, email }
       }
     }
   } = event;
 
-  if ( aud !== EXPECTED_AUD ) {
+  if (aud !== EXPECTED_AUD) {
     console.error('Bad authorizer audience', { event });
     throw new Error('Unauthorized');
   }
@@ -65,14 +60,17 @@ function getUserFromEvent(event) {
 }
 
 function cognitoUserToUser(u) {
-  return u.Attributes.reduce((attrs, { Name, Value }) => ({
-    ...attrs,
-    [Name.replace('custom:', '')]: Value
-  }), {
-    username: u.Username,
-    createdAt: u.UserCreateDate,
-    enabled: u.Enabled,
-  });
+  return u.Attributes.reduce(
+    (attrs, { Name, Value }) => ({
+      ...attrs,
+      [Name.replace('custom:', '')]: Value
+    }),
+    {
+      username: u.Username,
+      createdAt: u.UserCreateDate,
+      enabled: u.Enabled
+    }
+  );
 }
 
 function isUserAuthorizedToReadFolder(uid, folder) {
@@ -83,7 +81,7 @@ function isUserAuthorizedToReadFolder(uid, folder) {
 function isUserAuthorizedToWriteFolder(uid, folder) {
   // folders either look like "all", "tags/public-tag", or "tags/*uid*/private-tag"
   const folderParts = folder.split('/');
-  if ( folderParts.length < 3 ) {
+  if (folderParts.length < 3) {
     return true;
   }
 
@@ -106,12 +104,24 @@ function keyForParts(folder, iso, method, host, path, status, fingerprint) {
   const date = new Date(iso);
   const epoch = date.getTime();
   const sort = ('' + (endOfToday(epoch) - epoch)).padStart(8, '0');
-  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(iso)}:${encodeURIComponent(method)}:${encodeURIComponent(host)}:${encodeURIComponent(path)}:${status}:${fingerprint}`;
+  return `${folder}/${ymd.replace(/-/g, '/')}/${sort}:${encodeURIComponent(
+    iso
+  )}:${encodeURIComponent(method)}:${encodeURIComponent(
+    host
+  )}:${encodeURIComponent(path)}:${status}:${fingerprint}`;
 }
 
 function partsForKey(key) {
   const filename = path.basename(key);
-  const [_sort, encodedIso, method, encodedHost, encodedUrlPath, status, fingerprint] = filename.split(':');
+  const [
+    _sort,
+    encodedIso,
+    method,
+    encodedHost,
+    encodedUrlPath,
+    status,
+    fingerprint
+  ] = filename.split(':');
   return {
     id: fingerprint,
     fingerprint,
@@ -162,25 +172,36 @@ function response(statusCode, headers, body, isBase64Encoded) {
   return {
     isBase64Encoded: !!isBase64Encoded,
     statusCode,
-    multiValueHeaders: Object.keys(headers).reduce((hs, h) => ({
-      ...hs,
-      [h]: Array.isArray(headers[h]) ? headers[h] : [headers[h]]
-    }), {
-      'Access-Control-Allow-Origin': ['*'],
-      'Access-Control-Allow-Headers': ['Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'],
-      'Access-Control-Allow-Methods': ['GET,POST,OPTIONS'],
-    }),
+    multiValueHeaders: Object.keys(headers).reduce(
+      (hs, h) => ({
+        ...hs,
+        [h]: Array.isArray(headers[h]) ? headers[h] : [headers[h]]
+      }),
+      {
+        'Access-Control-Allow-Origin': ['*'],
+        'Access-Control-Allow-Headers': [
+          'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+        ],
+        'Access-Control-Allow-Methods': ['GET,POST,OPTIONS']
+      }
+    ),
     body: body
   };
 }
 
 function hashMsg(msg) {
   const toHash = stableStringify(msg);
-  return crypto.createHash('sha256').update(toHash, 'utf8').digest().toString('hex');
+  return crypto
+    .createHash('sha256')
+    .update(toHash, 'utf8')
+    .digest()
+    .toString('hex');
 }
 
 function getAuditKey(iso, fingerprint, tag) {
-  return `audit/${iso.split('T')[0].replace(/-/g, '/')}/${fingerprint}|${encodeURIComponent(tag)}`;
+  return `audit/${iso
+    .split('T')[0]
+    .replace(/-/g, '/')}/${fingerprint}|${encodeURIComponent(tag)}`;
 }
 
 function auditKeyToFingerprintTagAndDate(auditKey) {
@@ -205,7 +226,7 @@ function parseRequestCookies(cookieStr) {
   const pairs = (cookieStr || '').split(';');
   return pairs.reduce((cookies, pair) => {
     const [k, v] = pair.trim().split('=');
-    if ( !k || !v ) {
+    if (!k || !v) {
       return cookies;
     }
     return {
@@ -218,7 +239,7 @@ function parseRequestCookies(cookieStr) {
 function parseResponseCookies(cookieStrs) {
   return (cookieStrs || []).reduce((cookies, cookieStr) => {
     const parts = (cookieStr || '').split(';');
-    if ( !parts.length ) {
+    if (!parts.length) {
       return cookies;
     }
 
@@ -243,25 +264,28 @@ function parseResponseCookies(cookieStrs) {
 
 function fingerprintTagAndDateToUserVisibleTags(uid, items) {
   const favTag = getTagForFavorite(uid);
-  const filteredItems = items.filter(({ tag }) => isUserAuthorizedToReadFolder(uid, folderForTag(tag)));
-  return filteredItems.reduce(
-    (tagsForFingerprint, { fingerprint, tag }) => {
-      const prev = tagsForFingerprint[fingerprint] || { fav: false, privateTags: [], publicTags: [] };
-
-      if ( tag === favTag ) {
-        prev.fav = true;
-      } else if ( isPrivateTag(tag) ) {
-        prev.privateTags = prev.privateTags.concat([unNamespacedPrivateTag(tag)]);
-      } else {
-        prev.publicTags = prev.publicTags.concat([tag]);
-      }
-
-      tagsForFingerprint[fingerprint] = prev;
-
-      return tagsForFingerprint;
-    },
-    {}
+  const filteredItems = items.filter(({ tag }) =>
+    isUserAuthorizedToReadFolder(uid, folderForTag(tag))
   );
+  return filteredItems.reduce((tagsForFingerprint, { fingerprint, tag }) => {
+    const prev = tagsForFingerprint[fingerprint] || {
+      fav: false,
+      privateTags: [],
+      publicTags: []
+    };
+
+    if (tag === favTag) {
+      prev.fav = true;
+    } else if (isPrivateTag(tag)) {
+      prev.privateTags = prev.privateTags.concat([unNamespacedPrivateTag(tag)]);
+    } else {
+      prev.publicTags = prev.publicTags.concat([tag]);
+    }
+
+    tagsForFingerprint[fingerprint] = prev;
+
+    return tagsForFingerprint;
+  }, {});
 }
 
 async function executeRequest(method, remoteUrl, headers, body) {
@@ -286,7 +310,9 @@ async function executeRequest(method, remoteUrl, headers, body) {
         const enc = res.headers['content-encoding'];
         const ct = res.headers['content-type'];
         const decompressedRespBody = decompress(enc, respBody);
-        const isUtf = !!/^text|^multipart|[\/](javascript|json|edn|xml|xhtml)/.exec(ct);
+        const isUtf = !!/^text|^multipart|[\/](javascript|json|edn|xml|xhtml)/.exec(
+          ct
+        );
         return resolve({
           status: res.statusCode,
           headers: res.headers,
@@ -297,7 +323,7 @@ async function executeRequest(method, remoteUrl, headers, body) {
     });
     req.on('error', reject);
 
-    if ( body ) {
+    if (body) {
       req.write(body);
     }
     req.end();
@@ -305,7 +331,7 @@ async function executeRequest(method, remoteUrl, headers, body) {
 }
 
 function decompress(encoding, body) {
-  switch ( encoding ) {
+  switch (encoding) {
     case 'br':
       return zlib.brotliDecompressSync(body);
     case 'gzip':

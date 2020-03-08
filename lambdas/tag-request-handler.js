@@ -21,17 +21,19 @@ exports.handler = async function handler(event) {
   const isPublic = event.queryStringParameters.pub;
   const userProvidedTag = event.queryStringParameters.tag;
 
-  if ( !isFav && !isValidUserSpecifiedTag(userProvidedTag) ) {
+  if (!isFav && !isValidUserSpecifiedTag(userProvidedTag)) {
     console.error('Invalid user-specified tag', { tag, event });
     return response(400, {}, { error: 'Invalid tag' });
   }
 
   const tag = isFav
-            ? getTagForFavorite(uid)
-            : isPublic ? userProvidedTag : getPrivateTag(uid, userProvidedTag);
+    ? getTagForFavorite(uid)
+    : isPublic
+    ? userProvidedTag
+    : getPrivateTag(uid, userProvidedTag);
   const folder = folderForTag(tag);
 
-  if ( !isUserAuthorizedToWriteFolder(uid, folder) ) {
+  if (!isUserAuthorizedToWriteFolder(uid, folder)) {
     console.error('User unauthorized for folder', { uid, folder, event });
     return response(401, {}, JSON.stringify({ error: 'Unauthorized' }));
   }
@@ -52,11 +54,7 @@ exports.handler = async function handler(event) {
         cookies: reqCookies,
         form: reqForm
       },
-      res: {
-        headers: resHeaders,
-        body: resBody,
-        cookies: resCookies
-      }
+      res: { headers: resHeaders, body: resBody, cookies: resCookies }
     }
   } = req;
   const msg = {
@@ -99,18 +97,22 @@ exports.handler = async function handler(event) {
   });
 
   const resp = await Promise.all([
-    s3.putObject({
-      Body: JSON.stringify(msg),
-      Bucket: bucket,
-      Key: key,
-      ContentType: 'application/json'
-    }).promise(),
-    s3.putObject({
-      Body: JSON.stringify({ uid, date: new Date().toISOString(), key, tag }),
-      Bucket: bucket,
-      Key: getAuditKey(iso, fingerprint, tag),
-      ContentType: 'application/json'
-    }).promise()
+    s3
+      .putObject({
+        Body: JSON.stringify(msg),
+        Bucket: bucket,
+        Key: key,
+        ContentType: 'application/json'
+      })
+      .promise(),
+    s3
+      .putObject({
+        Body: JSON.stringify({ uid, date: new Date().toISOString(), key, tag }),
+        Bucket: bucket,
+        Key: getAuditKey(iso, fingerprint, tag),
+        ContentType: 'application/json'
+      })
+      .promise()
   ]);
 
   console.log({ resp });

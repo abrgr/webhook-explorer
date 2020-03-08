@@ -16,23 +16,39 @@ exports.handler = async function handler(event) {
   const { uid } = getUserFromEvent(event);
 
   // TODO: handle continuation token
-  const { CommonPrefixes: userFolders } = await s3List(folderForTag(getPrivateTag(uid, '')));
+  const { CommonPrefixes: userFolders } = await s3List(
+    folderForTag(getPrivateTag(uid, ''))
+  );
   const { CommonPrefixes: allTopLevelFolders } = await s3List(folderForTag(''));
-  const publicTags = allTopLevelFolders.map(finalPathPartForPrefix).filter(isValidUserSpecifiedTag);
+  const publicTags = allTopLevelFolders
+    .map(finalPathPartForPrefix)
+    .filter(isValidUserSpecifiedTag);
 
   const result = {
-    userTags: userFolders.map(finalPathPartForPrefix).filter(isValidUserSpecifiedTag),
+    userTags: userFolders
+      .map(finalPathPartForPrefix)
+      .filter(isValidUserSpecifiedTag),
     publicTags: {
-      writable: publicTags.filter(t => isUserAuthorizedToWriteFolder(uid, folderForTag(t))),
-      readable: publicTags.filter(t => isUserAuthorizedToReadFolder(uid, folderForTag(t)))
+      writable: publicTags.filter(t =>
+        isUserAuthorizedToWriteFolder(uid, folderForTag(t))
+      ),
+      readable: publicTags.filter(t =>
+        isUserAuthorizedToReadFolder(uid, folderForTag(t))
+      )
     }
   };
 
-  return response(200, { 'Cache-Control': 'max-age=60' }, JSON.stringify(result));
+  return response(
+    200,
+    { 'Cache-Control': 'max-age=60' },
+    JSON.stringify(result)
+  );
 };
 
 function finalPathPartForPrefix(commonPrefix) {
-  return commonPrefix.Prefix.replace(/[\/]$/, '').split('/').slice(-1)[0];
+  return commonPrefix.Prefix.replace(/[\/]$/, '')
+    .split('/')
+    .slice(-1)[0];
 }
 
 async function s3List(prefix, opts) {

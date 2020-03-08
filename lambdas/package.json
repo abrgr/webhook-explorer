@@ -4,7 +4,9 @@
   "description": "Lambdas for Rogo",
   "main": "index.js",
   "scripts": {
-    "lint-fix": "eslint --fix ."
+    "lint-fix": "eslint --fix .",
+    "prettier": "prettier --write --single-quote **/*.js",
+    "nice-code": "npm run lint-fix && npm run prettier"
   },
   "author": "Ratchet Designs",
   "license": "UNLICENSED",
