@@ -397,20 +397,20 @@
 
 (defn send-selected-as-local-request []
   (letfn [(get-res [opts]
-             (async/go
-               (async/<! (http/request (assoc opts
-                                               :with-credentials?
-                                               false)))))]
+            (async/go
+              (async/<! (http/request (assoc opts
+                                             :with-credentials?
+                                             false)))))]
     (sending-req get-res)))
 
 (defn send-selected-as-remote-request []
   (letfn [(get-res [opts]
-             (async/go
-               (get-in
-                 (async/<! (http-utils/req {:method :post
-                                            :path (str "execute-req")
-                                            :json-params {:req opts}}))
-                 [:body :res])))]
+            (async/go
+              (get-in
+               (async/<! (http-utils/req {:method :post
+                                          :path (str "execute-req")
+                                          :json-params {:req opts}}))
+               [:body :res])))]
     (sending-req get-res)))
 
 (defn share-req [{:keys [data-url]}]

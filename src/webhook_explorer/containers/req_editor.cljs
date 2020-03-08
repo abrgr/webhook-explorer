@@ -145,7 +145,7 @@
         [:> DialogActions
          [:> Button {:onClick reqs-actions/send-selected-as-remote-request
                      :color "primary"}
-          "Send request from server"]  
+          "Send request from server"]
          [:> Tooltip {:title "Change host to 'localhost'"
                       :disableHoverListener allow-local-req
                       :placement "top"}
