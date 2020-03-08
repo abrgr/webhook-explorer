@@ -16,7 +16,7 @@ exports.handler = async function handler(event) {
     method,
     remoteUrl,
     headers,
-    Buffer.from(body, 'utf8')
+    body && Buffer.from(body, 'utf8')
   );
 
   return response(200, {}, JSON.stringify({ res }));

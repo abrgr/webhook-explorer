@@ -365,7 +365,7 @@
      [:selected-item :notification]
      "Copied curl command to clipboard")))
 
-(defn send-selected-as-local-request []
+(defn- sending-req [get-res]
   (let [opts (selected-req)]
     (async/go
       (swap!
@@ -377,9 +377,7 @@
              (assoc-in [:in-progress] true)
              (dissoc :status)
              (update-in [:details] dissoc :res))))
-      (let [res (async/<! (http/request (assoc opts
-                                               :with-credentials?
-                                               false)))
+      (let [res (async/<! (get-res opts))
             iso (.toISOString (js/Date.))]
         (swap!
          app-state/reqs
@@ -396,6 +394,24 @@
                  :body (:body res)})
                (assoc-in [:item :status] (:status res)))))
         (tag-req (get-in @app-state/reqs [:selected-item :item]) {:tag "My Executed Requests"})))))
+
+(defn send-selected-as-local-request []
+  (letfn [(get-res [opts]
+             (async/go
+               (async/<! (http/request (assoc opts
+                                               :with-credentials?
+                                               false)))))]
+    (sending-req get-res)))
+
+(defn send-selected-as-remote-request []
+  (letfn [(get-res [opts]
+             (async/go
+               (get-in
+                 (async/<! (http-utils/req {:method :post
+                                            :path (str "execute-req")
+                                            :json-params {:req opts}}))
+                 [:body :res])))]
+    (sending-req get-res)))
 
 (defn share-req [{:keys [data-url]}]
   (let [[_ slug] (re-find #"://[^/]+/([^?]+)[?]?" data-url)

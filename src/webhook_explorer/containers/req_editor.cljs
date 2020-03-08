@@ -61,7 +61,7 @@
        [:<>
         [:> DialogTitle "Send Request"]
         [:> DialogContent
-         [:> DialogContentText "Execute locally from the browser or copy as curl"]
+         [:> DialogContentText "Execute request or copy as curl"]
          [:> FormControl {:fullWidth true
                           :margin "normal"}
           [:> FormControlLabel {:label "Secure"
@@ -143,6 +143,9 @@
                 {:raw {:label "Raw" :body (:body res)}})
                (:headers res)]]))]
         [:> DialogActions
+         [:> Button {:onClick reqs-actions/send-selected-as-remote-request
+                     :color "primary"}
+          "Send request from server"]  
          [:> Tooltip {:title "Change host to 'localhost'"
                       :disableHoverListener allow-local-req
                       :placement "top"}
@@ -150,7 +153,7 @@
            [:> Button {:onClick reqs-actions/send-selected-as-local-request
                        :color "primary"
                        :disabled (not allow-local-req)}
-            "Send local request"]]]
+            "Send request from browser"]]]
          [:> Button {:onClick reqs-actions/copy-selected-as-curl
                      :color "primary"}
           "Copy as curl"]

@@ -227,7 +227,8 @@ async function handleProxy(
       {}
     );
   const proxyUrl = fillTemplate(captures, remoteUrl);
-  const bodyBuffer = Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8');
+  const bodyBuffer =
+    body && Buffer.from(body, isBase64Encoded ? 'base64' : 'utf8');
 
   return executeRequest(httpMethod, proxyUrl, adjHeaders, bodyBuffer);
 }

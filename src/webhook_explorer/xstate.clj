@@ -1,4 +1,5 @@
-(ns webhook-explorer.xstate)
+(ns webhook-explorer.xstate
+  (:refer-clojure :exclude [case]))
 
 (defmacro case [state & clauses]
   (let [adapted-clauses (->> clauses
