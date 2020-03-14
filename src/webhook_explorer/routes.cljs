@@ -79,6 +79,9 @@
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))
 
+(defextroute hist edit-package-path nav-to-edit-package [require-login] "/package" []
+  (reset! app-state/nav {:page :edit-package}))
+
 (defn init! []
   (defroute "*" []
     (secretary/dispatch! (auth-path)))
