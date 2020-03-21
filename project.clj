@@ -10,7 +10,8 @@
                  [clj-commons/secretary "1.2.4"]
                  [cljs-http "0.1.46"]
                  [camel-snake-kebab "0.4.1"]
-                 [org.clojure/data.json "0.2.7"]]
+                 [org.clojure/data.json "0.2.7"]
+                 [lilactown/punk-adapter-web "0.0.10"]]
   :plugins [[lein-cljfmt "0.6.7"]]
   :source-paths ["src"]
   :profiles {:dev

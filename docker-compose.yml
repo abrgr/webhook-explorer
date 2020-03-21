@@ -29,6 +29,7 @@ services:
     entrypoint: ["lein"]
     working_dir: "/usr/src/app"
     ports:
+      - "9000:9000"
       - "9500:9500"
       - "9630:9630"
   npm:

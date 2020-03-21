@@ -1,6 +1,7 @@
 {:lein true
  :http {:port 9630
         :host "0.0.0.0"}
+ :nrepl {:port 9000}
  :builds
  {:dev {:target :browser
         :output-dir "resources/public/js"
@@ -10,4 +11,5 @@
                    :watch-dir "public"
                    :http-root "resources/public"
                    :http-host "0.0.0.0"
-                   :http-port 9500}}}}
+                   :http-port 9500
+                   :preloads [punk.adapter.web.preload]}}}}
