@@ -3,7 +3,11 @@
         :host "0.0.0.0"}
  :nrepl {:port 9000}
  :builds
- {:dev {:target :browser
+ {:test {:target :browser-test
+         :test-dir "resources/public/js/test"
+         :devtools {:http-port 9700
+                    :http-root "resources/public/js/test"}}
+  :dev {:target :browser
         :output-dir "resources/public/js"
         :asset-path "/js"
         :modules {:main {:entries [webhook-explorer.core]}}

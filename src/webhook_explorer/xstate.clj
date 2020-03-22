@@ -27,13 +27,12 @@
     ; x indicates final state
     ; * is used to indicate transitions from any state
     ; || as the first entry OR as any key in a child state map indicates parallel nodes
-    * [[:reset -> :start @ :reset-params]]
-    > :idle []
-    :start [[*transient* -> [:fetch-handler | :has-params]
-                            [:ready @ :set-default-handler]]]
-    :fetch-handler [$ :fetch-handler [[:on-done -> :ready @ :receive-handler]
-                                      [:on-error -> :failed @ :receive-handler-error]]]
-    :ready [[:update-handler @ :update-handler]]
-    :fake-machine-state [$ :machine-to-invoke :data {:duration (fn [ctx evt] (:duration ctx))}]
-    x :fake-final-state [:type :final]
-  )
+  * [[:reset -> :start @:reset-params]]
+  > :idle []
+  :start [[*transient* -> [:fetch-handler | :has-params]
+           [:ready @:set-default-handler]]]
+  :fetch-handler [$ :fetch-handler [[:on-done -> :ready @:receive-handler]
+                                    [:on-error -> :failed @:receive-handler-error]]]
+  :ready [[:update-handler @:update-handler]]
+  :fake-machine-state [$ :machine-to-invoke :data {:duration (fn [ctx evt] (:duration ctx))}]
+  x :fake-final-state [:type :final])

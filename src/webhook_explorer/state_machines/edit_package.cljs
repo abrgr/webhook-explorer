@@ -28,7 +28,7 @@
               :ready {:on {:update-package {:actions :update-package}}}
               :failed {}}}
     :opts
-     {}}))
+    {}}))
 
 (defn svc
   ([]

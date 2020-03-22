@@ -1,8 +1,22 @@
 (ns webhook-explorer.xstate
   (:require-macros [webhook-explorer.xstate :refer [case]])
-  (:require ["xstate" :as xs]
+  (:require [clojure.spec.alpha :as s]
+            [webhook-explorer.specs.xstate]
+            ["xstate" :as xs]
             [goog.object :as obj]
             [reagent.core :as r]))
+
+(defn cfg->machine [cfg]
+  (let [c (s/conform :xstate/config cfg)]
+    (.log js/console cfg)
+    (.log js/console c)
+    (when (= c :cljs.spec.alpha/invalid)
+      (throw (js/Error. "Bad config")))
+    cfg))
+
+(s/fdef cfg->machine
+  :args (s/cat :cfg :xstate/config)
+  :ret :xstate-js/machine)
 
 (def assign xs/assign)
 
