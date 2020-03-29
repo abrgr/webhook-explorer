@@ -13,6 +13,7 @@
   (s/coll-of
    (s/cat :event keyword?
           :to :xstate/transition-to)
+   :min-count 1
    :kind vector?))
 
 (s/def :xstate/delayed-transition
@@ -20,6 +21,7 @@
    (s/cat :delay-glyph #{'after}
           :delay-ms pos-int?
           :to :xstate/transition-to)
+   :min-count 1
    :kind vector?))
 
 (s/def :xstate/invocation
@@ -36,6 +38,7 @@
                                                      :to :xstate/transition-to)
                                      :data (s/cat :data-glyph #{:data}
                                                   :data map?))))
+   :min-count 1
    :kind vector?))
 
 (s/def :xstate/entry-actions
@@ -47,15 +50,16 @@
 
 (s/def :xstate/exit-actions
   (s/coll-of
-   (s/cat :exit-glyph #{'>!}
+   (s/cat :exit-glyph #{'!>}
           :action (s/+ keyword?))
    :kind vector?
    :count 1))
 
 (s/def :xstate/activities
   (s/coll-of
-   (s/cat :activity-glyph #{'!_}
+   (s/cat :activity-glyph #{'!+}
           :activity-names (s/+ keyword?))
+   :min-count 1
    :kind vector?))
 
 (s/def :xstate/state-def
@@ -72,19 +76,19 @@
          :def :xstate/state-def))
 
 (s/def :xstate/any-state
+  ; TODO: how do i specify that this is a refinement of :xstate/state?
   (s/cat :id #{'*}
-         :def :xstate/state))
+         :def (s/+ (s/alt :transition :xstate/transition))))
 
 (s/def :xstate/config
   (s/spec
-    (s/cat :parallel (s/? #{'||})
-           :any-states (s/? (s/cat :ornament #{'*}
-                                   :state :xstate/any-state))
-           :init-states (s/cat :ornament #{'>}
-                               :state :xstate/state)
-           :unadorned-states (s/* (s/cat :state :xstate/state))
-           :final-states (s/* (s/cat :ornament #{'x}
-                                     :state :xstate/state)))))
+   (s/cat :parallel (s/? #{'||})
+          :any-state (s/? :xstate/any-state)
+          :init-state (s/cat :ornament #{'>}
+                             :state :xstate/state)
+          :unadorned-states (s/* (s/cat :state :xstate/state))
+          :final-states (s/* (s/cat :ornament #{'x}
+                                    :state :xstate/state)))))
 
 (s/def :xstate-js/target string?)
 (s/def :xstate-js/cond string?)
@@ -96,18 +100,32 @@
    :opt-un [:xstate-js/cond
             :xstate-js/actions]))
 (s/def :xstate-js/src string?)
-(s/def :xstate-js/invoke
+(s/def :xstate-js/invocation
   (s/keys
    :req-un [:xstate-js/id
             :xstate-js/src]))
+(s/def :xstate-js/invoke
+  (s/or :single :xstate-js/invocation
+        :many (s/coll-of :xstate-js/invocation)))
+(s/def :xstate-js/entry :xstate-js/actions)
+(s/def :xstate-js/exit :xstate-js/actions)
+(s/def :xstate-js/activities
+  (s/coll-of string?))
 (s/def :xstate-js/state
-  (s/map-of
-   keyword?
-   (s/keys
-    :opt-un [:xstate-js/on
-             :xstate-js/invoke])))
+  (s/keys
+   :opt-un [:xstate-js/on
+            :xstate-js/after
+            :xstate-js/invoke
+            :xstate-js/entry
+            :xstate-js/exit
+            :xstate-js/activities]))
 (s/def :xstate-js/id string?)
 (s/def :xstate-js/initial string?)
+(s/def :xstate-js/after
+  (s/map-of
+   pos-int?
+   (s/or :single :xstate-js/transition
+         :many (s/coll-of :xstate-js/transition))))
 (s/def :xstate-js/on
   (s/map-of
    keyword?
