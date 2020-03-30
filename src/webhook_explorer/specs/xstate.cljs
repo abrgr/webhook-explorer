@@ -71,7 +71,7 @@
 (s/def :xstate/extra-cfg
   (s/cat
     :key keyword?
-    :value any?))
+    :value (s/with-gen any? #(s/gen int?)))) ; adding a gen just to speed things up a bit
 
 (s/def :xstate/state-def
   (s/+
