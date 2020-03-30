@@ -11,7 +11,7 @@
 
 (s/def :xstate/transition
   (s/coll-of
-   (s/cat :event keyword?
+   (s/cat :event (s/alt :real keyword? :transient #{'*transient*})
           :to :xstate/transition-to)
    :min-count 1
    :kind vector?))
@@ -128,7 +128,7 @@
          :many (s/coll-of :xstate-js/transition))))
 (s/def :xstate-js/on
   (s/map-of
-   keyword?
+   (s/or :real keyword? :transient #{""})
    (s/or :single :xstate-js/transition
          :many (s/coll-of :xstate-js/transition))))
 (s/def :xstate-js/states

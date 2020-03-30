@@ -39,8 +39,9 @@
   :args (s/cat :to (s/spec :xstate/transition-to))
   :ret :xstate-js/transition)
 
-(defn transition->js-on [{:keys [event to]}]
-  {event [(transition-to->js-transition to)]})
+(defn transition->js-on [{:keys [to] [event-type event] :event}]
+  {(if (= event-type :transient) "" event)
+   [(transition-to->js-transition to)]})
 
 (defn transition->js-on* [transition]
   (transition->js-on (s/conform :xstate/transition transition)))
