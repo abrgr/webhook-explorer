@@ -80,12 +80,12 @@
 
 (defn child-states->js-child-states [children]
   (reduce
-    (fn [states [[state-type state-id] state-def]]
-      (if (= state-type :parallel)
-        (assoc states :type "parallel") ; TODO: handle final states
-        (assoc-in states [:states state-id] (state-def->js-state state-def))))
-    {}
-    children))
+   (fn [states [[state-type state-id] state-def]]
+     (if (= state-type :parallel)
+       (assoc states :type "parallel") ; TODO: handle final states
+       (assoc-in states [:states state-id] (state-def->js-state state-def))))
+   {}
+   children))
 
 (defn state-def->js-state [state-def]
   (reduce
