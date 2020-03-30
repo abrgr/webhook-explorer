@@ -62,6 +62,17 @@
    :min-count 1
    :kind vector?))
 
+(s/def :xstate/child-states
+  (s/map-of
+    (s/or :state-id keyword? :parallel #{'||})
+    :xstate/state-def
+    :conform-keys true))
+
+(s/def :xstate/extra-cfg
+  (s/cat
+    :key keyword?
+    :value any?))
+
 (s/def :xstate/state-def
   (s/+
    (s/alt :transition :xstate/transition
@@ -69,7 +80,9 @@
           :invocation :xstate/invocation
           :entry-actions :xstate/entry-actions
           :exit-actions :xstate/exit-actions
-          :activities :xstate/activities)))
+          :activities :xstate/activities
+          :child-states :xstate/child-states
+          :extra-cfg :xstate/extra-cfg)))
 
 (s/def :xstate/state
   (s/cat :id keyword?
@@ -118,7 +131,8 @@
             :xstate-js/invoke
             :xstate-js/entry
             :xstate-js/exit
-            :xstate-js/activities]))
+            :xstate-js/activities
+            :xstate-js/states]))
 (s/def :xstate-js/id string?)
 (s/def :xstate-js/initial string?)
 (s/def :xstate-js/after
@@ -135,9 +149,11 @@
   (s/map-of
    keyword?
    :xstate-js/state))
+(s/def :xstate-js/type #{"parallel" "final"})
 (s/def :xstate-js/machine
   (s/keys
    :req-un [:xstate-js/id
             :xstate-js/initial
             :xstate-js/states]
-   :opt-un [:xstate-js/on]))
+   :opt-un [:xstate-js/on
+            :xstate-js/type]))

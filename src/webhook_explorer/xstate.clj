@@ -23,6 +23,7 @@
     ; enter = [>! :action-name]
     ; exit = [!> :action-name]
     ; activity = [!+ :activity-name \[:activity-name2\]
+    ; child state map = {:state [...], || nil}
     ; > indicates initial state
     ; x indicates final state
     ; * is used to indicate transitions from any state
@@ -33,6 +34,8 @@
            [:ready ! :set-default-handler]]]
   :fetch-handler [$ :fetch-handler [[:on-done -> :ready ! :receive-handler]
                                     [:on-error -> :failed ! :receive-handler-error]]]
-  :ready [[:update-handler ! :update-handler]]
+  :ready [[:update-handler ! :update-handler]
+          {:ready1 [[:get-ready -> :ready2]]
+           [x :ready2] []}]
   :fake-machine-state [$ :machine-to-invoke :data {:duration (fn [ctx evt] (:duration ctx))}]
   x :fake-final-state [:type :final])

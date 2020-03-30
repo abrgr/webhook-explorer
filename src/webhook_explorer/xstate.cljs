@@ -76,6 +76,17 @@
   :args (s/cat :invocation :xstate/invocation)
   :ret :xstate-js/invoke)
 
+(declare state-def->js-state)
+
+(defn child-states->js-child-states [children]
+  (reduce
+    (fn [states [[state-type state-id] state-def]]
+      (if (= state-type :parallel)
+        (assoc states :type "parallel") ; TODO: handle final states
+        (assoc-in states [:states state-id] (state-def->js-state state-def))))
+    {}
+    children))
+
 (defn state-def->js-state [state-def]
   (reduce
    (fn [js-state [descriptor item]]
@@ -91,7 +102,9 @@
                                                 (map name)))
        :activities (assoc js-state :activities (->> item
                                                     (mapcat :activity-names)
-                                                    (map name)))))
+                                                    (map name)))
+       :child-states (merge js-state (child-states->js-child-states item))
+       :extra-cfg (assoc js-state (:key item) (:value item))))
    {}
    state-def))
 

@@ -8,7 +8,7 @@
 
 (stest/instrument)
 
-(def check-cfg {:clojure.spec.test.check/opts {:max-size 7 :num-tests 30}})
+(def check-cfg {:clojure.spec.test.check/opts {:max-size 3 :num-tests 5}})
 
 (defn gen-test [res]
   (is (->> res
