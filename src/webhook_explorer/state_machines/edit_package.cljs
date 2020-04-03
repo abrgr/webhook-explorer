@@ -34,6 +34,4 @@
   ([]
    (svc nil))
   ([opts]
-   (-> machine
-       (xs/interpret machine opts)
-       (.start))))
+   (xs/interpret-and-start machine opts)))

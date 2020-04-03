@@ -139,10 +139,11 @@
 
 (defn cfg->machine [id cfg]
   (let [c (s/conform :xstate/config cfg)]
-    (when (= c :cljs.spec.alpha/invalid)
+    (when (s/invalid? c)
+      (tap> (s/explain-data :xstate/config cfg))
       (throw (js/Error. "Bad config")))
     (let [{:keys [parallel any-state init-state unadorned-states final-states]} c]
-      (cond-> {:id id
+      (cond-> {:id (name id)
                :initial (-> init-state :state :id name)
                :states (->> (concat [init-state] unadorned-states)
                             (map :state)
@@ -167,12 +168,16 @@
         parallel (assoc :type "parallel")))))
 
 (s/fdef cfg->machine
-  :args (s/cat :id string? :cfg :xstate/config)
+  :args (s/cat :id keyword? :cfg :xstate/config)
   :ret :xstate-js/machine)
 
 (def assign xs/assign)
 
-(def interpret xs/interpret)
+(defn interpret-and-start [machine opts]
+  (let [svc ^{:js-cfg (-> machine meta (update :js-cfg merge opts))}
+        {:svc (xs/interpret (:m machine))}]
+    (.start (:svc svc))
+    svc))
 
 (defn- xform-opt-fns [opt-fns]
   (->> opt-fns
@@ -188,14 +193,24 @@
              f)]))
        (into {})))
 
+(defn machine->js-cfg [machine]
+  (-> machine
+      meta
+      :js-cfg))
+
+(s/fdef machine->js-cfg
+  :args (s/cat :machine :xstate/machine)
+  :ret :xstate-js/machine)
+
 (defn machine [{:keys [cfg opts]}]
-  (xs/Machine
-   (clj->js cfg)
-   (-> opts
-       (update :guards xform-opt-fns)
-       (update :actions xform-opt-fns)
-       (update :services xform-opt-fns)
-       clj->js)))
+  ^{:js-cfg (merge cfg opts)}
+  {:m (xs/Machine
+       (clj->js cfg)
+       (-> opts
+           (update :guards xform-opt-fns)
+           (update :actions xform-opt-fns)
+           (update :services xform-opt-fns)
+           clj->js))})
 
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
@@ -221,15 +236,30 @@
       clj->js
       xs/assign))
 
+(defn replace-cfg [machine cfg]
+  (with-meta
+    {:m (machine {:cfg cfg :opts (obj/get (:m machine) "options")})}
+    (assoc (meta machine) :js-cfg cfg)))
+
+(defn with-cfg [machine cfg]
+  (with-meta
+    {:m (.withConfig (:m machine))}
+    (update (meta machine) :js-cfg merge cfg)))
+
+(defn with-ctx [machine ctx]
+  (with-meta
+    {:m (.withContext (:m machine))}
+    (meta machine)))
+
 (defn with-svc [{:keys [svc]} _]
   (let [s (r/atom  (-> svc (obj/get "state") js->clj))]
     (.onTransition svc #(->> % js->clj (reset! s)))
     (fn [_ child]
       (r/as-element (child @s)))))
 
-(defn send [interpreter evt]
+(defn send [{:keys [svc]} evt]
   (.send
-   interpreter
+   svc
    (->> evt
         (mapcat
          (fn [[k v]]
