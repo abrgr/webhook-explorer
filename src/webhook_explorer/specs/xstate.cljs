@@ -9,20 +9,16 @@
                            :guard (s/cat :guard-glyph #{'|}
                                          :guard keyword?)))))
 (s/def :xstate/transition
-  (s/coll-of
+  (s/spec
    (s/cat :event (s/alt :real keyword? :transient #{'*transient*})
-          :to :xstate/transition-to)
-   :min-count 1
-   :kind vector?))
+          :to :xstate/transition-to)))
 (s/def :xstate/delayed-transition
-  (s/coll-of
+  (s/spec
    (s/cat :delay-glyph #{'after}
           :delay-ms pos-int?
-          :to :xstate/transition-to)
-   :min-count 1
-   :kind vector?))
+          :to :xstate/transition-to)))
 (s/def :xstate/invocation
-  (s/coll-of
+  (s/spec
    (s/cat :invocation-glyph #{'$}
           :service-name keyword?
           :handlers (s/alt :promise (s/cat
@@ -34,53 +30,46 @@
                                      :on-done (s/cat :on-done-glyph #{:on-done}
                                                      :to :xstate/transition-to)
                                      :data (s/cat :data-glyph #{:data}
-                                                  :data map?))))
-   :min-count 1
-   :kind vector?))
+                                                  :data map?))))))
 (s/def :xstate/entry-actions
-  (s/coll-of
+  (s/spec
    (s/cat :entry-glyph #{'>!}
-          :action (s/+ keyword?))
-   :kind vector?
-   :count 1))
+          :action (s/+ keyword?))))
 (s/def :xstate/exit-actions
-  (s/coll-of
+  (s/spec
    (s/cat :exit-glyph #{'!>}
-          :action (s/+ keyword?))
-   :kind vector?
-   :count 1))
+          :action (s/+ keyword?))))
 (s/def :xstate/activities
-  (s/coll-of
+  (s/spec
    (s/cat :activity-glyph #{'!+}
-          :activity-names (s/+ keyword?))
-   :min-count 1
-   :kind vector?))
+          :activity-names (s/+ keyword?))))
 (s/def :xstate/child-states
-  (s/map-of
-   (s/or :state-id keyword? :parallel #{'||})
-   :xstate/state-def
-   :conform-keys true))
+  (s/spec (s/map-of
+           (s/or :state-id keyword? :parallel #{'||})
+           :xstate/state-def
+           :conform-keys true)))
 (s/def :xstate/extra-cfg
   (s/cat
    :key keyword?
    :value (s/with-gen any? #(s/gen int?)))) ; adding a gen just to speed things up a bit
 (s/def :xstate/state-def
-  (s/+
-   (s/alt :transition :xstate/transition
-          :delayed-transition :xstate/delayed-transition
-          :invocation :xstate/invocation
-          :entry-actions :xstate/entry-actions
-          :exit-actions :xstate/exit-actions
-          :activities :xstate/activities
-          :child-states :xstate/child-states
-          :extra-cfg :xstate/extra-cfg)))
+  (s/spec
+   (s/*
+    (s/alt :transition :xstate/transition
+           :delayed-transition :xstate/delayed-transition
+           :invocation :xstate/invocation
+           :entry-actions :xstate/entry-actions
+           :exit-actions :xstate/exit-actions
+           :activities :xstate/activities
+           :child-states :xstate/child-states
+           :extra-cfg :xstate/extra-cfg))))
 (s/def :xstate/state
   (s/cat :id keyword?
          :def :xstate/state-def))
 (s/def :xstate/any-state
   ; TODO: how do i specify that this is a refinement of :xstate/state?
   (s/cat :id #{'*}
-         :def (s/+ (s/alt :transition :xstate/transition))))
+         :def (s/spec (s/+ (s/alt :transition :xstate/transition)))))
 (s/def :xstate/config
   (s/spec
    (s/cat :parallel (s/? #{'||})

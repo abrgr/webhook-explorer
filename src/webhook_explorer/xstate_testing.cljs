@@ -29,7 +29,7 @@
 (defn- add-tests-to-states [states ctx-spec ctx-specs]
   (->> states
        (map
-        (fn [state state-def]
+        (fn [[state state-def]]
           [state
            (-> state-def
                (update-in [:meta :test] make-test state (get ctx-specs state) ctx-spec)
@@ -37,19 +37,30 @@
        (into {})))
 
 (defn with-tests [machine {:keys [ctx-specs ctx-spec]}]
-  (->> machine
-       xs/machine->js-cfg
-       :states
-       (add-tests-to-states ctx-spec ctx-specs)
-       (xs/replace-cfg machine)))
+  (-> machine
+      xs/machine->js-cfg
+      (#(do (.log js/console "js-cfg" %)
+            %))
+      (update :states add-tests-to-states ctx-spec ctx-specs)
+      (#(do (.log js/console "updated js-cfg" %)
+            %))
+      (->> (xs/replace-cfg machine))))
 
 (defn model [{:keys [machine ctx] :as cfg}]
   (cond-> machine
+    true (#(do (.log js/console "1" %)
+               %))
     cfg (with-tests cfg)
-    cfg (xs/with-cfg cfg)
+    true (#(do (.log js/console "2" %)
+               %))
+    cfg (xs/with-cfg (select-keys cfg [:actions :activities :delays :guards :services]))
+    true (#(do (.log js/console "3" %)
+               %))
     ctx (xs/with-ctx ctx)
-    :m
-    xst/create-model))
+    true (#(do (.log js/console "4" %)
+               %))
+    true :m
+    true (xst/createModel)))
 
 (s/fdef model
   :args (s/cat :cfg :xstate-test/cfg)

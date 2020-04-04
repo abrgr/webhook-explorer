@@ -64,10 +64,10 @@
     data (assoc :data (:data data))))
 
 (defn invocation->js-invoke [{:keys [service-name handlers]}]
-  (cond-> {:id (name service-name)
-           :src (name service-name)}
-    (:promise handlers) (merge (promise-handlers->js (:promise handlers)))
-    (:machine handlers) (merge (machine-handlers->js (:machine handlers)))))
+  [(cond-> {:id (name service-name)
+            :src (name service-name)}
+     (:promise handlers) (merge (promise-handlers->js (:promise handlers)))
+     (:machine handlers) (merge (machine-handlers->js (:machine handlers))))])
 
 (defn invocation->js-invoke* [invocation]
   (invocation->js-invoke (s/conform :xstate/invocation invocation)))
@@ -87,22 +87,29 @@
    {}
    children))
 
+(defn- merge-state-part-vecs [state-key item-key item js-state]
+  (update
+   js-state
+   state-key
+   #(->> %
+         (concat
+          (->> item
+               (mapcat item-key)
+               (map name)))
+         (into []))))
+
 (defn state-def->js-state [state-def]
   (reduce
    (fn [js-state [descriptor item]]
      (clojure.core/case descriptor
-       :transition (assoc js-state :on (apply merge-with concat (map transition->js-on item)))
-       :delayed-transition (assoc js-state :after (apply merge (map delayed-transition->js-after item)))
-       :invocation (assoc js-state :invoke (map invocation->js-invoke item))
-       :entry-actions (assoc js-state :entry (->> item
-                                                  (mapcat :action)
-                                                  (map name)))
-       :exit-actions (assoc js-state :exit (->> item
-                                                (mapcat :action)
-                                                (map name)))
-       :activities (assoc js-state :activities (->> item
-                                                    (mapcat :activity-names)
-                                                    (map name)))
+       :transition (update js-state :on #(merge-with concat % (transition->js-on item)))
+       :delayed-transition (update js-state :after merge (delayed-transition->js-after item))
+       :invocation (update js-state :invoke #(->> %
+                                                  (concat (invocation->js-invoke item))
+                                                  (into [])))
+       :entry-actions (merge-state-part-vecs :entry :action item js-state)
+       :exit-actions (merge-state-part-vecs :exit :action item js-state)
+       :activities (merge-state-part-vecs :activities :activity-names item js-state)
        :child-states (merge js-state (child-states->js-child-states item))
        :extra-cfg (assoc js-state (:key item) (:value item))))
    {}
@@ -140,7 +147,10 @@
 (defn cfg->machine [id cfg]
   (let [c (s/conform :xstate/config cfg)]
     (when (s/invalid? c)
-      (tap> (s/explain-data :xstate/config cfg))
+      (tap> {:sender ::cfg->machine
+             :msg :failed-cfg-spec
+             :id id
+             :explanation (s/explain-data :xstate/config cfg)})
       (throw (js/Error. "Bad config")))
     (let [{:keys [parallel any-state init-state unadorned-states final-states]} c]
       (cond-> {:id (name id)
@@ -236,19 +246,17 @@
       clj->js
       xs/assign))
 
-(defn replace-cfg [machine cfg]
-  (with-meta
-    {:m (machine {:cfg cfg :opts (obj/get (:m machine) "options")})}
-    (assoc (meta machine) :js-cfg cfg)))
+(defn replace-cfg [m cfg]
+  (machine {:cfg cfg :opts (js->clj (obj/get (:m m) "options") :keywordize-keys true)}))
 
 (defn with-cfg [machine cfg]
   (with-meta
-    {:m (.withConfig (:m machine))}
+    {:m (.withConfig (:m machine) (clj->js cfg))}
     (update (meta machine) :js-cfg merge cfg)))
 
 (defn with-ctx [machine ctx]
   (with-meta
-    {:m (.withContext (:m machine))}
+    {:m (.withContext (:m machine) (clj->js ctx))}
     (meta machine)))
 
 (defn with-svc [{:keys [svc]} _]
