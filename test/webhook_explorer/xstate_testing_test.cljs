@@ -15,34 +15,34 @@
    :req-un [::b]))
 
 (defn test-machine [cfg expect-success done]
-   (let [machine (xs/machine {:cfg (xs/cfg->machine :test-machine cfg)})
-         model (xst/model {:machine machine
-                           :actions {:b-act (xs/assign-ctx {:ctx-prop :b
-                                                            :static-ctx :b})}
-                           :ctx {}
-                           :ctx-specs {:b (s/get-spec ::b-ctx)}})]
-     (async/go
-       (let [failed (async/<! (async/into [] (xst/test-simple-paths model)))]
-         (is ((if expect-success = >) (count failed) 0))
-         (is (xst/is-covered model))
-         (done)))))
+  (let [machine (xs/machine {:cfg (xs/cfg->machine :test-machine cfg)})
+        model (xst/model {:machine machine
+                          :actions {:b-act (xs/assign-ctx {:ctx-prop :b
+                                                           :static-ctx :b})}
+                          :ctx {}
+                          :ctx-specs {:b (s/get-spec ::b-ctx)}})]
+    (async/go
+      (let [failed (async/<! (async/into [] (xst/test-simple-paths model)))]
+        (is ((if expect-success = >) (count failed) 0))
+        (is (xst/is-covered model))
+        (done)))))
 
 (deftest machine-spec-test
   (testing "machine-spec-passing"
     (tst/async
      done
      (test-machine
-       '[* [[:do-b -> :b ! :b-act]]
-         > :a [[:b -> :b ! :b-act]]
-         :b []]
-       true
-       done)))
+      '[* [[:do-b -> :b ! :b-act]]
+        > :a [[:b -> :b ! :b-act]]
+        :b []]
+      true
+      done)))
   (testing "machine-spec-failing"
     (tst/async
      done
      (test-machine
-       '[* [[:do-b -> :b ! :b-act]]
-         > :a [[:b -> :b]]
-         :b []]
-       false
-       done))))
+      '[* [[:do-b -> :b ! :b-act]]
+        > :a [[:b -> :b]]
+        :b []]
+      false
+      done))))

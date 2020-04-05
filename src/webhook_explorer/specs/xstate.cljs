@@ -44,10 +44,9 @@
    (s/cat :activity-glyph #{'!+}
           :activity-names (s/+ keyword?))))
 (s/def :xstate/child-states
-  (s/spec (s/map-of
-           (s/or :state-id keyword? :parallel #{'||})
-           :xstate/state-def
-           :conform-keys true)))
+  (s/spec
+   (s/cat :children #{'children}
+          :cfg :xstate/config)))
 (s/def :xstate/extra-cfg
   (s/cat
    :key keyword?
@@ -71,14 +70,13 @@
   (s/cat :id #{'*}
          :def (s/spec (s/+ (s/alt :transition :xstate/transition)))))
 (s/def :xstate/config
-  (s/spec
-   (s/cat :parallel (s/? #{'||})
-          :any-state (s/? :xstate/any-state)
-          :init-state (s/cat :ornament #{'>}
-                             :state :xstate/state)
-          :unadorned-states (s/* (s/cat :state :xstate/state))
-          :final-states (s/* (s/cat :ornament #{'x}
-                                    :state :xstate/state)))))
+  (s/cat :parallel (s/? #{'||})
+         :any-state (s/? :xstate/any-state)
+         :init-state (s/cat :ornament #{'>}
+                            :state :xstate/state)
+         :unadorned-states (s/* (s/cat :state :xstate/state))
+         :final-states (s/* (s/cat :ornament #{'x}
+                                   :state :xstate/state))))
 (s/def :xstate/m (partial instance? js/Object))
 (s/def :xstate/machine
   (s/keys

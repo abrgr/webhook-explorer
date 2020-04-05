@@ -6,6 +6,9 @@
             [goog.object :as obj]
             [reagent.core :as r]))
 
+(declare state-def->js-state
+         cfg->machine*)
+
 (defn state-def->state-names [{:keys [transition delayed-transition]}]
   (->> (concat transition delayed-transition)
        (map :to)
@@ -77,16 +80,8 @@
   :args (s/cat :invocation :xstate/invocation)
   :ret :xstate-js/invoke)
 
-(declare state-def->js-state)
-
-(defn child-states->js-child-states [children]
-  (reduce
-   (fn [states [[state-type state-id] state-def]]
-     (if (= state-type :parallel)
-       (assoc states :type "parallel") ; TODO: handle final states
-       (assoc-in states [:states state-id] (state-def->js-state state-def))))
-   {}
-   children))
+(defn child-states->js-child-states [{:keys [cfg]}]
+  (cfg->machine* cfg))
 
 (defn- merge-state-part-vecs [state-key item-key item js-state]
   (update
@@ -145,41 +140,76 @@
   :args (s/cat :state (s/spec :xstate/state))
   :ret :xstate-js/states)
 
+(defn cfg->machine* [{:keys [parallel any-state init-state unadorned-states final-states]}]
+  (cond-> {:initial (-> init-state :state :id name)
+           :states (->> (concat [init-state] unadorned-states)
+                        (map :state)
+                        (map state->js-states)
+                        (concat (map
+                                 (comp
+                                  (partial into {})
+                                  #(map
+                                    (fn [[k v]]
+                                      [k (assoc v :type :final)])
+                                    %)
+                                  state->js-states
+                                  :state)
+                                 final-states))
+                        (apply merge))}
+    (some? any-state) (assoc :on (-> any-state :def state-def->js-transition :on))
+    (some? any-state) (update :states (partial merge-with #(or %1 %2)) (->> any-state
+                                                                            :def
+                                                                            state-def->state-names
+                                                                            (map #(vector %1 nil))
+                                                                            (into {})))
+    parallel (assoc :type "parallel")))
+
 (defn cfg->machine [id cfg]
-  (let [c (s/conform :xstate/config cfg)]
+  "Converts a state chart configuration into a config appropriate to pass to (machine).
+   Example configuration:
+
+     [* [[:evt-a -> :a ! :act-a | :guard-a]] ; in any state (*), on event evt-a, transition to state a and execute action act-a if guard-a is met
+      > :idle [[*transient* -> :a]] ; initial state idle; on transient (empty) event, transition to state-a
+      :a [[!+ :activity-a] ; in state-a, run activity-a
+          [$ :svc-a
+             :on-done -> :done
+             :on-error -> :err]] ; in state-a, invoke svc-a with these handlers
+      :done [(children
+               > :b [[after 100 -> :c]] ; b is the init child state of done; transition to c after 100 ms
+               x :c [])] ; final state c
+      :err [[>! :entry-action] ; run entry-action on entry to err state
+            [!> :exit-action] ; run exit-action on exit from err state
+            :key :val]] ; add key=>val to the err state node
+
+   Grammar description:
+
+     map states to list of transitions, invocations, enter/exit actions, activities, child state maps, or :key :vals to attach to the node
+     [] - means an actual list; \\[\\] means optional
+     transition = [:event -> :target ! action \\[! action2...\\] | guard \\[| guard...\\]]
+     delayed transition = [after 100 -> :target ...]
+     invocation = [$ :service-name [...transitions (e.g. on-done, on-error) or :key :val]] ; id defaults to src
+     entry actions = [>! :action-name \\[:action-name2...\\]]
+     exit actions = [!> :action-name \\[:action-name2...\\]]
+     activity = [!+ :activity-name \\[:activity-name2...\\]]
+     child state = (children > :state {} ...)
+     * indicates any state
+     > indicates initial state
+     x indicates final state
+     || as the first entry indicates parallel nodes
+  "
+  (let [c (s/conform (s/spec :xstate/config) cfg)]
     (when (s/invalid? c)
       (tap> {:sender ::cfg->machine
              :msg :failed-cfg-spec
              :id id
-             :explanation (s/explain-data :xstate/config cfg)})
+             :explanation (s/explain-data (s/spec :xstate/config) cfg)})
       (throw (js/Error. "Bad config")))
-    (let [{:keys [parallel any-state init-state unadorned-states final-states]} c]
-      (cond-> {:id (name id)
-               :initial (-> init-state :state :id name)
-               :states (->> (concat [init-state] unadorned-states)
-                            (map :state)
-                            (map state->js-states)
-                            (concat (map
-                                     (comp
-                                      (partial into {})
-                                      #(map
-                                        (fn [[k v]]
-                                          [k (assoc v :type :final)])
-                                        %)
-                                      state->js-states
-                                      :state)
-                                     final-states))
-                            (apply merge))}
-        (some? any-state) (assoc :on (-> any-state :def state-def->js-transition :on))
-        (some? any-state) (update :states (partial merge-with #(or %1 %2)) (->> any-state
-                                                                                :def
-                                                                                state-def->state-names
-                                                                                (map #(vector %1 nil))
-                                                                                (into {})))
-        parallel (assoc :type "parallel")))))
+    (-> c
+        cfg->machine*
+        (assoc :id (name id)))))
 
 (s/fdef cfg->machine
-  :args (s/cat :id keyword? :cfg :xstate/config)
+  :args (s/cat :id keyword? :cfg (s/spec :xstate/config))
   :ret :xstate-js/machine)
 
 (def assign xs/assign)
