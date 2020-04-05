@@ -19,7 +19,8 @@
                    ctx-spec-or-child-map
                    (get ctx-spec-or-child-map :xstate-test/spec))]
     (fn [test-ctx state]
-      (existing-test test-ctx state)
+      (when existing-test
+        (existing-test test-ctx state))
       (-> state
           (obj/get "context")
           (js->clj :keywordize-keys true)
@@ -39,26 +40,14 @@
 (defn with-tests [machine {:keys [ctx-specs ctx-spec]}]
   (-> machine
       xs/machine->js-cfg
-      (#(do (.log js/console "js-cfg" %)
-            %))
       (update :states add-tests-to-states ctx-spec ctx-specs)
-      (#(do (.log js/console "updated js-cfg" %)
-            %))
       (->> (xs/replace-cfg machine))))
 
 (defn model [{:keys [machine ctx] :as cfg}]
   (cond-> machine
-    true (#(do (.log js/console "1" %)
-               %))
     cfg (with-tests cfg)
-    true (#(do (.log js/console "2" %)
-               %))
     cfg (xs/with-cfg (select-keys cfg [:actions :activities :delays :guards :services]))
-    true (#(do (.log js/console "3" %)
-               %))
     ctx (xs/with-ctx ctx)
-    true (#(do (.log js/console "4" %)
-               %))
     true :m
     true (xst/createModel)))
 
@@ -72,20 +61,21 @@
         results-chan (async/chan)]
     (async/go-loop []
       (when-let [plan (async/<! plans-chan)]
-        (->> (obj/get plan "paths")
-             (array-seq)
-             (map
-              (fn [path]
-                {:path path
-                 :description (str (obj/get plan "description")
-                                   "::"
-                                   (obj/get path "description"))}))
-             (async/onto-chan paths-chan))
-        (recur))
+        (let [ps (->> (obj/get plan "paths")
+                      (array-seq)
+                      (map
+                       (fn [path]
+                         {:path path
+                          :description (str (obj/get plan "description")
+                                            "::"
+                                            (obj/get path "description"))})))]
+          (async/<! (async/onto-chan paths-chan ps false))
+          (recur)))
       (async/close! paths-chan))
     (async/go-loop []
-      (when-let [{:keys [path description]} (async/<! paths-chan)]
-        (let [p (.test path)
+      (when-let [v (async/<! paths-chan)]
+        (let [{:keys [path description]} v
+              p (.test path)
               c (async/chan)]
           (.then p #(async/put! c :passed))
           (.catch p #(async/put! c :failed))
@@ -95,3 +85,10 @@
           (recur)))
       (async/close! results-chan))
     results-chan))
+
+(defn is-covered [model]
+  (try
+    (.testCoverage model)
+    true
+    (catch :default _
+      false)))

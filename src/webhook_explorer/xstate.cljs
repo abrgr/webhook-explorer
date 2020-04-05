@@ -19,15 +19,16 @@
   :args (s/cat :state-def :xstate/state-def)
   :ret (s/coll-of string?))
 
-(defn- get-mods-by-type [type val mods]
+(defn- get-mods-by-type [typ v mods]
   (->> mods
-       (filter #(= (first %) type))
+       (filter #(= (first %) typ))
        (map second)
-       (map val)))
+       (map v)
+       (map name)))
 
 (defn transition-to->js-transition [{:keys [target mods]}]
-  (let [actions (get-mods-by-type :actions :action mods)
-        guards (get-mods-by-type :guards :guard mods)]
+  (let [actions (get-mods-by-type :action :action mods)
+        guards (get-mods-by-type :guard :guard mods)]
     (cond-> {:target (name target)}
       (not-empty actions) (assoc :actions actions)
       (not-empty guards) (assoc :guards guards))))
