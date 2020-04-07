@@ -64,6 +64,7 @@
                 :path path}]
     (reset! app-state/nav {:page :edit-handler
                            :params params})
+    (.log js/console "HELLO")
     (xs/send app-state/handler {:type :reset :params params})))
 
 (defextroute
@@ -78,6 +79,9 @@
 
 (defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))
+
+(defextroute hist packages-path nav-to-packages [require-login] "/packages" []
+  (reset! app-state/nav {:page :edit-package}))
 
 (defextroute hist edit-package-path nav-to-edit-package [require-login] "/package" []
   (reset! app-state/nav {:page :edit-package}))

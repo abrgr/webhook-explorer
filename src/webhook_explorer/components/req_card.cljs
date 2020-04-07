@@ -5,6 +5,7 @@
             [webhook-explorer.components.tag-selector :as tag-selector]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.styles :as styles]
+            [webhook-explorer.icons :as icons]
             ["@material-ui/core/colors" :as colors]
             ["@material-ui/core/Fab" :default FloatingActionButton]
             ["@material-ui/core/Avatar" :default Avatar]
@@ -14,12 +15,7 @@
             ["@material-ui/core/CardHeader" :default CardHeader]
             ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/IconButton" :default IconButton]
-            ["@material-ui/icons/Label" :default TagIcon]
-            ["@material-ui/icons/PlaylistAdd" :default AddToCollectionIcon]
-            ["@material-ui/icons/Add" :default AddIcon]
-            ["@material-ui/icons/Send" :default SendIcon]
-            ["@material-ui/icons/Favorite" :default FavoriteIcon]
-            ["@material-ui/icons/Share" :default ShareIcon]))
+            ["@material-ui/icons/Send" :default SendIcon]))
 
 (defn- background-style [theme color]
   {:color (.getContrastText (obj/get theme "palette") color)
@@ -68,7 +64,7 @@
 (defn- tag-action-btn [{:keys [on-open-menu any-selected]}]
   [action-btn
    "Tag"
-   TagIcon
+   icons/TagIcon
    on-open-menu
    (when any-selected {:color "primary"})])
 
@@ -104,7 +100,7 @@
                           :className (status-class styles status)}
                status])
      :action (r/as-element [:div
-                            [action-btn "Favorite" FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
+                            [action-btn "Favorite" icons/FavoriteIcon #(reqs-actions/tag-req item {:fav true}) (when favorited {:color "secondary"})]
                             [tag-selector/component
                              {:on-select-tag (partial reqs-actions/tag-req item)
                               :rw :writable
@@ -113,8 +109,8 @@
                               :public-tags public-tags
                               :allow-creation true
                               :selected-label "(Already tagged)"}]
-                            [action-btn "Add to request package" AddToCollectionIcon #()]
-                            [action-btn "Share" ShareIcon #(reqs-actions/share-req item)]])
+                            [action-btn "Add to request package" icons/RequestPackageIcon #()]
+                            [action-btn "Share" icons/ShareIcon #(reqs-actions/share-req item)]])
      :title (str method " " host path)
      :subheader date}]
    [:> CardContent {:className (obj/get styles "fix-card-content")}

@@ -84,6 +84,12 @@
             [:> ListItemText
              "Requests"]]
            [:> ListItem {:button true
+                         :onClick #(nav-from-drawer routes/nav-to-packages)}
+            [:> ListItemIcon
+             [:> icons/RequestPackageIcon]]
+            [:> ListItemText
+             "Request Packages"]]
+           [:> ListItem {:button true
                          :onClick #(nav-from-drawer routes/nav-to-handlers)}
             [:> ListItemIcon
              [:> icons/HandlerConfigIcon]]
