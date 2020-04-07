@@ -13,6 +13,8 @@
   (->> (concat transition delayed-transition)
        (map :to)
        (map :target)
+       (filter (comp (partial = :other) first))
+       (map second)
        (map name)))
 
 (defn state-def->state-names* [state-def]
@@ -29,10 +31,11 @@
        (map v)
        (map name)))
 
-(defn transition-to->js-transition [{:keys [target mods]}]
+(defn transition-to->js-transition [{:keys [mods] [target-type target] :target}]
   (let [actions (get-mods-by-type :action :action mods)
         guards (get-mods-by-type :guard :guard mods)]
-    (cond-> {:target (name target)}
+    (cond-> {}
+      (= target-type :other) (assoc :target (name target))
       (not-empty actions) (assoc :actions actions)
       (not-empty guards) (assoc :guards guards))))
 
@@ -57,21 +60,27 @@
 (defn delayed-transition->js-after [{:keys [delay-ms to]}]
   {delay-ms (transition-to->js-transition to)})
 
-(defn promise-handlers->js [{:keys [on-done on-error]}]
-  (cond-> {}
-    on-done (assoc :onDone (transition-to->js-transition (:to on-done)))
-    on-error (assoc :onError (transition-to->js-transition (:to on-error)))))
+(def ^:private js-handler-by-type
+  {:on-done :onDone
+   :on-error :onError
+   :data :data})
 
-(defn machine-handlers->js [{:keys [on-done data]}]
-  (cond-> {}
-    on-done (assoc :onDone (transition-to->js-transition (:to on-done)))
-    data (assoc :data (:data data))))
+(defn handlers->js [handlers]
+  (reduce
+    (fn [js-handlers [handler-type {:keys [to data]}]]
+      (assoc
+        js-handlers
+        (get js-handler-by-type handler-type)
+        (if to
+          (transition-to->js-transition to)
+          data)))
+    {}
+    handlers))
 
-(defn invocation->js-invoke [{:keys [service-name handlers]}]
-  [(cond-> {:id (name service-name)
-            :src (name service-name)}
-     (:promise handlers) (merge (promise-handlers->js (:promise handlers)))
-     (:machine handlers) (merge (machine-handlers->js (:machine handlers))))])
+(defn invocation->js-invoke [{:keys [service-name] [handler-type handlers] :handlers :as m}]
+  [(-> {:id (name service-name)
+        :src (name service-name)}
+       (merge (handlers->js handlers)))])
 
 (defn invocation->js-invoke* [invocation]
   (invocation->js-invoke (s/conform :xstate/invocation invocation)))
@@ -186,6 +195,7 @@
      map states to list of transitions, invocations, enter/exit actions, activities, child state maps, or :key :vals to attach to the node
      [] - means an actual list; \\[\\] means optional
      transition = [:event -> :target ! action \\[! action2...\\] | guard \\[| guard...\\]]
+     self transition = [:event -> *self*]
      delayed transition = [after 100 -> :target ...]
      invocation = [$ :service-name [...transitions (e.g. on-done, on-error) or :key :val]] ; id defaults to src
      entry actions = [>! :action-name \\[:action-name2...\\]]
@@ -216,7 +226,7 @@
 
 (defn interpret-and-start [machine opts]
   (let [svc ^{:js-cfg (-> machine meta (update :js-cfg merge opts))}
-        {:svc (xs/interpret (:m machine))}]
+            {:svc (xs/interpret (:m machine))}]
     (.start (:svc svc))
     svc))
 
@@ -245,13 +255,14 @@
 
 (defn machine [{:keys [cfg opts]}]
   ^{:js-cfg (merge cfg opts)}
-  {:m (xs/Machine
-       (clj->js cfg)
-       (-> opts
-           (update :guards xform-opt-fns)
-           (update :actions xform-opt-fns)
-           (update :services xform-opt-fns)
-           clj->js))})
+  {:m (cond-> (xs/Machine
+                (clj->js cfg)
+                (-> opts
+                    (update :guards xform-opt-fns)
+                    (update :actions xform-opt-fns)
+                    (update :services xform-opt-fns)
+                    clj->js))
+              (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
 
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
@@ -290,13 +301,16 @@
     {:m (.withContext (:m machine) (clj->js ctx))}
     (meta machine)))
 
-(defn with-svc [{:keys [svc]} _]
+(defn with-svc [{{:keys [svc]} :svc} _]
   (let [s (r/atom  (-> svc (obj/get "state") js->clj))]
-    (.onTransition svc #(->> % js->clj (reset! s)))
+    (.onTransition
+      svc
+      #(->> % js->clj (reset! s)))
     (fn [_ child]
       (r/as-element (child @s)))))
 
 (defn send [{:keys [svc]} evt]
+  (.log js/console "YO" svc evt)
   (.send
    svc
    (->> evt

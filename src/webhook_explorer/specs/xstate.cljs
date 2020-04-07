@@ -3,7 +3,8 @@
 
 (s/def :xstate/transition-to
   (s/cat :to-glyph #{'->}
-         :target keyword?
+         :target (s/alt :self #{'*self*}
+                        :other keyword?)
          :mods (s/* (s/alt :action (s/cat :action-glyph #{'!}
                                           :action keyword?)
                            :guard (s/cat :guard-glyph #{'|}
@@ -127,8 +128,8 @@
   (s/coll-of string?))
 (s/def :xstate-js/transition
   (s/keys
-   :req-un [:xstate-js/target]
-   :opt-un [:xstate-js/cond
+   :opt-un [:xstate-js/target
+            :xstate-js/cond
             :xstate-js/actions]))
 (s/def :xstate-js/src string?)
 (s/def :xstate-js/invocation

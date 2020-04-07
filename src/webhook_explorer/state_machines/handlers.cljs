@@ -7,28 +7,22 @@
 (def machine
   (xs/machine
    {:cfg
-    {:id :handler
-     :initial :idle
-     :context {:params nil
-               :handler nil
-               :error nil}
-     :on {:reset {:target :start
-                  :actions :reset-params}}
-     :states {:idle {}
-              :start {:on {"" [{:target :fetch-handler
-                                :cond :has-params}
-                               {:target :ready
-                                :actions :set-default-handler}]}}
-              :fetch-handler {:invoke {:id :fetch-handler
-                                       :src :fetch-handler
-                                       :onDone {:target :ready
-                                                :actions :receive-handler}
-                                       :onError {:target :failed
-                                                 :actions :receive-handler-error}}}
-              :ready {:on {:update-handler {:actions :update-handler}}}
-              :failed {}}}
+    (xs/cfg->machine
+      :handler
+      '[* [[:reset -> :start ! :reset-params]]
+        > :idle []
+        :start [[*transient* -> :fetch-handler | :has-params]
+                [*transient* -> :ready ! :set-default-handler]]
+        :fetch-handler [[$ :fetch-handler
+                         :on-done -> :ready ! :receive-handler
+                         :on-error -> :failed ! :receive-handler-error]]
+        :ready [[:update-handler -> *self* ! :update-handler]]
+        :failed []])
     :opts
-    {:actions
+    {:ctx {:params nil
+           :handler nil
+           :error nil}
+     :actions
      {:receive-handler
       (xs/assign-ctx-from-evt {:evt-prop :data
                                :ctx-prop :handler})
