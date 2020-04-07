@@ -310,7 +310,6 @@
       (r/as-element (child @s)))))
 
 (defn send [{:keys [svc]} evt]
-  (.log js/console "YO" svc evt)
   (.send
    svc
    (->> evt

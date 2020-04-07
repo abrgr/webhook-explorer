@@ -64,7 +64,6 @@
                 :path path}]
     (reset! app-state/nav {:page :edit-handler
                            :params params})
-    (.log js/console "HELLO")
     (xs/send app-state/handler {:type :reset :params params})))
 
 (defextroute
