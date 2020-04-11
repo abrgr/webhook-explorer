@@ -15,5 +15,4 @@
                    :watch-dir "public"
                    :http-root "resources/public"
                    :http-host "0.0.0.0"
-                   :http-port 9500
-                   :preloads [punk.adapter.web.preload]}}}}
+                   :http-port 9500 }}}}
