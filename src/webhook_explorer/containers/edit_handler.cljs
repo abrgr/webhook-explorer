@@ -8,8 +8,9 @@
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.components.method-selector :as method-selector]
+            [webhook-explorer.components.add-box :as add-box]
+            [webhook-explorer.components.card-list :as card-list]
             [webhook-explorer.env :as env]
-            ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
@@ -20,7 +21,6 @@
             ["@material-ui/core/InputLabel" :default InputLabel]
             ["@material-ui/core/Divider" :default Divider]
             ["@material-ui/core/Typography" :default Typography]
-            ["@material-ui/core/Tooltip" :default Tooltip]
             ["@material-ui/core/Fab" :default Fab]
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/Radio" :default Radio]
@@ -29,22 +29,14 @@
             ["@material-ui/core/FormControlLabel" :default FormControlLabel]
             ["@material-ui/core/FormLabel" :default FormLabel]
             ["@material-ui/core/TextField" :default TextField]
-            ["@material-ui/icons/Publish" :default SaveIcon]
-            ["@material-ui/icons/Add" :default AddIcon]))
+            ["@material-ui/icons/Publish" :default SaveIcon]))
 
 (def ^:private bottom-container-height 150)
 
 (def ^:private styled
   (styles/style-wrapper
    (fn [theme]
-     {:flex-container {:display "flex"
-                       :align-items "center"}
-      :extended-icon {:marginRight (.spacing theme 1)}
-      :container {:width "80%"
-                  :height "100%"
-                  :minWidth "480px"
-                  :maxWidth "768px"
-                  :margin "25px auto"}
+     {:extended-icon {:marginRight (.spacing theme 1)}
       :path-container {:display "flex"
                        :alignItems "flex-start"}
       :full-flex {:flex 1
@@ -78,12 +70,7 @@
                          :border-top "2px solid #eee"
                          :z-index 100
                          :padding 20}
-      :bottom-container-spacer {:height (+ bottom-container-height 50)}
-      :matcher-container {:marginTop 48
-                          :padding 20}
-      :add-matcher-container {:display "flex"
-                              :flexDirection "column"
-                              :alignItems "center"}})))
+      :bottom-container-spacer {:height (+ bottom-container-height 50)}})))
 
 (def ^:private match-types
   (array-map
@@ -289,12 +276,12 @@
        ^{:key tv}
        [(r/adapt-react-class MenuItem) {:value tv} tv])]))
 
-(defn- matcher [{:keys [styles idx total-matcher-count template-vars handler matches on-update]}]
+(defn- matcher [{:keys [styles class-name idx total-matcher-count template-vars handler matches on-update]}]
   (let [on-update-input (fn [k evt]
                           (on-update assoc-in [:matchers idx k] (get-target-value evt)))
         handler-type (:type handler)]
     [:> Paper {:elevation 3
-               :className (obj/get styles "matcher-container")}
+               :className class-name}
      [:div {:className (obj/get styles "right-controls")}
       [:> IconButton {:disabled (= idx 0)
                       :onClick #(on-update
@@ -426,13 +413,17 @@
                                     :className (obj/get styles "chip")
                                     :variant "outlined"}]))])
 
-(defn- main-component [{:keys [styles state on-update send]}]
-  (let [{:keys [match-type path method domain matchers]
+(defn- on-update* [svc & updater]
+  (xs/send svc {:type :update-handler
+                :updater updater}))
+
+(defn- preamble* [{:keys [styles state items svc]}]
+  (let [{:keys [match-type path method domain]
          {header-captures :headers
           {body-capture-type :type
            body-captures :captures} :body} :captures} (obj/getValueByKeys state #js ["context" "handler"])
         template-vars (get-all-template-vars path header-captures body-captures)]
-    [:div {:className (obj/get styles "container")}
+    [:<>
      [:> Paper {:className (obj/get styles "bottom-container")}
       [template-var-container {:styles styles
                                :template-vars template-vars}]
@@ -440,7 +431,7 @@
        [:> Fab {:variant "extended"
                 :label "Save"
                 :color "secondary"
-                :onClick (r/partial send :publish)}
+                :onClick (r/partial xs/send svc :publish)}
         [:> SaveIcon {:className (obj/get styles "extended-icon")}]
         "Publish changes"]]]
      [path-component {:styles styles
@@ -448,58 +439,64 @@
                       :path path
                       :method method
                       :domain domain
-                      :on-update on-update}]
+                      :on-update (partial on-update* svc)}]
      [captures {:styles styles
                 :path path
                 :header-captures header-captures
                 :body-capture-type body-capture-type
                 :body-captures body-captures
-                :on-update on-update}]
+                :on-update (partial on-update* svc)}]
      [:div {:className (obj/get styles "caption-container")}
       [:> Typography {:variant "caption"
                       :className (obj/get styles "caption")}
-       "Matchers are processed in order, top to bottom. First match wins."]]
-     (map-indexed
-      (fn [idx {:keys [path matches handler]}]
-        ^{:key idx}
-        [matcher {:styles styles
-                  :idx idx
-                  :total-matcher-count (count matchers)
-                  :template-vars template-vars
-                  :handler handler
-                  :matches matches
-                  :on-update on-update}])
-      matchers)
-     [:> Paper {:elevation 3
-                :className (str
-                            (obj/get styles "add-matcher-container")
-                            " "
-                            (obj/get styles "matcher-container"))}
-      [:> Fab {:color "primary"
-               :onClick #(on-update update :matchers conj new-matcher-template)}
-       [:> AddIcon]]
-      [:> Typography {:color "textSecondary"}
-       "Add a matcher."]]
-     [:div {:className (obj/get styles "bottom-container-spacer")}]]))
+       "Matchers are processed in order, top to bottom. First match wins."]]]))
 
-(defn- -component* [{:keys [styles svc state]}]
-  (let [on-update (fn [& updater]
-                    (xs/send svc {:type :update-handler
-                                  :updater updater}))]
-    (xs/case state
-      :failed [:div "Failed"]
-      :ready [main-component {:styles styles
-                              :state state
-                              :on-update on-update
-                              :send (r/partial xs/send svc)}]
-      [:> CircularProgress])))
+(defn- preamble [props]
+  [styled props preamble*])
 
-(defn -component [{:keys [styles]}]
+(defn- postamble* [{:keys [styles]}]
+  [:div {:className (obj/get styles "bottom-container-spacer")}])
+
+(defn- postamble [props]
+  [styled props postamble*])
+
+(defn- item-renderer [{:keys [idx items svc state class-name]
+                       {:keys [path matches handler]} :item}]
+  (let [{:keys [match-type path method domain matchers]
+         {header-captures :headers
+          {body-captures :captures} :body} :captures} (obj/getValueByKeys state #js ["context" "handler"])
+        template-vars (get-all-template-vars path header-captures body-captures)]
+    [styled
+     {:idx idx
+      :class-name class-name
+      :total-matcher-count (count items)
+      :template-vars template-vars
+      :handler handler
+      :matches matches
+      :on-update (partial on-update* svc)}
+     matcher]))
+
+(defn- state->items [state]
+  (-> state
+      (obj/getValueByKeys #js ["context" "handler"])
+      :matchers))
+
+(defn- -component* [{:keys [svc state]}]
+  [card-list/component
+   {:svc svc
+    :state state
+    :preamble-component preamble
+    :postamble-component postamble
+    :item-renderer item-renderer
+    :state->items state->items
+    :ready-state :ready
+    :failed-state :failed
+    :add-item-title "Add a matcher."
+    :on-add-item #(xs/send svc {:type :update-handler
+                                :updater [update :matchers conj new-matcher-template]})}])
+
+(defn component []
   [xs/with-svc {:svc app-state/handler}
    (fn [state]
      [-component* {:svc app-state/handler
-                   :state state
-                   :styles styles}])])
-
-(defn component []
-  [styled {} -component])
+                   :state state}])])

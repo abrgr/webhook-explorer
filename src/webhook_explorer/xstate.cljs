@@ -67,15 +67,15 @@
 
 (defn handlers->js [handlers]
   (reduce
-    (fn [js-handlers [handler-type {:keys [to data]}]]
-      (assoc
-        js-handlers
-        (get js-handler-by-type handler-type)
-        (if to
-          (transition-to->js-transition to)
-          data)))
-    {}
-    handlers))
+   (fn [js-handlers [handler-type {:keys [to data]}]]
+     (assoc
+      js-handlers
+      (get js-handler-by-type handler-type)
+      (if to
+        (transition-to->js-transition to)
+        data)))
+   {}
+   handlers))
 
 (defn invocation->js-invoke [{:keys [service-name] [handler-type handlers] :handlers :as m}]
   [(-> {:id (name service-name)
@@ -226,7 +226,7 @@
 
 (defn interpret-and-start [machine opts]
   (let [svc ^{:js-cfg (-> machine meta (update :js-cfg merge opts))}
-            {:svc (xs/interpret (:m machine))}]
+        {:svc (xs/interpret (:m machine))}]
     (.start (:svc svc))
     svc))
 
@@ -256,13 +256,13 @@
 (defn machine [{:keys [cfg opts]}]
   ^{:js-cfg (merge cfg opts)}
   {:m (cond-> (xs/Machine
-                (clj->js cfg)
-                (-> opts
-                    (update :guards xform-opt-fns)
-                    (update :actions xform-opt-fns)
-                    (update :services xform-opt-fns)
-                    clj->js))
-              (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
+               (clj->js cfg)
+               (-> opts
+                   (update :guards xform-opt-fns)
+                   (update :actions xform-opt-fns)
+                   (update :services xform-opt-fns)
+                   clj->js))
+        (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
 
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
@@ -304,8 +304,8 @@
 (defn with-svc [{{:keys [svc]} :svc} _]
   (let [s (r/atom  (-> svc (obj/get "state") js->clj))]
     (.onTransition
-      svc
-      #(->> % js->clj (reset! s)))
+     svc
+     #(->> % js->clj (reset! s)))
     (fn [_ child]
       (r/as-element (child @s)))))
 

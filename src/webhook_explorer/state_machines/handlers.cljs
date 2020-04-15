@@ -8,16 +8,16 @@
   (xs/machine
    {:cfg
     (xs/cfg->machine
-      :handler
-      '[* [[:reset -> :start ! :reset-params]]
-        > :idle []
-        :start [[*transient* -> :fetch-handler | :has-params]
-                [*transient* -> :ready ! :set-default-handler]]
-        :fetch-handler [[$ :fetch-handler
-                         :on-done -> :ready ! :receive-handler
-                         :on-error -> :failed ! :receive-handler-error]]
-        :ready [[:update-handler -> *self* ! :update-handler]]
-        :failed []])
+     :handler
+     '[* [[:reset -> :start ! :reset-params]]
+       > :idle []
+       :start [[*transient* -> :fetch-handler | :has-params]
+               [*transient* -> :ready ! :set-default-handler]]
+       :fetch-handler [[$ :fetch-handler
+                        :on-done -> :ready ! :receive-handler
+                        :on-error -> :failed ! :receive-handler-error]]
+       :ready [[:update-handler -> *self* ! :update-handler]]
+       :failed []])
     :opts
     {:ctx {:params nil
            :handler nil

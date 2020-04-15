@@ -80,7 +80,8 @@
   (reset! app-state/nav {:page :req :params {:slug slug}}))
 
 (defextroute hist packages-path nav-to-packages [require-login] "/packages" []
-  (reset! app-state/nav {:page :edit-package}))
+  (reset! app-state/nav {:page :edit-package})
+  (xs/send app-state/edit-package {:type :reset}))
 
 (defextroute hist edit-package-path nav-to-edit-package [require-login] "/package" []
   (reset! app-state/nav {:page :edit-package}))
