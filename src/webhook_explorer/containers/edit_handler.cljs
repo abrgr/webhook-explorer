@@ -10,6 +10,7 @@
             [webhook-explorer.components.method-selector :as method-selector]
             [webhook-explorer.components.add-box :as add-box]
             [webhook-explorer.components.card-list :as card-list]
+            [webhook-explorer.components.req-captures :as req-captures]
             [webhook-explorer.env :as env]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
@@ -82,11 +83,6 @@
    :mock {:label "Mock"}
    :proxy {:label "Proxy"}))
 
-(def ^:private body-capture-types
-  (array-map
-   :json {:label "JSON"}
-   :form-data {:label "Form Data"}))
-
 (def ^:private status-codes
   (array-map
    100 "Continue"
@@ -154,7 +150,7 @@
 (defn- get-target-value [evt]
   (obj/getValueByKeys evt #js ["target" "value"]))
 
-(defmulti handler-component (fn [{{:keys [type]} :handler}] type))
+(defmulti handler-component (fn [{{:keys [type]} :handler :as a}] (keyword type)))
 
 (defmethod handler-component :default [_]
   [:div])
@@ -225,7 +221,7 @@
                     :value (if match-type (name match-type) "")
                     :onChange #(on-update assoc :match-type (keyword (get-target-value %)))}
      (for [[match-type {:keys [label]}] match-types]
-       ^{:key match-type}
+       ^{:key (name match-type)}
        [(r/adapt-react-class FormControlLabel)
         {:label label
          :value (name match-type)
@@ -333,7 +329,7 @@
         [:> Select {:value (if handler-type (name handler-type) "")
                     :onChange #(on-update assoc-in [:matchers idx :handler] {:type (keyword (get-target-value %))})}
          (for [[rt {:keys [label]}] handler-types]
-           ^{:key rt}
+           ^{:key (name rt)}
            [(r/adapt-react-class MenuItem) {:value (name rt)} label])]]
        [handler-component {:handler handler
                            :idx idx
@@ -344,54 +340,17 @@
   {:matches {}
    :handler nil})
 
-(defn- template-var-map->simple-map [m]
-  (->> m
-       (map (fn [[k {:keys [template-var]}]] [k template-var]))
-       (into {})))
-
-(def ^:private capture-key-title
-  {:json "JSON path to capture"
-   :form-data "Form field to capture"})
-
-(defn- captures [{:keys [styles path header-captures body-capture-type body-captures on-update]}]
-  [:> Paper {:elevation 3
-             :className (obj/get styles "capture-container")}
-   [:> Typography {:variant "h6"
-                   :color "textSecondary"}
-    "Capture Template Variables"]
-   [:div {:className (obj/get styles "full-flex")}
-    [req-parts/editable-headers-view
-     (str "Request header captures (" (count header-captures) ")")
-     (template-var-map->simple-map header-captures)
-     (fn [k v]
-       (if (nil? v)
-         (on-update update-in [:captures :headers] dissoc (name k))
-         (on-update assoc-in [:captures :headers (name k) :template-var] v)))]
-    [:> FormControl {:fullWidth true
-                     :margin "normal"}
-     [:> InputLabel "Request body captures"]
-     [:> Select {:value (if body-capture-type (name body-capture-type) " ")
-                 :onChange #(let [v (get-target-value %)]
-                              (if (= v " ")
-                                (on-update update :captures dissoc :body)
-                                (on-update assoc-in [:captures :body] {:type (keyword v) :captures {}})))}
-      [:> MenuItem {:value " "} "None"]
-      (for [[mt {:keys [label]}] body-capture-types]
-        ^{:key mt}
-        [(r/adapt-react-class MenuItem) {:value (name mt)} label])]]
-    (when (some? body-captures)
-      [req-parts/base-kv-view
-       {:title "Body captures"
-        :k-title (capture-key-title body-capture-type)
-        :v-title "Template variable"
-        :m (template-var-map->simple-map body-captures)
-        :editable true
-        :value-component req-parts/editable-value
-        :default-expanded true
-        :on-change (fn [jp v]
-                     (if (nil? v)
-                       (on-update update-in [:captures :body :captures] dissoc (name jp))
-                       (on-update assoc-in [:captures :body :captures (name jp) :template-var] v)))}])]])
+(defn- captures [{:keys [styles header-captures body-capture-type body-captures on-update]}]
+  [req-captures/component
+   {:header-captures (req-captures/template-var-map->simple-map header-captures)
+    :body-capture-type body-capture-type
+    :body-captures (req-captures/template-var-map->simple-map body-captures)
+    :on-update-header-capture #(on-update assoc-in [:captures :headers %1 :template-var] %2)
+    :on-remove-header-capture #(on-update update-in [:captures :headers] dissoc %)
+    :on-remove-all-body-captures #(on-update update :captures dissoc :body)
+    :on-update-body-capture-type #(on-update assoc-in [:captures :body] {:type % :captures {}})
+    :on-update-body-capture #(on-update assoc-in [:captures :body :captures %1 :template-var] %2)
+    :on-remove-body-capture #(on-update update-in [:captures :body :captures] dissoc %)}])
 
 (defn- get-all-template-vars [path header-captures body-captures]
   (->> (concat (vals header-captures) (vals body-captures))
@@ -441,7 +400,6 @@
                       :domain domain
                       :on-update (partial on-update* svc)}]
      [captures {:styles styles
-                :path path
                 :header-captures header-captures
                 :body-capture-type body-capture-type
                 :body-captures body-captures

@@ -264,6 +264,11 @@
                    clj->js))
         (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
 
+(defn evt->clj [evt]
+  (if (obj/containsKey evt "_clj")
+    (obj/get evt "_clj") ; anything sent with our send function has _clj
+    (js->clj evt :keywordize-keys true)))
+
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
       clj->js
@@ -271,7 +276,33 @@
 
 (defn assign-ctx-from-evt [{:keys [evt-prop ctx-prop static-ctx]}]
   (-> static-ctx
-      (assoc ctx-prop (fn [_ e] (obj/get e (name evt-prop))))
+      (assoc ctx-prop (fn [_ evt]
+                        (-> evt evt->clj evt-prop)))
+      clj->js
+      xs/assign))
+
+(defn xform-ctx [{:keys [ctx-prop static-ctx]} update-fn & update-args]
+  (-> static-ctx
+      (assoc
+       ctx-prop
+       (fn [ctx _]
+         (apply
+          update-fn
+          (obj/get ctx (name ctx-prop))
+          update-args)))
+      clj->js
+      xs/assign))
+
+(defn xform-ctx-from-event [{:keys [ctx-prop static-ctx]} update-fn & update-args]
+  (-> static-ctx
+      (assoc
+       ctx-prop
+       (fn [ctx evt]
+         (apply
+          update-fn
+          (obj/get ctx (name ctx-prop))
+          (evt->clj evt)
+          update-args)))
       clj->js
       xs/assign))
 
@@ -279,8 +310,8 @@
   (-> static-ctx
       (assoc
        ctx-prop
-       (fn [ctx e]
-         (let [[update-fn & update-args] (obj/get e (name updater-prop))]
+       (fn [ctx evt]
+         (let [[update-fn & update-args] (-> evt evt->clj updater-prop)]
            (apply
             update-fn
             (obj/get ctx (name ctx-prop))
@@ -312,11 +343,15 @@
 (defn send [{:keys [svc]} evt]
   (.send
    svc
-   (->> evt
-        (mapcat
-         (fn [[k v]]
-           [(name k) (if (ident? v) (name v) v)]))
-        (apply js-obj))))
+   (cond
+     (ident? evt) (name evt)
+     (string? evt) evt
+     (map? evt) (->> evt
+                     (mapcat
+                      (fn [[k v]]
+                        [(name k) (if (ident? v) (name v) v)]))
+                     (concat ["_clj" evt])
+                     (apply js-obj)))))
 
 (defn matches? [state test-state]
   (.matches state (name test-state)))

@@ -86,3 +86,8 @@
 
 (defn component [props]
   [styled props component*])
+
+(defn template-var-map->simple-map [m]
+  (some->> m
+           (map (fn [[k {:keys [template-var]}]] [k template-var]))
+           (into {})))

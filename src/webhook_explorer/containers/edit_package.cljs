@@ -8,6 +8,7 @@
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.components.method-selector :as method-selector]
+            [webhook-explorer.components.req-captures :as req-captures]
             [webhook-explorer.components.card-list :as card-list]
             [webhook-explorer.env :as env]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
@@ -86,19 +87,38 @@
                               :flexDirection "column"
                               :alignItems "center"}})))
 
-(defn- request []
-  "Request")
+(defn- request [{:keys [idx svc state class-name]
+                 {{header-captures :headers
+                   {body-capture-type :type
+                    body-captures :captures} :body} :captures} :item}]
+  [:> Paper {:elevation 3
+             :className class-name}
+   [req-captures/component
+    {:header-captures (req-captures/template-var-map->simple-map header-captures)
+     :body-capture-type body-capture-type
+     :body-captures (req-captures/template-var-map->simple-map body-captures)
+     :on-update-header-capture #(xs/send svc {:type :update-header-capture :req-idx idx :header %1 :template-var %2})
+     :on-remove-header-capture #(xs/send svc {:type :remove-header-capture :req-idx idx :header %})
+     :on-remove-all-body-captures #(xs/send svc {:type :remove-all-body-captures :req-idx idx})
+     :on-update-body-capture-type #(xs/send svc {:type :update-body-capture-type :req-idx idx :body-capture-type %})
+     :on-update-body-capture #(xs/send svc {:type :update-body-capture :req-idx idx :body-capture-key %1 :template-var %2})
+     :on-remove-body-capture #(xs/send svc {:type :remove-body-capture :req-idx idx :body-capture-key %})}]])
+
+(defn- state->items [state]
+  (-> state
+      (obj/getValueByKeys #js ["context" "package"])
+      :reqs))
 
 (defn- -component* [{:keys [styles svc state]}]
   [card-list/component
    {:svc svc
     :state state
     :item-renderer request
-    :state->items (constantly [])
+    :state->items state->items
     :ready-state :ready
     :failed-state :failed
     :add-item-title "Add a request."
-    :on-add-item #(xs/send svc :add-request)}])
+    :on-add-item #(xs/send svc :add-req)}])
 
 (defn component [{:keys [styles]}]
   [xs/with-svc {:svc app-state/edit-package}
