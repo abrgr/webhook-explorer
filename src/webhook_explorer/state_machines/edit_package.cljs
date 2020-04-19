@@ -32,7 +32,7 @@
                                             :error nil}})
       :set-default-package
       (xs/assign-ctx {:ctx-prop :package
-                      :static-ctx {:package {:name "" :reqs []}}})
+                      :static-ctx {:name "" :reqs []}})
       :update-package-name
       (xs/xform-ctx-from-event
         {:ctx-prop :package}

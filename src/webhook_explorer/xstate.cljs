@@ -269,6 +269,16 @@
     (obj/get evt "_clj") ; anything sent with our send function has _clj
     (js->clj evt :keywordize-keys true)))
 
+(defn js-state->clj [state]
+  (reduce
+    (fn [acc k]
+      (assoc acc (keyword k) (js->clj (obj/get state k) :keywordize-keys true)))
+    ^{:js-state state} {}
+    ["context" "activities" "actions" "meta" "value" "event" "done" "changed"]))
+
+(defn clj-state->js [state]
+  (-> state meta :js-state))
+
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
       clj->js
@@ -333,10 +343,10 @@
     (meta machine)))
 
 (defn with-svc [{{:keys [svc]} :svc} _]
-  (let [s (r/atom  (-> svc (obj/get "state") js->clj))]
+  (let [s (r/atom  (-> svc (obj/get "state") js-state->clj))]
     (.onTransition
      svc
-     #(->> % js->clj (reset! s)))
+     #(->> % js-state->clj (reset! s)))
     (fn [_ child]
       (r/as-element (child @s)))))
 
@@ -354,4 +364,4 @@
                      (apply js-obj)))))
 
 (defn matches? [state test-state]
-  (.matches state (name test-state)))
+  (.matches (clj-state->js state) (name test-state)))

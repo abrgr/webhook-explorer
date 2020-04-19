@@ -399,7 +399,7 @@
   (let [{:keys [match-type path method domain]
          {header-captures :headers
           {body-capture-type :type
-           body-captures :captures} :body} :captures} (obj/getValueByKeys state #js ["context" "handler"])
+           body-captures :captures} :body} :captures} (get-in state [:context :handler])
         template-vars (get-all-template-vars path header-captures body-captures)]
     [:<>
      [:> Paper {:className (obj/get styles "bottom-container")}
@@ -441,7 +441,7 @@
                        {:keys [path matches handler]} :item}]
   (let [{:keys [match-type path method domain matchers]
          {header-captures :headers
-          {body-captures :captures} :body} :captures} (obj/getValueByKeys state #js ["context" "handler"])
+          {body-captures :captures} :body} :captures} (get-in state [:context :handler])
         template-vars (get-all-template-vars path header-captures body-captures)]
     [styled
      {:idx idx
@@ -454,9 +454,7 @@
      matcher]))
 
 (defn- state->items [state]
-  (-> state
-      (obj/getValueByKeys #js ["context" "handler"])
-      :matchers))
+  (get-in state [:context :handler :matchers]))
 
 (defn- -component* [{:keys [svc state]}]
   [card-list/component

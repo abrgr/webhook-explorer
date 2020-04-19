@@ -145,9 +145,7 @@
   [styled props request*])
 
 (defn- state->items [state]
-  (-> state
-      (obj/getValueByKeys #js ["context" "package"])
-      :reqs))
+  (get-in state [:context :package :reqs]))
 
 (defn- preamble [{:keys [state svc]}]
   [:<>
@@ -172,12 +170,10 @@
     [:> TextField
       {:fullWidth true
        :label "Package name"
-       :value (-> state
-                  (obj/getValueByKeys #js ["context" "package"])
-                  :name)
+       :value (get-in state [:context :package :name])
        :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]])
 
-(defn- -component* [{:keys [styles svc state]}]
+(defn- -component* [{:keys [svc state]}]
   [card-list/component
    {:svc svc
     :state state
@@ -189,7 +185,7 @@
     :add-item-title "Add a request."
     :on-add-item #(xs/send svc :add-req)}])
 
-(defn component [{:keys [styles]}]
+(defn component []
   [xs/with-svc {:svc app-state/edit-package}
    (fn [state]
      [-component* {:svc app-state/edit-package
