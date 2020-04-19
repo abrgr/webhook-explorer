@@ -10,12 +10,15 @@
                                   (class-defs theme)
                                   class-defs))))
         wrapper (fn [props wrapped]
-                  (let [react-component
-                        (fn [js-props]
+                  (let [p (r/atom props)
+                        react-component
+                        (fn react-style-wrapper []
                           (let [s (make-styles)]
                             (r/as-element
-                             [wrapped (assoc props :styles s)])))]
-                    [:> react-component props]))]
+                             [wrapped (assoc @p :styles s)])))]
+                    (fn [props wrapped]
+                      (reset! p props)
+                      [:> react-component])))]
     wrapper))
 
 (defn inject-css-link [href]
