@@ -15,6 +15,7 @@
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/icons/Delete" :default DeleteIcon]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
             ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
             ["@material-ui/core/Select" :default Select]
@@ -161,7 +162,11 @@
    [:> Typography {:variant "caption"
                    :component "p"
                    :className (obj/get styles "template-caption")}
-    "You can write ${template-var} in any response header value or anywhere in the body"]
+    "You can write a "
+    [:a {:href "http://mustache.github.io/mustache.5.html"
+         :target "_blank"}
+     "mustache-style"]
+    " {{template-var}} or {{#list-var}}{{val}}{{/list-var}} in any response header value or anywhere in the body."]
    [:> FormControl {:margin "normal"
                     :fullWidth true}
     [:> InputLabel "Response status"]
@@ -196,7 +201,12 @@
     [:> TextField
      {:label "Remote URL"
       :fullWidth true
-      :helperText "URL to proxy matching requests to. Can include {template-variables}."
+      :helperText (r/as-element [:<>
+                                  "URL to proxy matching requests to. Can include "
+                                  [:a {:href "http://mustache.github.io/mustache.5.html"
+                                       :target "_blank"}
+                                   "mustache-style"]
+                                  " {{template-var}} or {{#list-var}}{{val}}{{/list-var}}."])
       :value (or remote-url "")
       :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
 
@@ -279,6 +289,15 @@
     [:> Paper {:elevation 3
                :className class-name}
      [:div {:className (obj/get styles "right-controls")}
+      [:> IconButton {:onClick (fn []
+                                 (on-update
+                                   update
+                                   :matchers
+                                   #(->> (concat 
+                                           (subvec % 0 idx)
+                                           (subvec % (inc idx)))
+                                         (into []))))}
+       [:> DeleteIcon]]
       [:> IconButton {:disabled (= idx 0)
                       :onClick #(on-update
                                  update
