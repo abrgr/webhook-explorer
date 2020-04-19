@@ -10,6 +10,7 @@
             [webhook-explorer.components.method-selector :as method-selector]
             [webhook-explorer.components.req-captures :as req-captures]
             [webhook-explorer.components.card-list :as card-list]
+            [webhook-explorer.components.req-editor :as req-editor]
             [webhook-explorer.env :as env]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
@@ -91,7 +92,8 @@
                  {:keys [req-name]
                   {header-captures :headers
                    {body-capture-type :type
-                    body-captures :captures} :body} :captures} :item}]
+                    body-captures :captures} :body} :captures
+                  {:keys [protocol method host path qs headers body]} :req} :item}]
   [:> Paper {:elevation 3
              :className class-name}
    [:> TextField
@@ -99,6 +101,22 @@
      :label "Request name"
      :value req-name
      :onChange #(xs/send svc {:type :update-req-name :req-idx idx :req-name (obj/getValueByKeys % #js ["target" "value"])})}]
+   [:> Paper {:elevation 3
+             :className class-name}
+     [:> Typography {:variant "h6"
+                     :color "textSecondary"}
+      "Request"]
+     [:> Typography {}
+      "You can use mustache-style ${templateVars} in any field"]
+     [req-editor/component
+      {:protocol protocol
+       :method method
+       :host host
+       :path path
+       :qs qs
+       :headers headers
+       :body body
+       :on-update (fn [k v] (xs/send svc {:type :update-req :req-idx idx :k k :v v}))}]]
    [req-captures/component
     {:header-captures (req-captures/template-var-map->simple-map header-captures)
      :body-capture-type body-capture-type

@@ -29,19 +29,19 @@
                                                               "https"
                                                               "http"))}])}]]
    [method-selector/component
-    {:value (string/lower-case method)
+    {:value (string/lower-case (or  method ""))
      :on-change #(on-update :method %)}]
    [:> FormControl {:fullWidth true
                     :margin "normal"}
     [:> TextField {:fullWidth true
                    :label "Host"
-                   :value host
+                   :value (or host "")
                    :onChange #(on-update :host (obj/getValueByKeys % #js ["target" "value"]))}]]
    [:> FormControl {:fullWidth true
                     :margin "normal"}
     [:> TextField {:fullWidth true
                    :label "Path"
-                   :value path
+                   :value (or path "")
                    :onChange #(on-update :path (obj/getValueByKeys % #js ["target" "value"]))}]]
    [req-parts/editable-qs-view
     "Query Params"
