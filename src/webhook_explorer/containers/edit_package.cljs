@@ -106,8 +106,13 @@
      [:> Typography {:variant "h6"
                      :color "textSecondary"}
       "Request"]
-     [:> Typography {}
-      "You can use mustache-style ${templateVars} in any field"]
+     [:> Typography {:variant "caption"
+                     :component "p"}
+      "You can use a "
+      [:a {:href "http://mustache.github.io/mustache.5.html"
+           :target "_blank"}
+       "mustache-style"]
+      " {{template-var}} or {{#list-var}}{{val}}{{/list-var}} in any field."]
      [req-editor/component
       {:protocol protocol
        :method method
@@ -133,10 +138,32 @@
       (obj/getValueByKeys #js ["context" "package"])
       :reqs))
 
+(defn- preamble []
+  [:<>
+    [:> Typography {:component "p"
+                    :paragraph true}
+     "A request package is a set of requests that can have arbitrary dependencies
+     on one another by capturing aspects of the result of one request in a
+     template variable that can then be referenced in other requests.
+     The order of requests here doesn't matter. Requests will be executed
+     in the order implied by the graph of template variable references."]
+    [:> Typography {:component "p"
+                    :paragraph true}
+      "When you capture a template variable, 'tempVar', in a request named, 'myReq',
+       it may be referenced as:"]
+    [:ul
+     [:li "{{every.myReq.tempVar}} for the single tempVar captured for each instance of myReq, repeating any request with such a reference once for every instance of myReq"]
+     [:li "{{#all.myReq.tempVar}}{{.}}{{/all.myReq.tempVar}} for the array of tempVars captured from all instances of myReq, running any request with such a reference only once after all instances of myReq complete"]]
+    [:> Typography {:component "p"
+                    :paragraph true}
+     "Additionally, you may reference {{params.param1}} to reference parameters
+      that you expect to be passed to this request package when it's invoked."]])
+
 (defn- -component* [{:keys [styles svc state]}]
   [card-list/component
    {:svc svc
     :state state
+    :preamble-component preamble
     :item-renderer request
     :state->items state->items
     :ready-state :ready
