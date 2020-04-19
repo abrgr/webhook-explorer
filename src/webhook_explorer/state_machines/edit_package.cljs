@@ -11,7 +11,9 @@
      '[* [[:reset -> :start ! :reset-params]]
        > :idle []
        :start [[*transient* -> :ready ! :set-default-package]]
-       :ready [[:add-req -> *self* ! :add-req]
+       :ready [[:update-package-name -> *self* ! :update-package-name]
+               [:add-req -> *self* ! :add-req]
+               [:remove-req -> *self* ! :remove-req]
                [:update-header-capture -> *self* ! :update-header-capture]
                [:remove-header-capture -> *self* ! :remove-header-capture]
                [:remove-all-body-captures -> *self* ! :remove-all-body-captures]
@@ -19,25 +21,39 @@
                [:update-body-capture -> *self* ! :update-body-capture]
                [:remove-body-capture -> *self* ! :remove-body-capture]
                [:update-req-name -> *self* ! :update-req-name]
-               [:update-req -> *self* ! :update-req]
-               ]])
+               [:update-req -> *self* ! :update-req]]])
     :opts
     {:ctx {}
      :actions
      {:reset-params
       (xs/assign-ctx-from-evt {:evt-prop :params
                                :ctx-prop :params
-                               :static-ctx {:package {:reqs []}
+                               :static-ctx {:package {:name "" :reqs []}
                                             :error nil}})
       :set-default-package
       (xs/assign-ctx {:ctx-prop :package
-                      :static-ctx {:reqs []}})
+                      :static-ctx {:package {:name "" :reqs []}}})
+      :update-package-name
+      (xs/xform-ctx-from-event
+        {:ctx-prop :package}
+        (fn [package {:keys [package-name]}]
+          (assoc package :name package-name)))
       :add-req
       (xs/xform-ctx
        {:ctx-prop :package}
        update :reqs conj {:req-name ""
                           :captures {:headers {}}
                           :req {:qs {} :headers {} :body ""}})
+      :remove-req
+      (xs/xform-ctx-from-event
+       {:ctx-prop :package}
+       (fn [package {:keys [req-idx]}]
+         (update
+           package
+           :reqs
+           #(->> (concat (subvec % 0 req-idx)
+                         (subvec % (inc req-idx)))
+                 (into [])))))
       :update-req-name
       (xs/xform-ctx-from-event
        {:ctx-prop :package}

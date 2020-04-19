@@ -16,6 +16,7 @@
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
+            ["@material-ui/icons/Delete" :default DeleteIcon]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
             ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
             ["@material-ui/core/Select" :default Select]
@@ -88,7 +89,7 @@
                               :flexDirection "column"
                               :alignItems "center"}})))
 
-(defn- request [{:keys [idx svc state class-name]
+(defn- request* [{:keys [idx svc state class-name styles]
                  {:keys [req-name]
                   {header-captures :headers
                    {body-capture-type :type
@@ -96,6 +97,13 @@
                   {:keys [protocol method host path qs headers body]} :req} :item}]
   [:> Paper {:elevation 3
              :className class-name}
+   [:div {:className (obj/get styles "right-controls")}
+    [:> IconButton {:onClick (fn []
+                               (xs/send
+                                 svc
+                                 {:type :remove-req
+                                  :req-idx idx}))}
+     [:> DeleteIcon]]]
    [:> TextField
     {:fullWidth true
      :label "Request name"
@@ -133,12 +141,15 @@
      :on-update-body-capture #(xs/send svc {:type :update-body-capture :req-idx idx :body-capture-key %1 :template-var %2})
      :on-remove-body-capture #(xs/send svc {:type :remove-body-capture :req-idx idx :body-capture-key %})}]])
 
+(defn request [props]
+  [styled props request*])
+
 (defn- state->items [state]
   (-> state
       (obj/getValueByKeys #js ["context" "package"])
       :reqs))
 
-(defn- preamble []
+(defn- preamble [{:keys [state svc]}]
   [:<>
     [:> Typography {:component "p"
                     :paragraph true}
@@ -157,7 +168,14 @@
     [:> Typography {:component "p"
                     :paragraph true}
      "Additionally, you may reference {{params.param1}} to reference parameters
-      that you expect to be passed to this request package when it's invoked."]])
+      that you expect to be passed to this request package when it's invoked."]
+    [:> TextField
+      {:fullWidth true
+       :label "Package name"
+       :value (-> state
+                  (obj/getValueByKeys #js ["context" "package"])
+                  :name)
+       :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]])
 
 (defn- -component* [{:keys [styles svc state]}]
   [card-list/component
