@@ -1,26 +1,21 @@
 (ns webhook-explorer.containers.req-editor
-  (:require [clojure.core.async :as async]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [reagent.core :as r]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.reqs :as reqs-actions]
             [webhook-explorer.components.req-parts :as req-parts]
             [webhook-explorer.styles :as styles]
-            [webhook-explorer.components.method-selector :as method-selector]
+            [webhook-explorer.components.req-editor :as re]
             [goog.object :as obj]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/Snackbar" :default Snackbar]
-            ["@material-ui/core/FormControlLabel" :default FormControlLabel]
-            ["@material-ui/core/FormControl" :default FormControl]
-            ["@material-ui/core/Switch" :default Switch]
             ["@material-ui/core/Button" :default Button]
             ["@material-ui/core/Dialog" :default Dialog]
             ["@material-ui/core/DialogActions" :default DialogActions]
             ["@material-ui/core/DialogContent" :default DialogContent]
             ["@material-ui/core/DialogContentText" :default DialogContentText]
             ["@material-ui/core/DialogTitle" :default DialogTitle]
-            ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/core/Tooltip" :default Tooltip]))
 
 (def ^:private styled
@@ -38,15 +33,25 @@
     (< status 400) true
     :else false))
 
+(def ^:private update-path-by-key
+  {:protocol [:item :detail :protocol]
+   :method [:item :method]
+   :host [:item :details :host]
+   :path [:item :path]
+   :qs [:item :details :qs]
+   :headers [:item :details :req :headers]
+   :body [:item :details :req :body]
+   :res [:item :details :res]})
+
 (defn- styled-dialog [{:keys [styles]}]
   (let [{{:keys [item in-progress]} :selected-item} @app-state/reqs
         {:keys [method path status]} item
-        host (get-in item [:details :host])
-        protocol (get-in item [:details :protocol])
-        qs (get-in item [:details :qs])
-        headers (get-in item [:details :req :headers])
-        body (get-in item [:details :req :body])
-        res (get-in item [:details :res])
+        host (get-in item (-> update-path-by-key :host rest))
+        protocol (get-in item (-> update-path-by-key :protocol rest))
+        qs (get-in item (-> update-path-by-key :qs rest))
+        headers (get-in item (-> update-path-by-key :headers rest))
+        body (get-in item (-> update-path-by-key :body rest))
+        res (get-in item (-> update-path-by-key :res rest))
         non-host-headers (->> headers (filter (comp not #{:Host} first)) (into {}))
         open (some? item)
         on-close reqs-actions/unselect-item
@@ -62,49 +67,14 @@
         [:> DialogTitle "Send Request"]
         [:> DialogContent
          [:> DialogContentText "Execute request or copy as curl"]
-         [:> FormControl {:fullWidth true
-                          :margin "normal"}
-          [:> FormControlLabel {:label "Secure"
-                                :control (r/as-element
-                                          [:> Switch {:checked (= protocol "https")
-                                                      :onChange #(reqs-actions/update-selected-item-in
-                                                                  [:item :details :protocol]
-                                                                  (if (obj/getValueByKeys % #js ["target" "checked"])
-                                                                    "https"
-                                                                    "http"))}])}]]
-         [method-selector/component
-          {:value (string/lower-case method)
-           :on-change #(reqs-actions/update-selected-item-in [:item :method] %)}]
-         [:> FormControl {:fullWidth true
-                          :margin "normal"}
-          [:> TextField {:fullWidth true
-                         :label "Host"
-                         :value host
-                         :onChange #(reqs-actions/update-selected-item-in [:item :details :host] (obj/getValueByKeys % #js ["target" "value"]))}]]
-         [:> FormControl {:fullWidth true
-                          :margin "normal"}
-          [:> TextField {:fullWidth true
-                         :label "Path"
-                         :value path
-                         :onChange #(reqs-actions/update-selected-item-in [:item :path] (obj/getValueByKeys % #js ["target" "value"]))}]]
-         [req-parts/editable-qs-view
-          "Query Params"
-          qs
-          #(if (nil? %2)
-             (reqs-actions/update-selected-item-in [:item :details :qs] (dissoc qs %1))
-             (reqs-actions/update-selected-item-in [:item :details :qs %1] %2))]
-         [req-parts/editable-headers-view
-          "Request Headers"
-          non-host-headers
-          #(if (nil? %2)
-             (reqs-actions/update-selected-item-in [:item :details :req :headers] (dissoc headers %1))
-             (reqs-actions/update-selected-item-in [:item :details :req :headers %1] %2))]
-         [req-parts/editable-body-view
-          "Request Body"
-          (req-parts/make-bodies
-           {:raw {:label "Raw" :body body}})
-          headers
-          #(reqs-actions/update-selected-item-in [:item :details :req :body] %)]
+         [re/component
+          {:protocol protocol
+           :method method
+           :host host
+           :qs qs
+           :headers non-host-headers
+           :body body
+           :on-update (fn [k v] (reqs-actions/update-selected-item-in (k update-path-by-key) v))}]
          (if in-progress
            [:div {:className (obj/get styles "centered-container")}
             [:> CircularProgress]]

@@ -33,12 +33,12 @@
       :add-req
       (xs/xform-ctx
        {:ctx-prop :package}
-       update :reqs conj {:req-name ""})
+       update :reqs conj {:req-name "" :captures {:headers {}}})
       :update-req-name
       (xs/xform-ctx-from-event
-        {:ctx-prop :package}
-        (fn [package {:keys [req-idx req-name]}]
-          (assoc-in package [:reqs req-idx :req-name] req-name)))
+       {:ctx-prop :package}
+       (fn [package {:keys [req-idx req-name]}]
+         (assoc-in package [:reqs req-idx :req-name] req-name)))
       :update-header-capture
       (xs/xform-ctx-from-event
        {:ctx-prop :package}
