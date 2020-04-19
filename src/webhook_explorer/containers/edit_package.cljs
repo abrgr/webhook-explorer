@@ -88,11 +88,17 @@
                               :alignItems "center"}})))
 
 (defn- request [{:keys [idx svc state class-name]
-                 {{header-captures :headers
+                 {:keys [req-name]
+                  {header-captures :headers
                    {body-capture-type :type
                     body-captures :captures} :body} :captures} :item}]
   [:> Paper {:elevation 3
              :className class-name}
+   [:> TextField
+    {:fullWidth true
+     :label "Request name"
+     :value req-name
+     :onChange #(xs/send svc {:type :update-req-name :req-idx idx :req-name (obj/getValueByKeys % #js ["target" "value"])})}]
    [req-captures/component
     {:header-captures (req-captures/template-var-map->simple-map header-captures)
      :body-capture-type body-capture-type

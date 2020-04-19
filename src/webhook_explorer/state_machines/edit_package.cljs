@@ -17,7 +17,8 @@
                [:remove-all-body-captures -> *self* ! :remove-all-body-captures]
                [:update-body-capture-type -> *self* ! :update-body-capture-type]
                [:update-body-capture -> *self* ! :update-body-capture]
-               [:remove-body-capture -> *self* ! :remove-body-capture]]])
+               [:remove-body-capture -> *self* ! :remove-body-capture]
+               [:update-req-name -> *self* ! :update-req-name]]])
     :opts
     {:ctx {}
      :actions
@@ -32,10 +33,12 @@
       :add-req
       (xs/xform-ctx
        {:ctx-prop :package}
-       update
-       :reqs
-       conj
-       {})
+       update :reqs conj {:req-name ""})
+      :update-req-name
+      (xs/xform-ctx-from-event
+        {:ctx-prop :package}
+        (fn [package {:keys [req-idx req-name]}]
+          (assoc-in package [:reqs req-idx :req-name] req-name)))
       :update-header-capture
       (xs/xform-ctx-from-event
        {:ctx-prop :package}
