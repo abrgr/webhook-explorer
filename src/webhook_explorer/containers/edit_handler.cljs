@@ -34,8 +34,6 @@
             ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/icons/Publish" :default SaveIcon]))
 
-(def ^:private bottom-container-height 150)
-
 (def ^:private styled
   (styles/style-wrapper
    (fn [theme]
@@ -58,22 +56,11 @@
       :capture-container {:marginTop 20
                           :padding 20
                           "& .MuiExpansionPanelSummary-root" {:padding 0}}
-      :template-var-container {:flex 1}
       :template-caption {:margin-top 20
                          :margin-bottom 10}
       :subheader {:background-color "#fff"}
       :chip {:margin 10}
-      :publish-container {:margin "auto"}
-      :bottom-container {:position "fixed"
-                         :display "flex"
-                         :left 0
-                         :right 0
-                         :bottom 0
-                         :height bottom-container-height
-                         :border-top "2px solid #eee"
-                         :z-index 100
-                         :padding 20}
-      :bottom-container-spacer {:height (+ bottom-container-height 50)}})))
+      :publish-container {:margin "auto"}})))
 
 (def ^:private match-types
   (array-map
@@ -379,7 +366,7 @@
        (into [])))
 
 (defn- template-var-container [{:keys [styles template-vars]}]
-  [:div {:className (obj/get styles "template-var-container")}
+  [:div
    [:> Typography {:variant "h6"
                    :color "textSecondary"}
     "Captured template variables"]
@@ -430,7 +417,7 @@
   [styled props preamble*])
 
 (defn- postamble* [{:keys [styles]}]
-  [:div {:className (obj/get styles "bottom-container-spacer")}])
+  [bottom-container/spacer-component])
 
 (defn- postamble [props]
   [styled props postamble*])

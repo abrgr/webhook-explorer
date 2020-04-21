@@ -11,32 +11,17 @@
             [webhook-explorer.components.req-captures :as req-captures]
             [webhook-explorer.components.card-list :as card-list]
             [webhook-explorer.components.req-editor :as req-editor]
+            [webhook-explorer.components.bottom-container :as bottom-container]
             [webhook-explorer.env :as env]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
-            ["@material-ui/core/ListSubheader" :default ListSubheader]
-            ["@material-ui/core/Chip" :default Chip]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Delete" :default DeleteIcon]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
             ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
-            ["@material-ui/core/Select" :default Select]
-            ["@material-ui/core/MenuItem" :default MenuItem]
-            ["@material-ui/core/InputLabel" :default InputLabel]
-            ["@material-ui/core/Divider" :default Divider]
             ["@material-ui/core/Typography" :default Typography]
-            ["@material-ui/core/Tooltip" :default Tooltip]
-            ["@material-ui/core/Fab" :default Fab]
             ["@material-ui/core/Paper" :default Paper]
-            ["@material-ui/core/Radio" :default Radio]
-            ["@material-ui/core/RadioGroup" :default RadioGroup]
-            ["@material-ui/core/FormControl" :default FormControl]
-            ["@material-ui/core/FormControlLabel" :default FormControlLabel]
-            ["@material-ui/core/FormLabel" :default FormLabel]
             ["@material-ui/core/TextField" :default TextField]
-            ["@material-ui/icons/Publish" :default SaveIcon]
-            ["@material-ui/icons/Add" :default AddIcon]))
-
-(def ^:private bottom-container-height 150)
+            ["@material-ui/icons/Publish" :default SaveIcon]))
 
 (def ^:private styled
   (styles/style-wrapper
@@ -70,19 +55,6 @@
       :template-var-container {:flex 1}
       :template-caption {:margin-top 20
                          :margin-bottom 10}
-      :subheader {:background-color "#fff"}
-      :chip {:margin 10}
-      :publish-container {:margin "auto"}
-      :bottom-container {:position "fixed"
-                         :display "flex"
-                         :left 0
-                         :right 0
-                         :bottom 0
-                         :height bottom-container-height
-                         :border-top "2px solid #eee"
-                         :z-index 100
-                         :padding 20}
-      :bottom-container-spacer {:height (+ bottom-container-height 50)}
       :matcher-container {:marginTop 48
                           :padding 20}
       :add-matcher-container {:display "flex"
@@ -171,13 +143,24 @@
     {:fullWidth true
      :label "Package name"
      :value (get-in state [:context :package :name])
-     :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]])
+     :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]
+   [bottom-container/component
+    {:on-btn-click #()
+     :btn-icon-component (r/adapt-react-class SaveIcon)
+     :btn-title "Save"}]])
+
+(defn- postamble* [{:keys [styles]}]
+  [bottom-container/spacer-component])
+
+(defn- postamble [props]
+  [styled props postamble*])
 
 (defn- -component* [{:keys [svc state]}]
   [card-list/component
    {:svc svc
     :state state
     :preamble-component preamble
+    :postamble-component postamble
     :item-renderer request
     :state->items state->items
     :ready-state :ready
