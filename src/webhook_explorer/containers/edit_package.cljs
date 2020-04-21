@@ -90,19 +90,19 @@
                               :alignItems "center"}})))
 
 (defn- request* [{:keys [idx svc state class-name styles]
-                 {:keys [req-name]
-                  {header-captures :headers
-                   {body-capture-type :type
-                    body-captures :captures} :body} :captures
-                  {:keys [protocol method host path qs headers body]} :req} :item}]
+                  {:keys [req-name]
+                   {header-captures :headers
+                    {body-capture-type :type
+                     body-captures :captures} :body} :captures
+                   {:keys [protocol method host path qs headers body]} :req} :item}]
   [:> Paper {:elevation 3
              :className class-name}
    [:div {:className (obj/get styles "right-controls")}
     [:> IconButton {:onClick (fn []
                                (xs/send
-                                 svc
-                                 {:type :remove-req
-                                  :req-idx idx}))}
+                                svc
+                                {:type :remove-req
+                                 :req-idx idx}))}
      [:> DeleteIcon]]]
    [:> TextField
     {:fullWidth true
@@ -110,26 +110,26 @@
      :value req-name
      :onChange #(xs/send svc {:type :update-req-name :req-idx idx :req-name (obj/getValueByKeys % #js ["target" "value"])})}]
    [:> Paper {:elevation 3
-             :className class-name}
-     [:> Typography {:variant "h6"
-                     :color "textSecondary"}
-      "Request"]
-     [:> Typography {:variant "caption"
-                     :component "p"}
-      "You can use a "
-      [:a {:href "http://mustache.github.io/mustache.5.html"
-           :target "_blank"}
-       "mustache-style"]
-      " {{template-var}} or {{#list-var}}{{val}}{{/list-var}} in any field."]
-     [req-editor/component
-      {:protocol protocol
-       :method method
-       :host host
-       :path path
-       :qs qs
-       :headers headers
-       :body body
-       :on-update (fn [k v] (xs/send svc {:type :update-req :req-idx idx :k k :v v}))}]]
+              :className class-name}
+    [:> Typography {:variant "h6"
+                    :color "textSecondary"}
+     "Request"]
+    [:> Typography {:variant "caption"
+                    :component "p"}
+     "You can use a "
+     [:a {:href "http://mustache.github.io/mustache.5.html"
+          :target "_blank"}
+      "mustache-style"]
+     " {{template-var}} or {{#list-var}}{{val}}{{/list-var}} in any field."]
+    [req-editor/component
+     {:protocol protocol
+      :method method
+      :host host
+      :path path
+      :qs qs
+      :headers headers
+      :body body
+      :on-update (fn [k v] (xs/send svc {:type :update-req :req-idx idx :k k :v v}))}]]
    [req-captures/component
     {:header-captures (req-captures/template-var-map->simple-map header-captures)
      :body-capture-type body-capture-type
@@ -149,29 +149,29 @@
 
 (defn- preamble [{:keys [state svc]}]
   [:<>
-    [:> Typography {:component "p"
-                    :paragraph true}
-     "A request package is a set of requests that can have arbitrary dependencies
+   [:> Typography {:component "p"
+                   :paragraph true}
+    "A request package is a set of requests that can have arbitrary dependencies
      on one another by capturing aspects of the result of one request in a
      template variable that can then be referenced in other requests.
      The order of requests here doesn't matter. Requests will be executed
      in the order implied by the graph of template variable references."]
-    [:> Typography {:component "p"
-                    :paragraph true}
-      "When you capture a template variable, 'tempVar', in a request named, 'myReq',
+   [:> Typography {:component "p"
+                   :paragraph true}
+    "When you capture a template variable, 'tempVar', in a request named, 'myReq',
        it may be referenced as:"]
-    [:ul
-     [:li "{{every.myReq.tempVar}} for the single tempVar captured for each instance of myReq, repeating any request with such a reference once for every instance of myReq"]
-     [:li "{{#all.myReq.tempVar}}{{.}}{{/all.myReq.tempVar}} for the array of tempVars captured from all instances of myReq, running any request with such a reference only once after all instances of myReq complete"]]
-    [:> Typography {:component "p"
-                    :paragraph true}
-     "Additionally, you may reference {{params.param1}} to reference parameters
+   [:ul
+    [:li "{{every.myReq.tempVar}} for the single tempVar captured for each instance of myReq, repeating any request with such a reference once for every instance of myReq"]
+    [:li "{{#all.myReq.tempVar}}{{.}}{{/all.myReq.tempVar}} for the array of tempVars captured from all instances of myReq, running any request with such a reference only once after all instances of myReq complete"]]
+   [:> Typography {:component "p"
+                   :paragraph true}
+    "Additionally, you may reference {{params.param1}} to reference parameters
       that you expect to be passed to this request package when it's invoked."]
-    [:> TextField
-      {:fullWidth true
-       :label "Package name"
-       :value (get-in state [:context :package :name])
-       :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]])
+   [:> TextField
+    {:fullWidth true
+     :label "Package name"
+     :value (get-in state [:context :package :name])
+     :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]])
 
 (defn- -component* [{:keys [svc state]}]
   [card-list/component

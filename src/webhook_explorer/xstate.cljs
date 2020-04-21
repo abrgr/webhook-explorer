@@ -271,10 +271,10 @@
 
 (defn js-state->clj [state]
   (reduce
-    (fn [acc k]
-      (assoc acc (keyword k) (js->clj (obj/get state k) :keywordize-keys true)))
-    ^{:js-state state} {}
-    ["context" "activities" "actions" "meta" "value" "event" "done" "changed"]))
+   (fn [acc k]
+     (assoc acc (keyword k) (js->clj (obj/get state k) :keywordize-keys true)))
+   ^{:js-state state} {}
+   ["context" "activities" "actions" "meta" "value" "event" "done" "changed"]))
 
 (defn clj-state->js [state]
   (-> state meta :js-state))

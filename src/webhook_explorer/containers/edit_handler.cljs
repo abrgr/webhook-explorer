@@ -11,6 +11,7 @@
             [webhook-explorer.components.add-box :as add-box]
             [webhook-explorer.components.card-list :as card-list]
             [webhook-explorer.components.req-captures :as req-captures]
+            [webhook-explorer.components.bottom-container :as bottom-container]
             [webhook-explorer.env :as env]
             ["@material-ui/core/ListSubheader" :default ListSubheader]
             ["@material-ui/core/Chip" :default Chip]
@@ -202,11 +203,11 @@
      {:label "Remote URL"
       :fullWidth true
       :helperText (r/as-element [:<>
-                                  "URL to proxy matching requests to. Can include "
-                                  [:a {:href "http://mustache.github.io/mustache.5.html"
-                                       :target "_blank"}
-                                   "mustache-style"]
-                                  " {{template-var}} or {{#list-var}}{{val}}{{/list-var}}."])
+                                 "URL to proxy matching requests to. Can include "
+                                 [:a {:href "http://mustache.github.io/mustache.5.html"
+                                      :target "_blank"}
+                                  "mustache-style"]
+                                 " {{template-var}} or {{#list-var}}{{val}}{{/list-var}}."])
       :value (or remote-url "")
       :onChange #(on-update assoc-in [:matchers idx :handler :proxy :remote-url] (get-target-value %))}]))
 
@@ -291,12 +292,12 @@
      [:div {:className (obj/get styles "right-controls")}
       [:> IconButton {:onClick (fn []
                                  (on-update
-                                   update
-                                   :matchers
-                                   #(->> (concat 
-                                           (subvec % 0 idx)
-                                           (subvec % (inc idx)))
-                                         (into []))))}
+                                  update
+                                  :matchers
+                                  #(->> (concat
+                                         (subvec % 0 idx)
+                                         (subvec % (inc idx)))
+                                        (into []))))}
        [:> DeleteIcon]]
       [:> IconButton {:disabled (= idx 0)
                       :onClick #(on-update
@@ -402,16 +403,13 @@
            body-captures :captures} :body} :captures} (get-in state [:context :handler])
         template-vars (get-all-template-vars path header-captures body-captures)]
     [:<>
-     [:> Paper {:className (obj/get styles "bottom-container")}
-      [template-var-container {:styles styles
-                               :template-vars template-vars}]
-      [:div {:className (obj/get styles "publish-container")}
-       [:> Fab {:variant "extended"
-                :label "Save"
-                :color "secondary"
-                :onClick (r/partial xs/send svc :publish)}
-        [:> SaveIcon {:className (obj/get styles "extended-icon")}]
-        "Publish changes"]]]
+     [bottom-container/component
+      {:on-btn-click (r/partial xs/send svc :publish)
+       :btn-icon-component (r/adapt-react-class SaveIcon)
+       :btn-title "Publish changes"}
+      (r/as-element
+       [template-var-container {:styles styles
+                                :template-vars template-vars}])]
      [path-component {:styles styles
                       :match-type match-type
                       :path path
@@ -419,7 +417,7 @@
                       :domain domain
                       :on-update (partial on-update* svc)}]
      [captures {:styles styles
-                :header-captures header-captures
+                :header-captures (or header-captures {})
                 :body-capture-type body-capture-type
                 :body-captures body-captures
                 :on-update (partial on-update* svc)}]

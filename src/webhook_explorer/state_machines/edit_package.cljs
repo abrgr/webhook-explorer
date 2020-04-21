@@ -35,9 +35,9 @@
                       :static-ctx {:name "" :reqs []}})
       :update-package-name
       (xs/xform-ctx-from-event
-        {:ctx-prop :package}
-        (fn [package {:keys [package-name]}]
-          (assoc package :name package-name)))
+       {:ctx-prop :package}
+       (fn [package {:keys [package-name]}]
+         (assoc package :name package-name)))
       :add-req
       (xs/xform-ctx
        {:ctx-prop :package}
@@ -49,11 +49,11 @@
        {:ctx-prop :package}
        (fn [package {:keys [req-idx]}]
          (update
-           package
-           :reqs
-           #(->> (concat (subvec % 0 req-idx)
-                         (subvec % (inc req-idx)))
-                 (into [])))))
+          package
+          :reqs
+          #(->> (concat (subvec % 0 req-idx)
+                        (subvec % (inc req-idx)))
+                (into [])))))
       :update-req-name
       (xs/xform-ctx-from-event
        {:ctx-prop :package}
