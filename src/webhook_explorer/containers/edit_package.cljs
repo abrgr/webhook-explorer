@@ -26,40 +26,19 @@
 (def ^:private styled
   (styles/style-wrapper
    (fn [theme]
-     {:flex-container {:display "flex"
-                       :align-items "center"
-                       :justify-content "center"}
-      :container {:width "80%"
-                  :height "100%"
-                  :minWidth "480px"
-                  :maxWidth "768px"
-                  :margin "25px auto"}
-      :path-container {:display "flex"
-                       :alignItems "flex-start"}
-      :full-flex {:flex 1
-                  :marginLeft 20}
-      :divider {:margin-top 16
-                :margin-bottom 16}
-      :2-col-container {:display "flex"
-                        "& .MuiExpansionPanelSummary-root" {:padding 0}}
-      :right-controls {:display "flex"
+     {:right-controls {:display "flex"
                        :flex-direction "row"
                        :justify-content "flex-end"}
-      :left-container {:width 100}
-      :caption-container {:position "relative"}
-      :caption {:position "absolute"
-                :bottom -48}
-      :capture-container {:marginTop 20
-                          :padding 20
-                          "& .MuiExpansionPanelSummary-root" {:padding 0}}
-      :template-var-container {:flex 1}
-      :template-caption {:margin-top 20
-                         :margin-bottom 10}
-      :matcher-container {:marginTop 48
-                          :padding 20}
-      :add-matcher-container {:display "flex"
-                              :flexDirection "column"
-                              :alignItems "center"}})))
+      :capture-container {:width "100%"
+                          :height "100%"
+                          :padding-right 25}
+      :capture-container-inner {:overflow "scroll"
+                                :width "100%"
+                                :height "100%"
+                                "&::-webkit-scrollbar" {:background "transparent"}
+                                "&::-webkit-scrollbar-thumb" {:background "#ececec"}}
+      :capture-item {:float "left"
+                     :margin-right 50}})))
 
 (defn- request* [{:keys [idx svc state class-name styles]
                   {:keys [req-name]
@@ -119,7 +98,7 @@
 (defn- state->items [state]
   (get-in state [:context :package :reqs]))
 
-(defn- preamble [{:keys [state svc]}]
+(defn- preamble* [{:keys [styles state svc]}]
   [:<>
    [:> Typography {:component "p"
                    :paragraph true}
@@ -147,7 +126,32 @@
    [bottom-container/component
     {:on-btn-click #()
      :btn-icon-component (r/adapt-react-class SaveIcon)
-     :btn-title "Save"}]])
+     :btn-title "Save"}
+    [:div {:className (obj/get styles "capture-container")}
+     [:div {:className (obj/get styles "capture-container-inner")}
+      [:div {:class-name (obj/get styles "capture-item")
+             :style #js {:width 100
+                         :marginRight 50}}
+       [:> Typography {:variant "h6"
+                       :color "textSecondary"}
+        "Captured template variables"]]
+      (for [{:keys [req-name captures]} (get-in state [:context :package :reqs])
+            :let [caps (concat (-> captures :headers vals)
+                               (vals (get-in captures [:body :captures])))]
+            :when (not-empty caps)]
+        ^{:key req-name}
+        [:div {:class-name (obj/get styles "capture-item")}
+         [:> Typography
+          {:variant "h5"}
+          req-name]
+         (for [{c :template-var} caps]
+           ^{:key c}
+           [:> Typography
+            {:variant "subtitle1"}
+            c])])]]]])
+
+(defn- preamble [props]
+  [styled props preamble*])
 
 (defn- postamble* [{:keys [styles]}]
   [bottom-container/spacer-component])
