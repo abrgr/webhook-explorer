@@ -12,6 +12,8 @@
        > :idle []
        :start [[*transient* -> :ready ! :set-default-package]]
        :ready [[:update-package-name -> *self* ! :update-package-name]
+               [:add-input-template-var -> *self* ! :add-input-template-var]
+               [:remove-input-template-var -> *self* ! :remove-input-template-var]
                [:add-req -> *self* ! :add-req]
                [:remove-req -> *self* ! :remove-req]
                [:update-header-capture -> *self* ! :update-header-capture]
@@ -28,11 +30,15 @@
      {:reset-params
       (xs/assign-ctx-from-evt {:evt-prop :params
                                :ctx-prop :params
-                               :static-ctx {:package {:name "" :reqs []}
+                               :static-ctx {:package {:name ""
+                                                      :input-template-vars []
+                                                      :reqs []}
                                             :error nil}})
       :set-default-package
       (xs/assign-ctx {:ctx-prop :package
-                      :static-ctx {:name "" :reqs []}})
+                      :static-ctx {:name ""
+                                   :input-template-vars []
+                                   :reqs []}})
       :update-package-name
       (xs/xform-ctx-from-event
        {:ctx-prop :package}
@@ -54,6 +60,23 @@
           #(->> (concat (subvec % 0 req-idx)
                         (subvec % (inc req-idx)))
                 (into [])))))
+      :add-input-template-var
+      (xs/xform-ctx-from-event
+       {:ctx-prop :package}
+       (fn [package {:keys [template-var]}]
+         (update
+          package
+          :input-template-vars
+          conj
+          template-var)))
+      :remove-input-template-var
+      (xs/xform-ctx-from-event
+       {:ctx-prop :package}
+       (fn [package {:keys [template-var]}]
+         (update
+          package
+          :input-template-vars
+          (partial filterv (partial not= template-var)))))
       :update-req-name
       (xs/xform-ctx-from-event
        {:ctx-prop :package}

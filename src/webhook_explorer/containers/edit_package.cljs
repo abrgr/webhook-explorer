@@ -16,6 +16,7 @@
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Delete" :default DeleteIcon]
+            ["@material-ui/icons/Add" :default AddIcon]
             ["@material-ui/icons/ArrowDownward" :default DownArrowIcon]
             ["@material-ui/icons/ArrowUpward" :default UpArrowIcon]
             ["@material-ui/core/Typography" :default Typography]
@@ -98,6 +99,32 @@
 (defn- state->items [state]
   (get-in state [:context :package :reqs]))
 
+(defn input-template-vars []
+  (let [v (r/atom "")]
+    (fn [{:keys [svc vars]}]
+      [:<>
+       [:> Typography {:variant "h6"
+                       :paragraph true
+                       :style #js {:marginTop 20}}
+        "Input template variables"]
+       [:> Typography {:variant "caption"
+                       :paragraph true}
+        "Input template variables must be provided when a request package is invoked, either by web form or as columns in a spreadsheet when invoked in bulk."]
+       [:ul
+        (for [template-var vars]
+          ^{:key template-var}
+          [:li
+           template-var
+           [:> IconButton {:on-click #(xs/send svc {:type :remove-input-template-var :template-var template-var})}
+            [:> DeleteIcon]]])]
+       [:div
+        [:> TextField {:label "New input variable"
+                       :value @v
+                       :on-change #(reset! v (obj/getValueByKeys % #js ["target" "value"]))}]
+        [:> IconButton {:onClick #(do (xs/send svc {:type :add-input-template-var :template-var @v})
+                                      (reset! v ""))}
+         [:> AddIcon]]]])))
+
 (defn- preamble* [{:keys [styles state svc]}]
   [:<>
    [:> Typography {:component "p"
@@ -116,13 +143,15 @@
     [:li "{{#all.myReq.tempVar}}{{.}}{{/all.myReq.tempVar}} for the array of tempVars captured from all instances of myReq, running any request with such a reference only once after all instances of myReq complete"]]
    [:> Typography {:component "p"
                    :paragraph true}
-    "Additionally, you may reference {{params.param1}} to reference parameters
-      that you expect to be passed to this request package when it's invoked."]
+    "Additionally, you may reference {{input_variable}} to reference input variables 
+     that you expect to be passed to this request package when it's invoked."]
    [:> TextField
     {:fullWidth true
      :label "Package name"
      :value (get-in state [:context :package :name])
      :onChange #(xs/send svc {:type :update-package-name :package-name (obj/getValueByKeys % #js ["target" "value"])})}]
+   [input-template-vars {:svc svc
+                         :vars (get-in state [:context :package :input-template-vars])}]
    [bottom-container/component
     {:on-btn-click #()
      :btn-icon-component (r/adapt-react-class SaveIcon)
@@ -134,7 +163,18 @@
                          :marginRight 50}}
        [:> Typography {:variant "h6"
                        :color "textSecondary"}
-        "Captured template variables"]]
+        "Available template variables"]]
+      (let [input-template-vars (get-in state [:context :package :input-template-vars])]
+        (when (not-empty input-template-vars)
+          [:div {:class-name (obj/get styles "capture-item")}
+           [:> Typography
+            {:variant "h5"}
+            "Input template variables"]
+           (for [template-var input-template-vars]
+             ^{:key template-var}
+             [:> Typography
+              {:variant "subtitle1"}
+              template-var])]))
       (for [{:keys [req-name captures]} (get-in state [:context :package :reqs])
             :let [caps (concat (-> captures :headers vals)
                                (vals (get-in captures [:body :captures])))]
