@@ -238,9 +238,9 @@
            (if (fn? f)
              (fn
                ([ctx evt]
-                (f (clj->js ctx) (clj->js evt)))
+                (f (js->clj ctx :keywordize-keys true) (js->clj evt :keywordize-keys true)))
                ([ctx evt meta]
-                (f (clj->js ctx) (clj->js evt) (clj->js meta))))
+                (f (js->clj ctx :keywordize-keys true) (js->clj evt :keywordize-keys true) (js->clj meta :keywordize-keys true))))
              f)]))
        (into {})))
 

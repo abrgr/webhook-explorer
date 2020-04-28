@@ -13,7 +13,6 @@
             [webhook-explorer.components.req-editor :as req-editor]
             [webhook-explorer.components.bottom-container :as bottom-container]
             [webhook-explorer.env :as env]
-            ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/IconButton" :default IconButton]
             ["@material-ui/icons/Delete" :default DeleteIcon]
             ["@material-ui/icons/Add" :default AddIcon]
@@ -22,7 +21,8 @@
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/Paper" :default Paper]
             ["@material-ui/core/TextField" :default TextField]
-            ["@material-ui/icons/Publish" :default SaveIcon]))
+            ["@material-ui/icons/Publish" :default SaveIcon]
+            ["@material-ui/core/Snackbar" :default Snackbar]))
 
 (def ^:private styled
   (styles/style-wrapper
@@ -127,6 +127,10 @@
 
 (defn- preamble* [{:keys [styles state svc]}]
   [:<>
+   [:> Snackbar
+    (let [n (get-in state [:context :notification])]
+      {:open (boolean n)
+       :message n})]
    [:> Typography {:component "p"
                    :paragraph true}
     "A request package is a set of requests that can have arbitrary dependencies
@@ -153,7 +157,8 @@
    [input-template-vars {:svc svc
                          :vars (get-in state [:context :package :input-template-vars])}]
    [bottom-container/component
-    {:on-btn-click #()
+    {:on-btn-click #(xs/send svc :save)
+     :btn-loading (xs/matches? state :ready.saving)
      :btn-icon-component (r/adapt-react-class SaveIcon)
      :btn-title "Save"}
     [:div {:className (obj/get styles "capture-container")}

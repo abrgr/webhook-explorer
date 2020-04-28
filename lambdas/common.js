@@ -31,7 +31,9 @@ module.exports = {
   parseResponseCookies,
   fingerprintTagAndDateToUserVisibleTags,
   getHandlerKey,
-  executeRequest
+  executeRequest,
+  getRequestPackageKey,
+  getRequestPackageFolderKey
 };
 
 function getUserFromEvent(event) {
@@ -54,7 +56,8 @@ function getUserFromEvent(event) {
     permissions: {
       canAdminUsers: role === 'admin',
       canCreateHandlers: role === 'admin' || role === 'eng',
-      canExecuteArbitraryRequests: role === 'admin' || role === 'eng'
+      canExecuteArbitraryRequests: role === 'admin' || role === 'eng',
+      canCreateRequestPackages: role === 'admin' || role === 'eng'
     }
   };
 }
@@ -220,6 +223,30 @@ function auditKeyToFingerprintTagAndDate(auditKey) {
 function getHandlerKey(handlerConfig) {
   const hash = hashMsg(handlerConfig);
   return `handlers/${hash}`;
+}
+
+function getRequestPackageFolderKey(packageConfig) {
+  const { name } = packageConfig;
+  return `packages/${name}`;
+}
+
+function descendingS3Date(date) {
+  const y = `${10000 - date.getFullYear()}`.padStart(4, '0');
+  const m = `${13 - (date.getMonth() + 1)}`.padStart(2, '0');
+  const d = `${32 - date.getDate()}`.padStart(2, '0');
+  const h = `${25 - date.getHours()}`.padStart(2, '0');
+  const mm = `${61 - date.getMinutes()}`.padStart(2, '0');
+  const s = `${61 - date.getSeconds()}`.padStart(2, '0');
+  const ms = `${1000 - date.getMilliseconds()}`.padStart(3, '0');
+  return `${y}-${m}-${d}T${h}:${mm}:${s}.${ms}|${date.toISOString()}`;
+}
+
+function getRequestPackageKey(uid, packageConfig) {
+  const encodedUid = encodeURIComponent(uid);
+  const hash = hashMsg(packageConfig);
+  return `${getRequestPackageFolderKey(packageConfig)}/${descendingS3Date(
+    new Date()
+  )}|${encodedUid}|${hash}`;
 }
 
 function parseRequestCookies(cookieStr) {
