@@ -2,7 +2,8 @@
   (:require [webhook-explorer.styles :as styles]
             [goog.object :as obj]
             ["@material-ui/core/Paper" :default Paper]
-            ["@material-ui/core/Fab" :default Fab]))
+            ["@material-ui/core/Fab" :default Fab]
+            ["@material-ui/core/CircularProgress" :default CircularProgress]))
 
 (def height 150)
 
@@ -26,6 +27,7 @@
 
 (defn- component* [{:keys [styles
                            on-btn-click
+                           btn-loading
                            btn-icon-component
                            btn-title
                            children]}]
@@ -34,7 +36,9 @@
     [:> Fab {:variant "extended"
              :color "secondary"
              :onClick on-btn-click}
-     [btn-icon-component {:className (obj/get styles "extended-icon")}]
+     (if btn-loading
+       [:> CircularProgress]
+       [btn-icon-component {:className (obj/get styles "extended-icon")}])
      btn-title]]
    (into
     [:div {:className (obj/get styles "content-container")}]
