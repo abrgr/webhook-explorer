@@ -56,7 +56,7 @@
     (fn [k v]
       (if (nil? v)
         (on-update :headers (dissoc headers k))
-        (on-update :headers k v)))]
+        (on-update :headers (assoc headers k v))))]
    [req-parts/editable-body-view
     "Request Body"
     (req-parts/make-bodies
