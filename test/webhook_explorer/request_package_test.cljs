@@ -1,9 +1,13 @@
 (ns webhook-explorer.request-package-test
   (:require [webhook-explorer.request-package :as rp]
+            [cljs.spec.test.alpha :as stest]
+            [clojure.core.async :as async]
             [clojure.test.check.clojure-test :refer-macros [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [cljs.test :refer-macros [deftest testing is]]))
+            [cljs.test :refer-macros [deftest testing is] :as tst]))
+
+(stest/instrument)
 
 (deftest dependency-graph
   (testing "dependency-graph"
@@ -47,53 +51,75 @@
 
 (defn items-to-req [items]
   (reduce
-    add-item-to-req
-    {}
-    items))
+   add-item-to-req
+   {}
+   items))
 
 (defn input-deps-to-deps [input-deps]
   (->> input-deps
        (keep
-         (fn [[src items]]
-           (let [v (->> items
-                        (keep
-                          (fn [[typ pos _ c r v]]
-                            (when (= typ :req-dep)
-                              {:trigger c
-                               :req r
-                               :template-var v})))
-                        (into #{}))]
+        (fn [[src items]]
+          (let [v (->> items
+                       (keep
+                        (fn [[typ pos _ c r v]]
+                          (when (= typ :req-dep)
+                            {:trigger c
+                             :req r
+                             :template-var v})))
+                       (into #{}))]
             (when (not-empty v)
-             [src v]))))
-         (into {})))
+              [src v]))))
+       (into {})))
 
 (def ne-ascii (gen/such-that not-empty gen/string-alphanumeric))
 
 (defspec dependency-graph-prop 20
   (prop/for-all [input-deps (gen/map
-                              ne-ascii
-                              (gen/vector
-                                (gen/one-of
-                                  [(gen/tuple
-                                     (gen/elements [:input-dep])
-                                     (gen/elements [:headers :qs :body])
-                                     (gen/elements [:ignore])
-                                     ne-ascii
-                                     ne-ascii)
-                                   (gen/tuple
-                                     (gen/elements [:req-dep])
-                                     (gen/elements [:headers :qs :body])
-                                     ne-ascii
-                                     (gen/elements [:every :all])
-                                     ne-ascii
-                                     ne-ascii)])))]
-    (let [reqs (reduce
-                 (fn [reqs [req-name items]]
-                   (if (not-empty items)
-                     (conj reqs {:name req-name :req (items-to-req items)})
-                     reqs))
-                 []
-                 input-deps)
-          result (rp/dependency-graph {:reqs reqs})
-          expected (input-deps-to-deps input-deps)]
-      (is (= result expected)))))
+                             ne-ascii
+                             (gen/vector
+                              (gen/one-of
+                               [(gen/tuple
+                                 (gen/elements [:input-dep])
+                                 (gen/elements [:headers :qs :body])
+                                 (gen/elements [:ignore])
+                                 ne-ascii
+                                 ne-ascii)
+                                (gen/tuple
+                                 (gen/elements [:req-dep])
+                                 (gen/elements [:headers :qs :body])
+                                 ne-ascii
+                                 (gen/elements [:every :all])
+                                 ne-ascii
+                                 ne-ascii)])))]
+                (let [reqs (reduce
+                            (fn [reqs [req-name items]]
+                              (if (not-empty items)
+                                (conj reqs {:name req-name :req (items-to-req items)})
+                                reqs))
+                            []
+                            input-deps)
+                      result (rp/dependency-graph {:reqs reqs})
+                      expected (input-deps-to-deps input-deps)]
+                  (is (= result expected)))))
+
+(deftest run-pkg-test
+  (testing "run-pkg"
+    (tst/async
+     done
+     (let [reqs [{:name "a"
+                  :req {:headers {"h1" "{{inp_a}}"}}
+                  :captures {:headers {"x" {:template-var "x"}}}}
+                 {:name "b"
+                  :req {:headers {"h1" "{{every.a.x}}"}}}]
+           invocations (atom [])
+           rp-ch  (rp/run-pkg {:inputs {"inp_a" "hello"}
+                               :exec (fn [req dep-vals]
+                                       (async/go
+                                         (swap! invocations conj {:req req :dep-vals dep-vals})
+                                         {"x" "x!"}))
+                               :pkg {:reqs reqs}})]
+       (async/take!
+        rp-ch
+        (fn []
+          (is (= (mapv #(get-in % [:req :name]) @invocations) ["a" "b"]))
+          (done)))))))
