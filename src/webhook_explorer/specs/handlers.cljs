@@ -1,5 +1,6 @@
 (ns webhook-explorer.specs.handlers
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [webhook-explorer.specs.captures]))
 
 (s/def :handlers/match-type #{:exact :prefix})
 
@@ -54,34 +55,6 @@
    :req-un [:handlers/handler
             :handlers/matches]))
 
-(s/def :handlers.captures/template-var string?)
-
-(s/def :handlers.captures/template-var-spec
-  (s/keys
-   :req-un [:handlers.captures/template-var]))
-
-(s/def :handlers.captures/headers
-  (s/map-of
-   string?
-   :handlers.captures/template-var-spec))
-
-(s/def :handlers.captures.body/type #{:json :form-data})
-
-(s/def :handlers.captures.body/captures
-  (s/map-of
-   keyword?
-   :handlers.captures/template-var-spec))
-
-(s/def :handlers.captures/body
-  (s/keys
-   :req-un [:handlers.captures.body/type
-            :handlers.captures.body/captures]))
-
-(s/def :handlers/captures
-  (s/keys
-   :req-un [:handlers.captures/headers
-            :handlers.captures/body]))
-
 (s/def :handlers/matchers
   (s/coll-of :handlers/matcher :kind vector? :min-count 1))
 
@@ -93,7 +66,7 @@
             :handlers/proto
             :handlers/method
             :handlers/matchers]
-   :opt-un [:handlers/captures]))
+   :opt-un [:captures/captures]))
 
 (s/def :get-handler-params/proto :handlers/proto)
 
