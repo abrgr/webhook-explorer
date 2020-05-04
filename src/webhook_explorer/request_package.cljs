@@ -88,15 +88,12 @@
     out))
 
 (defn wait-for-all-closed [chs]
-  (let [out-ch (async/chan)]
-    (async/go-loop [chs chs]
-      (if (empty? chs)
-        (async/close! out-ch)
-        (let [[v ch] (async/alts! chs)]
-          (recur
-           (if (nil? v)
-             (remove (partial = ch) chs)
-             chs)))))
+  (let [out-ch (async/chan)
+        m (async/merge chs)]
+    (async/go-loop []
+      (if (some? (async/<! m))
+        (recur) 
+        (async/close! out-ch)))
     out-ch))
 
 (defn run-pkg [{:keys [inputs exec]
@@ -105,56 +102,51 @@
    inputs by invoking the :exec function, providing req and dep-vals and
    expecting a channel to be returned."
   (let [dg (dependency-graph pkg)
-        ch-by-req (->> reqs
-                       (map
-                        (fn [{:keys [name] :as req}]
-                          (let [c (async/chan)
-                                m (async/mult c)]
-                            [name
-                             {:req req
-                              :ch c
-                              :mult m}])))
-                       (into {}))
+        ch-by-req (into
+                    {}
+                    (map
+                      (fn [{:keys [name] :as req}]
+                        (let [c (async/chan)
+                              m (async/mult c)]
+                          [name
+                           {:req req
+                            :ch c
+                            :mult m}])))
+                    reqs)
         dep->dep-chan (fn [{:keys [trigger] dep-req :req}]
                         (let [{:keys [mult]} (get ch-by-req dep-req)
                               ch (mult-sub mult)]
                           (if (= trigger :all)
                             (all-ch dep-req ch)
                             ch)))
-        dep-chans-by-req (->> ch-by-req
-                              (map
-                               (fn [[req-name]]
-                                 [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
-                              (into {}))]
+        dep-chans-by-req (into
+                           {}
+                           (map
+                            (fn [[req-name]]
+                              [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
+                           ch-by-req)]
     (doseq [[req-name {:keys [req ch]}] ch-by-req
             :let [deps (get dg req-name)
-                  dep-chans (get dep-chans-by-req req-name)]]
-      (async/go
-        (if (empty? dep-chans)
-          (let [v (async/<! (exec req (or inputs {})))] ; we have no deps, just execute once and close
-            (async/>! ch {:trigger :every :req req-name :value v})
-            (async/close! ch))
-          (loop [dep-chans dep-chans
-                 dep-vals (or inputs {})]
-            (let [[{:keys [trigger value] dep-req :req :as v} dep-ch] (async/alts! dep-chans)]
-              (if (some? v)
-                (let [dep-vals (assoc-in dep-vals [trigger dep-req] value)]
-                  (when (every?
-                         #(->> %
-                               ((juxt :trigger :req))
-                               (get-in dep-vals)
-                               some?)
-                         deps)
-                    (async/>! ch {:trigger :every :req req-name :value (async/<! (exec req dep-vals))}))
-                  (recur
-                   dep-chans
-                   dep-vals))
-                (let [dep-chans (remove (partial = dep-ch) dep-chans)]
-                  (if (empty? dep-chans)
-                    (async/close! ch) ; our deps are all done, so are we
-                    (recur
-                     (remove (partial = dep-ch) dep-chans)
-                     dep-vals)))))))))
+                  dep-ch (async/merge (get dep-chans-by-req req-name))]]
+      (async/go-loop [dep-vals (or inputs {})]
+        (if-some [{:keys [trigger value] dep-req :req} (async/<! dep-ch)]
+          (let [dep-vals (assoc-in dep-vals [trigger dep-req] value)]
+            (when (every?
+                   #(->> %
+                         ((juxt :trigger :req))
+                         (get-in dep-vals)
+                         some?)
+                   deps)
+              (async/>! ch {:trigger :every :req req-name :value (async/<! (exec req dep-vals))}))
+            (recur dep-vals))
+          (do
+            (when (empty? deps)
+              (async/>!
+                ch
+                {:trigger :every
+                 :req req-name
+                 :value (async/<! (exec req (or inputs {})))}))
+            (async/close! ch)))))
     (wait-for-all-closed (->> ch-by-req
                               vals
                               (map :mult)
