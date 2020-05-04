@@ -71,26 +71,26 @@
               [src v]))))
        (into {})))
 
-(def ne-ascii (gen/such-that not-empty gen/string-alphanumeric))
+(def reg-str (gen/such-that not-empty gen/string-alphanumeric))
 
 (defspec dependency-graph-prop 20
   (prop/for-all [input-deps (gen/map
-                             ne-ascii
+                             reg-str
                              (gen/vector
                               (gen/one-of
                                [(gen/tuple
                                  (gen/elements [:input-dep])
                                  (gen/elements [:headers :qs :body])
                                  (gen/elements [:ignore])
-                                 ne-ascii
-                                 ne-ascii)
+                                 reg-str
+                                 reg-str)
                                 (gen/tuple
                                  (gen/elements [:req-dep])
                                  (gen/elements [:headers :qs :body])
-                                 ne-ascii
+                                 reg-str
                                  (gen/elements [:every :all])
-                                 ne-ascii
-                                 ne-ascii)])))]
+                                 reg-str
+                                 reg-str)])))]
                 (let [reqs (reduce
                             (fn [reqs [req-name items]]
                               (if (not-empty items)
@@ -110,7 +110,9 @@
                   :req {:headers {"h1" "{{inp_a}}"}}
                   :captures {:headers {"x" {:template-var "x"}}}}
                  {:name "b"
-                  :req {:headers {"h1" "{{every.a.x}}"}}}]
+                  :req {:headers {"h1" "{{every.a.x}}"}}}
+                 {:name "c"
+                  :req {:headers {"h1" "{{all.b.x}}"}}}]
            invocations (atom [])
            rp-ch  (rp/run-pkg {:inputs {"inp_a" "hello"}
                                :exec (fn [req dep-vals]
@@ -121,5 +123,5 @@
        (async/take!
         rp-ch
         (fn []
-          (is (= (mapv #(get-in % [:req :name]) @invocations) ["a" "b"]))
+          (is (= (mapv #(get-in % [:req :name]) @invocations) ["a" "b" "c"]))
           (done)))))))
