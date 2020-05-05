@@ -11,13 +11,17 @@
 
 (deftest acyclical-test
   (testing "acyclical"
-    (is (not (rp/acyclical? {"a" #{"b"}
-                             "b" #{"c"}
-                             "c" #{"a"}})))
+    (is (not (rp/acyclical? {"a" #{{:trigger :every :req "b" :template-var "x"}}
+                             "b" #{{:trigger :all :req "c" :template-var "x"}}
+                             "c" #{{:trigger :every :req "a" :template-var "x"}}})))
 
-    (is (rp/acyclical? {"a" #{"b" "c"}
-                        "b" #{"c"}
-                        "c" #{"d"}}))))
+    (is (rp/acyclical? {"b" #{{:trigger :every :req "a" :template-var "x"}}
+                        "c" #{{:trigger :all :req "b" :template-var "x"}}}))
+
+    (is (rp/acyclical? {"a" #{{:trigger :every :req "b" :template-var "x"}
+                              {:trigger :every :req "c" :template-var "x"}}
+                        "b" #{{:trigger :all :req "c" :template-var "x"}}
+                        "c" #{{:trigger :every :req "d" :template-var "x"}}}))))
 
 (deftest dependency-graph
   (testing "dependency-graph"

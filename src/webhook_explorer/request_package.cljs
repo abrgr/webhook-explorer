@@ -23,16 +23,28 @@
       (-> (zipmap [:trigger :req :template-var] items)
           (update :trigger keyword)))))
 
+(defn deps->dg [deps]
+  (reduce
+    (fn [dg [n ds]]
+      (->> ds
+           (into
+             #{}
+             (map :req))
+           (assoc dg n)))
+    {}
+    deps))
+
 (defn acyclical?
   ([deps]
-   (loop [n (ffirst deps)
-          visited? #{}]
-     (let [{:keys [res visited?]} (acyclical? deps visited? n)
-           next-disconnected-node (first (cset/difference (set (keys deps)) visited?))]
-       (cond
-         (not res) false
-         (some? next-disconnected-node) (recur visited? next-disconnected-node)
-         :else true))))
+   (let [deps (deps->dg deps)]
+     (loop [n (ffirst deps)
+            visited? #{}]
+       (let [{:keys [res visited?]} (acyclical? deps visited? n)
+             next-disconnected-node (first (cset/difference (set (keys deps)) visited?))]
+         (cond
+           (not res) false
+           (some? next-disconnected-node) (recur next-disconnected-node #{})
+           :else true)))))
   ([deps visited? n]
    (let [dependents (get deps n)
          new-visited? (conj visited? n)]
@@ -127,56 +139,58 @@
   "Given :inputs, :exec, and a :pkg, runs all requests in pkg with the given
    inputs by invoking the :exec function, providing req and dep-vals and
    expecting a channel to be returned."
-  (let [dg (dependency-graph pkg)
-        ch-by-req (into
-                   {}
-                   (map
-                    (fn [{:keys [name] :as req}]
-                      (let [c (async/chan)
-                            m (async/mult c)]
-                        [name
-                         {:req req
-                          :ch c
-                          :mult m}])))
-                   reqs)
-        dep->dep-chan (fn [{:keys [trigger] dep-req :req}]
-                        (let [{:keys [mult]} (get ch-by-req dep-req)
-                              ch (mult-sub mult)]
-                          (if (= trigger :all)
-                            (all-ch dep-req ch)
-                            ch)))
-        dep-chans-by-req (into
-                          {}
-                          (map
-                           (fn [[req-name]]
-                             [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
-                          ch-by-req)]
-    (doseq [[req-name {:keys [req ch]}] ch-by-req
-            :let [deps (get dg req-name)
-                  dep-ch (async/merge (get dep-chans-by-req req-name))]]
-      (async/go-loop [dep-vals (or inputs {})]
-        (if-some [{:keys [trigger value] dep-req :req} (async/<! dep-ch)]
-          (let [dep-vals (assoc-in dep-vals [trigger dep-req] value)]
-            (when (every?
-                   #(->> %
-                         ((juxt :trigger :req))
-                         (get-in dep-vals)
-                         some?)
-                   deps)
-              (async/>! ch {:trigger :every :req req-name :value (async/<! (exec req dep-vals))}))
-            (recur dep-vals))
-          (do
-            (when (empty? deps)
-              (async/>!
-               ch
-               {:trigger :every
-                :req req-name
-                :value (async/<! (exec req (or inputs {})))}))
-            (async/close! ch)))))
-    (wait-for-all-closed (->> ch-by-req
-                              vals
-                              (map :mult)
-                              (map mult-sub)))))
+  (let [dg (dependency-graph pkg)]
+    (when-not (acyclical? dg)
+      (throw (ex-info "Cyclical dependencies" {:anomaly :cyclical-dependencies :dg dg})))
+    (let [ch-by-req (into
+                     {}
+                     (map
+                      (fn [{:keys [name] :as req}]
+                        (let [c (async/chan)
+                              m (async/mult c)]
+                          [name
+                           {:req req
+                            :ch c
+                            :mult m}])))
+                     reqs)
+          dep->dep-chan (fn [{:keys [trigger] dep-req :req}]
+                          (let [{:keys [mult]} (get ch-by-req dep-req)
+                                ch (mult-sub mult)]
+                            (if (= trigger :all)
+                              (all-ch dep-req ch)
+                              ch)))
+          dep-chans-by-req (into
+                            {}
+                            (map
+                             (fn [[req-name]]
+                               [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
+                            ch-by-req)]
+      (doseq [[req-name {:keys [req ch]}] ch-by-req
+              :let [deps (get dg req-name)
+                    dep-ch (async/merge (get dep-chans-by-req req-name))]]
+        (async/go-loop [dep-vals (or inputs {})]
+          (if-some [{:keys [trigger value] dep-req :req} (async/<! dep-ch)]
+            (let [dep-vals (assoc-in dep-vals [trigger dep-req] value)]
+              (when (every?
+                     #(->> %
+                           ((juxt :trigger :req))
+                           (get-in dep-vals)
+                           some?)
+                     deps)
+                (async/>! ch {:trigger :every :req req-name :value (async/<! (exec req dep-vals))}))
+              (recur dep-vals))
+            (do
+              (when (empty? deps)
+                (async/>!
+                 ch
+                 {:trigger :every
+                  :req req-name
+                  :value (async/<! (exec req (or inputs {})))}))
+              (async/close! ch)))))
+      (wait-for-all-closed (->> ch-by-req
+                                vals
+                                (map :mult)
+                                (map mult-sub))))))
 
 (s/def ::inputs
   (s/map-of string? string?))
