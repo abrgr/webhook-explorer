@@ -1,5 +1,6 @@
 (ns webhook-explorer.request-package
   (:require [clojure.string :as string]
+            [clojure.set :as cset]
             [clojure.core.async :as async]
             [clojure.core.async.impl.protocols :as async-protos]
             [clojure.spec.alpha :as s]
@@ -21,6 +22,31 @@
     (when (>= (count items) 3)
       (-> (zipmap [:trigger :req :template-var] items)
           (update :trigger keyword)))))
+
+(defn acyclical?
+  ([deps]
+   (loop [n (ffirst deps)
+          visited? #{}]
+     (let [{:keys [res visited?]} (acyclical? deps visited? n)
+           next-disconnected-node (first (cset/difference (set (keys deps)) visited?))]
+       (cond
+         (not res) false
+         (some? next-disconnected-node) (recur visited? next-disconnected-node)
+         :else true))))
+  ([deps visited? n]
+   (let [dependents (get deps n)
+         new-visited? (conj visited? n)]
+     (if (visited? n)
+       {:res false :visited? new-visited?}
+       (reduce
+        (fn [{prev-res :res prev-visited? :visited?} n]
+          (let [{this-res :res this-visited? :visited?} (acyclical? deps new-visited? n)
+                next-visited? (cset/union prev-visited? this-visited?)]
+            (if this-res
+              {:res prev-res :visited? next-visited?}
+              (reduced {:res this-res :visited? next-visited?}))))
+        {:res true :visited? new-visited?}
+        dependents)))))
 
 (defn dependency-graph [{:keys [input-template-vars reqs]}]
   (->> reqs
@@ -92,7 +118,7 @@
         m (async/merge chs)]
     (async/go-loop []
       (if (some? (async/<! m))
-        (recur) 
+        (recur)
         (async/close! out-ch)))
     out-ch))
 
@@ -103,16 +129,16 @@
    expecting a channel to be returned."
   (let [dg (dependency-graph pkg)
         ch-by-req (into
-                    {}
-                    (map
-                      (fn [{:keys [name] :as req}]
-                        (let [c (async/chan)
-                              m (async/mult c)]
-                          [name
-                           {:req req
-                            :ch c
-                            :mult m}])))
-                    reqs)
+                   {}
+                   (map
+                    (fn [{:keys [name] :as req}]
+                      (let [c (async/chan)
+                            m (async/mult c)]
+                        [name
+                         {:req req
+                          :ch c
+                          :mult m}])))
+                   reqs)
         dep->dep-chan (fn [{:keys [trigger] dep-req :req}]
                         (let [{:keys [mult]} (get ch-by-req dep-req)
                               ch (mult-sub mult)]
@@ -120,11 +146,11 @@
                             (all-ch dep-req ch)
                             ch)))
         dep-chans-by-req (into
-                           {}
-                           (map
-                            (fn [[req-name]]
-                              [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
-                           ch-by-req)]
+                          {}
+                          (map
+                           (fn [[req-name]]
+                             [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
+                          ch-by-req)]
     (doseq [[req-name {:keys [req ch]}] ch-by-req
             :let [deps (get dg req-name)
                   dep-ch (async/merge (get dep-chans-by-req req-name))]]
@@ -142,10 +168,10 @@
           (do
             (when (empty? deps)
               (async/>!
-                ch
-                {:trigger :every
-                 :req req-name
-                 :value (async/<! (exec req (or inputs {})))}))
+               ch
+               {:trigger :every
+                :req req-name
+                :value (async/<! (exec req (or inputs {})))}))
             (async/close! ch)))))
     (wait-for-all-closed (->> ch-by-req
                               vals

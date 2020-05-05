@@ -9,6 +9,16 @@
 
 (stest/instrument)
 
+(deftest acyclical-test
+  (testing "acyclical"
+    (is (not (rp/acyclical? {"a" #{"b"}
+                             "b" #{"c"}
+                             "c" #{"a"}})))
+
+    (is (rp/acyclical? {"a" #{"b" "c"}
+                        "b" #{"c"}
+                        "c" #{"d"}}))))
+
 (deftest dependency-graph
   (testing "dependency-graph"
     (let [r1 (rp/dependency-graph {:reqs [{:name "a"
