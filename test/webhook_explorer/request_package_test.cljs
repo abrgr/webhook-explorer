@@ -119,17 +119,17 @@
 (deftest get-dep-vals-test
   (testing "get-dep-vals"
     (is
-      (= {"a" {"x" 4}
-          "b" {"y" 9}}
-         (rp/get-dep-vals
-           [{:req "a" :id "1"}
-            {:req "b" :id "6"}]
-           {"a" {[{:req "a" :id "1"}] {"x" 4}
-                 [{:req "a" :id "2"}] {"x" 5}}
-            "b" {[{:req "a" :id "2"}
-                  {:req "b" :id "3"}] {"y" 7}
-                 [{:req "a" :id "1"}
-                  {:req "b" :id "6"}] {"y" 9}}})))))
+     (= {"a" {"x" 4}
+         "b" {"y" 9}}
+        (rp/get-dep-vals
+         [{:req "a" :id "1"}
+          {:req "b" :id "6"}]
+         {"a" {[{:req "a" :id "1"}] {"x" 4}
+               [{:req "a" :id "2"}] {"x" 5}}
+          "b" {[{:req "a" :id "2"}
+                {:req "b" :id "3"}] {"y" 7}
+               [{:req "a" :id "1"}
+                {:req "b" :id "6"}] {"y" 9}}})))))
 
 (deftest run-pkg-test
   (testing "run-pkg"

@@ -25,14 +25,14 @@
 
 (defn deps->dg [deps]
   (reduce
-    (fn [dg [n ds]]
-      (->> ds
-           (into
-             #{}
-             (map :req))
-           (assoc dg n)))
-    {}
-    deps))
+   (fn [dg [n ds]]
+     (->> ds
+          (into
+           #{}
+           (map :req))
+          (assoc dg n)))
+   {}
+   deps))
 
 (defn acyclical?
   ([deps]
@@ -149,17 +149,17 @@
   "
   (->> dep->path->vals
        (keep
-         (fn [[dep path->val]]
-           (some->> path->val
-                    (filter
-                      (fn [[dep-path val]]
-                        (->> dep-path
-                             (interleave path)
-                             (partition 2)
-                             (every? (partial apply =)))))
-                    first
-                    second
-                    (vector dep))))
+        (fn [[dep path->val]]
+          (some->> path->val
+                   (filter
+                    (fn [[dep-path val]]
+                      (->> dep-path
+                           (interleave path)
+                           (partition 2)
+                           (every? (partial apply =)))))
+                   first
+                   second
+                   (vector dep))))
        (into {})))
 
 (defn cartesian-product [m]
@@ -172,27 +172,27 @@
       (for [v vs
             m' (cartesian-product (dissoc m k))]
         (do
-        (assoc m' k v))))))
+          (assoc m' k v))))))
 
 (defn dep-val-seq [req-deps inputs dep->vals]
   "Given a coll? of required dependencies, an input map, and a map from
    dependencies to values, where values can be items or collections of items,
    return a seq? of value maps, filtering out
    any value maps that do not provide the required dependencies."
-   (when (every?
-           (partial contains? dep->vals)
-           req-deps)
-     (let [d->vs (group-by (comp coll? second) dep->vals)
-           manies (into {} (get d->vs true))
-           singles (into {} (get d->vs false))]
-       (map
-         (partial apply merge inputs)
-         (if (empty? manies)
-           (list singles)
-           (->> manies
+  (when (every?
+         (partial contains? dep->vals)
+         req-deps)
+    (let [d->vs (group-by (comp coll? second) dep->vals)
+          manies (into {} (get d->vs true))
+          singles (into {} (get d->vs false))]
+      (map
+       (partial apply merge inputs)
+       (if (empty? manies)
+         (list singles)
+         (->> manies
                 ; TODO: only take cartesian product if we're not {{#mapping}} on the many
-                cartesian-product
-                (map (partial merge singles))))))))
+              cartesian-product
+              (map (partial merge singles))))))))
 
 (defn run-pkg [{:keys [inputs exec]
                 {:keys [reqs] :as pkg} :pkg}]
