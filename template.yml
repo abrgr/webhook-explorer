@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion : '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Webhook Explorer
+Globals:
+  Function:
+    Runtime: nodejs10.x
+    MemorySize: 512
+    Timeout: 10
+    AutoPublishAlias: live
 Parameters:
   WebhookDomainName:
     Type: String
@@ -87,11 +93,8 @@ Resources:
   WebhookHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
+      Timeout: 60
       Handler: lambdas/webhook-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         WebhookApiEvent:
           Type: Api
@@ -119,11 +122,8 @@ Resources:
   CustomCertificateCreator:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/custom-certificate-creator.handler
-      MemorySize: 512
       Timeout: 600
-      AutoPublishAlias: live
       Policies:
         - Statement:
           - Effect: Allow
@@ -253,11 +253,8 @@ Resources:
   CustomCognitoDomainCreator:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/custom-cognito-domain.handler
-      MemorySize: 512
       Timeout: 600
-      AutoPublishAlias: live
       Policies:
         - Statement:
           - Effect: Allow
@@ -292,11 +289,8 @@ Resources:
   CustomIndexFileCreator:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/custom-index-file.handler
-      MemorySize: 512
       Timeout: 600
-      AutoPublishAlias: live
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref WebhookRequestBucket
@@ -794,11 +788,7 @@ Resources:
   GenericHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         RequestPackageExecute:
           Type: Api
@@ -821,11 +811,7 @@ Resources:
   ListRequestsHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/list-requests-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListRequests:
           Type: Api
@@ -851,11 +837,7 @@ Resources:
   GetRequestHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/get-request-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListRequests:
           Type: Api
@@ -881,11 +863,7 @@ Resources:
   GetHandlerHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/get-handler-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListRequests:
           Type: Api
@@ -913,11 +891,7 @@ Resources:
   TagRequestHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/tag-request-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListRequests:
           Type: Api
@@ -943,11 +917,7 @@ Resources:
   ListTaggedRequestsHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/list-tagged-requests-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListRequests:
           Type: Api
@@ -973,11 +943,7 @@ Resources:
   ListTagsHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/list-tags-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListTags:
           Type: Api
@@ -1003,11 +969,7 @@ Resources:
   ListUsersHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/list-users-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ListUsers:
           Type: Api
@@ -1036,11 +998,7 @@ Resources:
   CreateUserHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/create-user-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         CreateUser:
           Type: Api
@@ -1069,11 +1027,7 @@ Resources:
   UpsertHandlerHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/upsert-handler-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         CreateUser:
           Type: Api
@@ -1101,11 +1055,7 @@ Resources:
   UpsertRequestPackageHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/upsert-request-package-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         CreateUser:
           Type: Api
@@ -1131,11 +1081,7 @@ Resources:
   ListHandlersHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/list-handlers-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         CreateUser:
           Type: Api
@@ -1163,11 +1109,7 @@ Resources:
   UpdateUserHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/update-user-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         UpdateUser:
           Type: Api
@@ -1198,11 +1140,7 @@ Resources:
   ExecuteRequestHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs10.x
       Handler: lambdas/execute-request-handler.handler
-      MemorySize: 512
-      Timeout: 10
-      AutoPublishAlias: live
       Events:
         ExecuteRequest:
           Type: Api
