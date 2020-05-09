@@ -1,0 +1,4 @@
+#!/bin/sh
+
+docker_basedir="$(readlink -f "$(dirname "$(readlink -f "$0")")/..")"
+exec docker-compose run --rm --service-ports sam local start-api --host 0.0.0.0 --port 3000 --docker-volume-basedir "${docker_basedir}"

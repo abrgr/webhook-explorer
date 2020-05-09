@@ -7,8 +7,8 @@ services:
      - "${AWS_CONFIG_DIR}:/root/.aws"
     network_mode: "bridge"
     working_dir: "/project/lambdas"
-  app:
-    image: aws-sam:0.6.0
+  sam:
+    image: aws-sam:0.48.0
     environment:
      - "DOCKER_HOST=tcp://host.docker.internal:2375"
     ports:
