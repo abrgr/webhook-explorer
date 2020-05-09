@@ -7,6 +7,9 @@
          :test-dir "resources/public/js/test"
          :devtools {:http-port 9700
                     :http-root "resources/public/js/test"}}
+  :lambda {:target :node-library
+           :output-to "lambdas/handler.js"
+           :exports {:handler webhook-explorer.lambdas.core/handler}}
   :dev {:target :browser
         :output-dir "resources/public/js"
         :asset-path "/js"

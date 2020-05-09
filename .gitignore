@@ -21,3 +21,4 @@ node_modules
 resources/public/js
 tmp
 .shadow-cljs
+lambdas/handler.js

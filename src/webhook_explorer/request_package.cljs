@@ -2,16 +2,10 @@
   (:require [clojure.string :as string]
             [clojure.set :as cset]
             [clojure.core.async :as async]
-            [clojure.core.async.impl.protocols :as async-protos]
             [clojure.spec.alpha :as s]
             [webhook-explorer.specs.request-package]
+            [webhook-explorer.specs.chan :as c]
             ["mustache" :as m]))
-
-(defn chan? [c]
-  "Tests if c is a core.async.chan"
-  (satisfies?
-   async-protos/WritePort
-   c))
 
 (defn parse-var [v]
   "Given a string, convert every.req.var or all.req.var to
@@ -270,7 +264,7 @@
   (s/fspec
    :args (s/cat :req :request-package/req
                 :dep-vals map?)
-   :ret chan?))
+   :ret c/chan?))
 (s/fdef run-pkg
   :args (s/cat :args (s/keys :req-un [::inputs ::pkg ::exec]))
   :ret chan?)
