@@ -738,7 +738,7 @@ Resources:
                 requestTemplates:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
-          /api/request-packages/execute:
+          /api/request-packages/{name}/execute:
             post:
               responses: {}
               security:
@@ -793,7 +793,7 @@ Resources:
         RequestPackageExecute:
           Type: Api
           Properties:
-            Path: /api/request-packages/execute
+            Path: /api/request-packages/{name}/execute
             Method: get
             RestApiId: !Ref WebhookExplorerApi
       Environment:

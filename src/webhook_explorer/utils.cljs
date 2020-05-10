@@ -1,6 +1,6 @@
 (ns webhook-explorer.utils
-  (:require [clojure.core.async :as async])
-  (:require-macros [webhook-explorer.utils :refer [let+]]))
+  (:require-macros [webhook-explorer.utils :refer [let+]]) 
+  (:require [clojure.core.async :as async]))
 
 (defn put-close! [c v]
-  (async/put! c v #(async/close! c))) 
+  (async/put! c v #(async/close! c)))

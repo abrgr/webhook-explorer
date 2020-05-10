@@ -6,7 +6,7 @@
          :value any?))
 (s/def ::abort
   (s/cat :abort-glyph #{:abort}
-         :abort-items (s/spec ::abort-items)))
+         :abort-items (s/spec (s/+ ::abort-item))))
 (s/def ::assignment
   (s/cat :id (s/or :sym symbol?
                    :map map?
@@ -15,10 +15,6 @@
          :opt (s/? ::abort)))
 (s/def ::assignments
   (s/* ::assignment))
-
-(require '[clojure.spec.gen.alpha :as gen])
-(gen/generate (s/gen ::assignments))
-(s/conform ::assignments '[a 4 {:keys [hi]} j b 7 :abort [(> a 3) 7]])
 
 (defn let+* [conformed-assignments body]
   (if (empty? conformed-assignments)
@@ -36,8 +32,8 @@
           inner (if (empty? abort-items)
                   body'
                   `(cond ~@abort-items :default ~body'))]
-    `(let [~id ~v]
-       ~inner))))
+      `(let [~id ~v]
+         ~inner))))
 
 (defmacro let+ [assignments & body]
   (let [conformed-assignments (s/conform ::assignments assignments)]
