@@ -22,3 +22,4 @@ resources/public/js
 tmp
 .shadow-cljs
 lambdas/handler.js
+sam-env.json
