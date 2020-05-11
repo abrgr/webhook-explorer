@@ -267,4 +267,4 @@
    :ret c/chan?))
 (s/fdef run-pkg
   :args (s/cat :args (s/keys :req-un [::inputs ::pkg ::exec]))
-  :ret chan?)
+  :ret c/chan?)
