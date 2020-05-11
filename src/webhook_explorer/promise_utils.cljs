@@ -4,4 +4,4 @@
 (defn chan->promise [ch]
   (js/Promise.
    (fn [res rej]
-     (async/take! ch #(if (instance? js/Error %) (rej %) (res %))))))
+     (async/take! ch (if (instance? js/Error %) (rej %) (res %))))))

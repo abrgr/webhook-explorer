@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async]
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
+            [webhook-explorer.utils :as u]
             [webhook-explorer.promise-utils :as putil]
             [webhook-explorer.lambdas.handler :as h]
             [webhook-explorer.lambdas.execute-request-package]))
@@ -11,17 +12,17 @@
       (js->clj :keywordize-keys true)
       (->> (cske/transform-keys csk/->kebab-case-keyword))))
 
-(defn async-xform [xf in-ch]
-  (let [out-ch (async/chan 1 xf)]
-    (async/pipe in-ch out-ch)
-    out-ch))
+(defn send-result [cb res]
+  (if (instance? js/Error res)
+    (cb res)
+    (cb nil res)))
 
-(defn handler [event context]
+(defn handler [event context cb]
   (let [evt (->clj event)
         ctx (->clj context)]
-    (println "handler" {:evt evt :ctx ctx})
     (->> (h/handler (->clj event) (->clj context))
-         (async-xform (comp
-                       (map (partial cske/transform-keys csk/->camelCase))
-                       (map clj->js)))
-         putil/chan->promise)))
+         (u/async-xform (comp
+                         (map (partial cske/transform-keys csk/->camelCase))
+                         (map clj->js)))
+         (u/async-do (partial send-result cb)))
+    nil))
