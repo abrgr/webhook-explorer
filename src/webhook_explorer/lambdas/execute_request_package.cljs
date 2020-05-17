@@ -5,7 +5,8 @@
             [webhook-explorer.lambdas.request-package-ops :as ops]
             [webhook-explorer.lambdas.handler :as h]))
 
-(defmethod h/handler "/api/request-packages/{name}/execute"
+(defmethod h/handler {:method "POST"
+                      :path "/api/request-packages/{name}/execute"}
   [event context]
   (let [out (async/chan)]
     (async/go
@@ -15,5 +16,5 @@
           out
           {:is-base64-encoded false
            :status-code 200
-           :body "Hello world"})))
+           :body (-> rp clj->js (js/JSON.stringify))})))
     out))

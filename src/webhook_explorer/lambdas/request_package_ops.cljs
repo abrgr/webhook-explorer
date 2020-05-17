@@ -1,6 +1,9 @@
 (ns webhook-explorer.lambdas.request-package-ops
   (:require [debux.cs.core :as d :refer-macros  [dbg dbgn]]
             [clojure.core.async :as async]
+            ["url" :as url]
+            [webhook-explorer.request-package :as reqp]
+            [webhook-explorer.lambdas.http-utils :as http]
             [webhook-explorer.utils :as u]
             [webhook-explorer.lambdas.aws :as aws]))
 
@@ -20,3 +23,21 @@
             (js->clj :keywordize-keys true)
             (->> (u/put-close! out)))))
     out))
+
+(defn exec [{:keys [qs body headers protocol method host path]}]
+  (http/request
+    {:method method
+     :query-params qs
+     :body body
+     :headers headers
+     :url (url/format
+            #js {:protocol protocol
+                 :hostname host
+                 :pathname path
+                 :query (clj->js qs)})}))
+
+(defn execute [rp inputs]
+  (reqp/run-pkg
+    {:inputs inputs
+     :exec exec
+     :pkg rp}))

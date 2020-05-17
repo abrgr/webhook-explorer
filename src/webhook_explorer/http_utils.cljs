@@ -22,29 +22,32 @@
     (> status 399) (js/Error. "Error")
     :else nil))
 
-(defn req [{:keys [json-params query-params path literal-res-paths literal-req-paths] :as opts}]
-  (async/go
-    (let [opts' (cond-> opts
-                  (contains? opts :json-params) (assoc :json-params (cske/transform-keys csk/->camelCase json-params))
-                  (contains? opts :query-params) (assoc :query-params (cske/transform-keys csk/->camelCase query-params))
-                  true (dissoc :path)
-                  true (dissoc :literal-res-paths)
-                  true (assoc :url (make-api-url path))
-                  true (update :headers merge (auth-headers))
-                  true (assoc :with-credentials? false))
-          opts' (reduce
-                 (fn [opts' lit-req-path]
-                   (assoc-in opts' (concat [:json-params] (map csk/->camelCase lit-req-path)) (get-in json-params lit-req-path)))
-                 opts'
-                 literal-req-paths)
-          res (async/<! (http/request opts'))
-          {:keys [status headers body]} res
-          body' (reduce
-                 (fn [body' lit-resp-path]
-                   (assoc-in body' (map csk/->kebab-case-keyword lit-resp-path) (get-in body lit-resp-path)))
-                 (cske/transform-keys csk/->kebab-case-keyword body)
-                 literal-res-paths)]
-      {:body body'
-       :error (error-for-status status)
-       :status status
-       :headers headers})))
+(defn req
+  ([opts]
+   (req http/request opts))
+  ([request {:keys [json-params query-params path literal-res-paths literal-req-paths] :as opts}]
+    (async/go
+      (let [opts' (cond-> opts
+                    (contains? opts :json-params) (assoc :json-params (cske/transform-keys csk/->camelCase json-params))
+                    (contains? opts :query-params) (assoc :query-params (cske/transform-keys csk/->camelCase query-params))
+                    true (dissoc :path)
+                    true (dissoc :literal-res-paths)
+                    true (assoc :url (make-api-url path))
+                    true (update :headers merge (auth-headers))
+                    true (assoc :with-credentials? false))
+            opts' (reduce
+                   (fn [opts' lit-req-path]
+                     (assoc-in opts' (concat [:json-params] (map csk/->camelCase lit-req-path)) (get-in json-params lit-req-path)))
+                   opts'
+                   literal-req-paths)
+            res (async/<! (request opts'))
+            {:keys [status headers body]} res
+            body' (reduce
+                   (fn [body' lit-resp-path]
+                     (assoc-in body' (map csk/->kebab-case-keyword lit-resp-path) (get-in body lit-resp-path)))
+                   (cske/transform-keys csk/->kebab-case-keyword body)
+                   literal-res-paths)]
+        {:body body'
+         :error (error-for-status status)
+         :status status
+         :headers headers}))))

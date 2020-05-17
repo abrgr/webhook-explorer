@@ -3,7 +3,9 @@
             [webhook-explorer.specs.aws]
             [webhook-explorer.specs.chan :as c]))
 
-(defmulti handler (fn [event context] (:resource event)))
+(defmulti handler (fn [event context]
+                    {:method (:http-method event)
+                     :path (:resource event)}))
 
 (s/fdef handler
   :args (s/cat :event :aws/event.apigw-proxy
