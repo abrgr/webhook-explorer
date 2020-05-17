@@ -1,5 +1,6 @@
 (ns webhook-explorer.request-package
-  (:require [clojure.string :as string]
+  (:require [debux.cs.core :refer-macros [dbg dbgn]]
+            [clojure.string :as string]
             [clojure.set :as cset]
             [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
@@ -81,15 +82,16 @@
                     (let [[typ template-var _ _] v]
                       (when (#{"name" "&" "#" "^" ">"} typ)
                         (when-let [req-ref (parse-var template-var)]
-                          {source-req #{req-ref}}))))))
+                          {source-req #{(assoc req-ref :plural (= typ "#"))}}))))))
                (apply merge-with into deps)))
         {})))
 
 (s/def ::trigger #{:every :all})
 (s/def ::req string?)
 (s/def ::template-var string?)
+(s/def ::plural boolean?)
 (s/def ::dep
-  (s/keys :req-un [::trigger ::req ::template-var]))
+  (s/keys :req-un [::trigger ::req ::template-var ::plural]))
 (s/fdef dependency-graph
   :args (s/cat :pkg :request-package/package)
   :ret (s/map-of
@@ -104,8 +106,25 @@
     (async/tap m c)
     c))
 
-(defn all-ch [req ch]
-  "Creates a channel that listens for values on ch for request, req
+(defn everys->all [everys]
+  (reduce
+    (fn [all every-val]
+      (reduce
+        (fn [all [k v]]
+          (update
+            all
+            k
+            (fn [prev]
+              (into
+                (or prev [])
+                (if (coll? v) v [v])))))
+        all
+        every-val))
+    {}
+    (mapv :value everys)))
+
+(defn all-ch [next-id req-name ch]
+  "Creates a channel that listens for values on ch for request, req-name
    and puts a map with :trigger, :req, :value keys to the output
    channel that it returns once ch is closed. :value contains
    a vector of all items emitted by ch."
@@ -114,8 +133,14 @@
       (if-some [v (async/<! ch)]
         (recur (conj acc v))
         (do (async/>! out {:trigger :all
-                           :req req
-                           :value acc})
+                           :req req-name
+                           :value (everys->all acc)
+                           :path (-> acc
+                                     first
+                                     :path
+                                     butlast
+                                     vec
+                                     (conj {:req req-name :trigger :all :id (next-id)}))})
             (async/close! out))))
     out))
 
@@ -128,27 +153,28 @@
         (async/close! out-ch)))
     out-ch))
 
-(defn get-dep-vals [path dep->path->vals]
+(defn get-dep-vals [path trigger+dep->path->vals]
   "Get the vals map for each dep in dep->path->vals that matches a prefix of path.
 
    Example dep->path->vals:
 
-     {\"a\" [{:req \"a\" :id \"1\"}] {\"x\" [2 3 4]}
-      \"b\" {[{:req \"a\" :id \"1\"}
-            {:req \"b\" :id \"2\"}] {\"y\" 2}
-           [{:req \"a\" :id \"1\"}
-            {:req \"b\" :id \"3\"}] {\"y\" 3}
-           [{:req \"a\" :id \"1\"}
-            {:req \"b\" :id \"4\"}] {\"y\" 4}}}
-  "
-  (->> dep->path->vals
+    {{:trigger :every :req \"a\"}
+      {[{:req \"a\" :trigger :every :id \"1\"}] {\"x\" [2 3 4]}}
+     {:trigger :all :req \"b\"}
+      {[{:req \"a\" :trigger :every :id \"1\"}
+        {:req \"b\" :trigger :every :id \"2\"}] {\"y\" 2}
+       [{:req \"a\" :trigger :every :id \"1\"}
+        {:req \"b\" :trigger :every :id \"3\"}] {\"y\" 3}
+       [{:req \"a\" :trigger :every :id \"1\"}
+        {:req \"b\" :trigger :every :id \"4\"}] {\"y\" 4}}}"
+  (->> trigger+dep->path->vals
        (keep
         (fn [[dep path->val]]
           (some->> path->val
                    (filter
                     (fn [[dep-path val]]
                       (->> dep-path
-                           (interleave path)
+                           (interleave path) ; key to this is that interleave throws away remainder of larger coll 
                            (partition 2)
                            (every? (partial apply =)))))
                    first
@@ -165,28 +191,87 @@
     (let [[k vs] (first m)]
       (for [v vs
             m' (cartesian-product (dissoc m k))]
-        (do
-          (assoc m' k v))))))
+        (assoc m' k v)))))
 
-(defn dep-val-seq [req-deps inputs dep->vals]
+(defn flattened-template-data [req-deps trigger+dep->vals]
+  (reduce
+    (fn [acc {:keys [trigger req template-var plural]}]
+      (assoc
+        acc
+        (str (name trigger) "." req "." template-var)
+        (get-in trigger+dep->vals [{:trigger trigger :req req} template-var])))
+    {}
+    req-deps))
+
+(defn flattened-template-data->template-data [ftd]
+  (reduce
+    (fn [acc [k v]]
+      (assoc-in acc (string/split k #"\." 3) v))
+    {}
+    ftd))
+
+(defn plural-vars [req-deps]
+  (into
+    #{}
+    (comp (filter :plural)
+          (map #(select-keys % [:trigger :req :template-var])))
+    req-deps))
+
+(defn dep-val-seq [req-deps inputs trigger+dep->vals]
   "Given a coll? of required dependencies, an input map, and a map from
    dependencies to values, where values can be items or collections of items,
    return a seq? of value maps, filtering out
    any value maps that do not provide the required dependencies."
   (when (every?
-         (partial contains? dep->vals)
-         req-deps)
-    (let [d->vs (group-by (comp coll? second) dep->vals)
+         (partial contains? trigger+dep->vals)
+         (map #(select-keys % [:trigger :req]) req-deps))
+    (let [td (flattened-template-data req-deps trigger+dep->vals)
+          is-plural? (plural-vars req-deps)
+          d->vs (group-by
+                  (comp (every-pred
+                          (comp coll? second)
+                          (comp
+                            not
+                            is-plural?
+                            #(update % :trigger keyword)
+                            (partial zipmap [:trigger :req :template-var])
+                            #(string/split % #"\." 3)
+                            first))) td)
           manies (into {} (get d->vs true))
           singles (into {} (get d->vs false))]
       (map
-       (partial apply merge inputs)
+       (fn [ftd]
+         (apply merge inputs (flattened-template-data->template-data ftd)))
        (if (empty? manies)
          (list singles)
          (->> manies
-                ; TODO: only take cartesian product if we're not {{#mapping}} on the many
               cartesian-product
               (map (partial merge singles))))))))
+
+(s/fdef dep-val-seq
+  :args (s/cat :req-deps (s/coll-of string?)
+               :inputs (s/map-of string? string?)
+               :dep->vals (s/map-of string? (s/or :single string? 
+                                                  :many (s/coll-of string?))))
+  :ret (s/coll-of (s/map-of string? string?)))
+
+(defn render [this template-values]
+  (cond
+    (string? this) (m/render this (clj->js template-values))
+    (map? this) (into
+                  {}
+                  (map
+                    (fn [[k v]]
+                      [(if (string? k) (render k template-values) k)
+                       (render v template-values)]))
+                  this)))
+
+(defn exec-req [exec req dep-vals]
+  (->> req
+       (into
+         {}
+         (map (fn [[k v]] [k (render v dep-vals)])))
+       exec))
 
 (defn run-pkg [{:keys [inputs exec]
                 {:keys [reqs] :as pkg} :pkg}]
@@ -207,50 +292,50 @@
                             :ch c
                             :mult m}])))
                      reqs)
+          id (atom 0)
+          next-id (fn []
+                    (swap! id inc)
+                    @id)
           dep->dep-chan (fn [{:keys [trigger] dep-req :req}]
                           (let [{:keys [mult]} (get ch-by-req dep-req)
                                 ch (mult-sub mult)]
                             (if (= trigger :all)
-                              (all-ch dep-req ch)
+                              (all-ch next-id dep-req ch)
                               ch)))
           dep-chans-by-req (into
                             {}
                             (map
                              (fn [[req-name]]
                                [req-name (->> req-name (get dg) (mapv dep->dep-chan))]))
-                            ch-by-req)
-          id (atom 0)
-          next-id (fn []
-                    (swap! id inc)
-                    @id)]
+                            ch-by-req)]
       (doseq [[req-name {:keys [req ch]}] ch-by-req
               :let [deps (get dg req-name)
                     dep-ch (async/merge (get dep-chans-by-req req-name))]]
-        (async/go-loop [dep->path->vals {}]
+        (async/go-loop [trigger+dep->path->vals {}]
           (if-some [{:keys [path trigger value] dep-req :req} (async/<! dep-ch)]
             (if (->> deps
                      (map (juxt :req :trigger))
                      (some (partial = [dep-req trigger])))
-              (let [dep->path->vals (assoc-in dep->path->vals [dep-req path] value)
-                    dep->vals (get-dep-vals path dep->path->vals)
-                    matched-dep-vals (dep-val-seq (map :req deps) inputs dep->vals)]
+              (let [trigger+dep->path->vals (assoc-in trigger+dep->path->vals [{:trigger trigger :req dep-req} path] value)
+                    dep->vals (get-dep-vals path trigger+dep->path->vals)
+                    matched-dep-vals (dep-val-seq deps inputs dep->vals)]
                 (doseq [dep-vals matched-dep-vals
-                        :let [value (async/<! (exec req dep-vals))]]
+                        :let [value (async/<! (exec-req exec req dep-vals))]]
                   (async/>! ch {:trigger :every
                                 :req req-name
                                 :value value
-                                :path (conj path {:req req-name :id (next-id)})}))
-                (recur dep->path->vals))
-              (recur dep->path->vals))
+                                :path (conj path {:req req-name :trigger :every :id (next-id)})}))
+                (recur trigger+dep->path->vals))
+              (recur trigger+dep->path->vals))
             (do
               (when (empty? deps)
-                (let [value (async/<! (exec req (or inputs {})))]
+                (let [value (async/<! (exec-req exec req (or inputs {})))]
                   (async/>!
                    ch
                    {:trigger :every
                     :req req-name
                     :value value
-                    :path [{:req req-name :id (next-id)}]})))
+                    :path [{:req req-name :trigger :every :id (next-id)}]})))
               (async/close! ch)))))
       (wait-for-all-closed (->> ch-by-req
                                 vals

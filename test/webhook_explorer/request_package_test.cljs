@@ -25,7 +25,9 @@
 
 (deftest dependency-graph
   (testing "dependency-graph"
-    (let [r1 (rp/dependency-graph {:reqs [{:name "a"
+    (let [r1 (rp/dependency-graph {:name "g"
+                                   :input-template-vars []
+                                   :reqs [{:name "a"
                                            :req {:headers {:h1 "{{hi}}"
                                                            :h2 "{{{every.req1.a}}}"}
                                                  :qs {:q1 "{{#all.req1.b}}{{.}}{{/all.req1.b}}"}
@@ -34,12 +36,12 @@
                                            :req {:headers {:h1 "{{every.req3.a}}"}
                                                  :qs {:q1 "{{all.req1.this_thing_here}}"}
                                                  :body "{{every.req1.c}}"}}]})]
-      (is (= r1 {"a" #{{:trigger :every :req "req1" :template-var "a"}
-                       {:trigger :all :req "req1" :template-var "b"}
-                       {:trigger :every :req "req2" :template-var "c"}}
-                 "b" #{{:trigger :every :req "req3" :template-var "a"}
-                       {:trigger :all :req "req1" :template-var "this_thing_here"}
-                       {:trigger :every :req "req1" :template-var "c"}}})))))
+      (is (= r1 {"a" #{{:trigger :every :req "req1" :template-var "a" :plural false}
+                       {:trigger :all :req "req1" :template-var "b" :plural true}
+                       {:trigger :every :req "req2" :template-var "c" :plural false}}
+                 "b" #{{:trigger :every :req "req3" :template-var "a" :plural false}
+                       {:trigger :all :req "req1" :template-var "this_thing_here" :plural false}
+                       {:trigger :every :req "req1" :template-var "c" :plural false}}})))))
 
 (defn crv [c r v] (str "{{" (name c) "." r "." v "}}"))
 
@@ -79,7 +81,8 @@
                           (when (= typ :req-dep)
                             {:trigger c
                              :req r
-                             :template-var v})))
+                             :template-var v
+                             :plural false})))
                        (into #{}))]
             (when (not-empty v)
               [src v]))))
@@ -139,18 +142,26 @@
                   :req {:headers {"h1" "{{inp_a}}"}}
                   :captures {:headers {"x" {:template-var "x"}}}}
                  {:name "b"
-                  :req {:headers {"h1" "{{every.a.x}}"}}}
+                  :req {:headers {"h1" "{{every.a.x}}"}}
+                  :captures {:headers {"x" {:template-var "x"}}}}
                  {:name "c"
-                  :req {:headers {"h1" "{{all.b.x}}"}}}]
+                  :req {:headers {"h1" "{{#all.b.x}}{{.}}{{/all.b.x}}"}}}]
            invocations (atom [])
            rp-ch  (rp/run-pkg {:inputs {"inp_a" "hello"}
-                               :exec (fn [req dep-vals]
+                               :exec (fn [req]
                                        (async/go
-                                         (swap! invocations conj {:req req :dep-vals dep-vals})
-                                         {"x" "x!"}))
+                                         (swap! invocations conj {:req req})
+                                         (if (= (:name req) "a")
+                                           {"x" ["val1" "val2" "val3"]}
+                                           {"x" "hello"})))
                                :pkg {:reqs reqs}})]
        (async/take!
         rp-ch
         (fn []
-          (is (= (mapv #(get-in % [:req :name]) @invocations) ["a" "b" "c"]))
+          (is (= (mapv #(get-in % [:req :name]) @invocations) ["a" "b" "b" "b" "c"]))
+          (is (= (get-in @invocations [0 :req :req :headers "h1"]) "hello"))
+          (is (= (get-in @invocations [1 :req :req :headers "h1"]) "val1"))
+          (is (= (get-in @invocations [2 :req :req :headers "h1"]) "val2"))
+          (is (= (get-in @invocations [3 :req :req :headers "h1"]) "val3"))
+          (is (= (get-in @invocations [4 :req :req :headers "h1"]) "hellohellohello"))
           (done)))))))

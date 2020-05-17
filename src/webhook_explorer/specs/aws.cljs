@@ -19,7 +19,7 @@
 (s/def :aws.event.apigw-proxy/body string?)
 (s/def :aws.event.apigw-proxy/resource string?)
 (s/def :aws.event.apigw-proxy/path string?)
-(s/def :aws.event.apigw-proxy/http-method string?)
+(s/def :aws.event.apigw-proxy/http-method #{"GET" "POST" "PUT" "PATCH" "DELETE" "OPTIONS"})
 (s/def :aws.event.apigw-proxy/is-base64-encoded boolean?)
 (s/def :aws.event.apigw-proxy/query-string-parameters (s/map-of string? string?))
 (s/def :aws.event.apigw-proxy/multi-value-query-string-parameters (s/map-of string? (s/coll-of string?)))

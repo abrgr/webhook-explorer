@@ -1,5 +1,6 @@
 (ns webhook-explorer.specs.xstate
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [goog.object :as obj]))
 
 (s/def :xstate/transition-to
   (s/cat :to-glyph #{'->}
@@ -85,9 +86,8 @@
 (s/def :xstate.runtime-config/actions
   (s/map-of
    keyword?
-   (s/fspec
-    :args (s/cat :ctx any? :evt map? :meta map?)
-    :ret nil?)))
+   (s/and (partial instance? js/Object)
+          #(obj/containsKey % "type"))))
 (s/def :xstate.runtime-config.guard/cond map?)
 (s/def :xstate.runtime-config.guard/state map?)
 (s/def :xstate.runtime-config/guards
