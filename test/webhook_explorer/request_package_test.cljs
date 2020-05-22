@@ -143,17 +143,20 @@
                   :captures {:headers {"x" {:template-var "x"}}}}
                  {:name "b"
                   :req {:headers {"h1" "{{every.a.x}}"}}
-                  :captures {:headers {"x" {:template-var "x"}}}}
+                  :captures {:body {:type :json
+                                    :captures {"$.x" {:template-var "x"}}}}}
                  {:name "c"
-                  :req {:headers {"h1" "{{#all.b.x}}{{.}}{{/all.b.x}}"}}}]
+                  :req {:headers {"h1" "{{#all.b.x}}{{.}}{{/all.b.x}}"}}
+                  :captures {:body {:type :json
+                                    :captures {"$.x" {:template-var "x"}}}}}]
            invocations (atom [])
            rp-ch  (rp/run-pkg {:inputs {"inp_a" "hello"}
                                :exec (fn [req]
                                        (async/go
                                          (swap! invocations conj {:req req})
                                          (if (= (:name req) "a")
-                                           {"x" ["val1" "val2" "val3"]}
-                                           {"x" "hello"})))
+                                           {:headers {"x" ["val1" "val2" "val3"]}}
+                                           {:body {"x" "hello"}})))
                                :pkg {:reqs reqs}})]
        (async/take!
         rp-ch

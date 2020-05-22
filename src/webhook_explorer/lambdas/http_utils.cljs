@@ -21,13 +21,13 @@
   (let [c (async/chan)
         scheme (or scheme :http)
         runner (get default-runner scheme)
-        opts {:hostname server-name
-              :port (or server-port (get default-port scheme))
-              :path (if (empty? query-string)
-                          uri
-                          (str uri "?" query-string))
-              :method (name (or request-method :get))
-              :headers (http-util/build-headers headers)}
+        opts #js {:hostname server-name
+                  :port (or server-port (get default-port scheme))
+                  :path (if (empty? query-string)
+                              uri
+                              (str uri "?" query-string))
+                  :method (name (or request-method :get))
+                  :headers (http-util/build-headers headers)}
         resp-body (atom (js/Buffer.alloc 0))
         aborted? (atom false)
         on-res (fn on-res [res]
@@ -35,15 +35,17 @@
                    res
                    "data"
                    (fn [data]
-                     (swap! resp-body #(.concat % data))))
+                     (swap! resp-body #(js/Buffer.concat #js [% data]))))
                  (.on
                    res
                    "end"
                    (fn []
-                     (let [response  {:status (.statusCode res)
-                                      :success ((every-pred pos-int? (partial > 400)) (.statusCode res))
+                     (let [status (obj/get res "statusCode")
+                           headers (obj/get res "headers")
+                           response  {:status status
+                                      :success ((every-pred pos-int? (partial > 400)) status)
                                       :body (.toString @resp-body "utf8") ; TODO: check content-type
-                                      :headers (->> (.headers res)
+                                      :headers (->> headers
                                                     js->clj
                                                     (into
                                                       {}

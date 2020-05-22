@@ -8,7 +8,7 @@
 (s/def :captures.body/type #{:json :form-data})
 (s/def :captures.body/captures
   (s/map-of
-   keyword?
+   string?
    :captures/template-var-spec))
 (s/def :captures/body
   (s/keys
@@ -18,7 +18,15 @@
   (s/map-of
    string?
    :captures/template-var-spec))
+(s/def :captures/cookies
+  (s/map-of
+   string?
+   :captures/template-var-spec))
+(s/def :captures/status
+  :captures/template-var-spec)
 (s/def :captures/captures
   (s/keys
-   :req-un [:captures/headers
-            :captures/body]))
+   :opt-un [:captures/headers
+            :captures/cookies
+            :captures/body
+            :captures/status]))

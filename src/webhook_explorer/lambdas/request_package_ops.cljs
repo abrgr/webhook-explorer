@@ -24,7 +24,7 @@
             (->> (u/put-close! out)))))
     out))
 
-(defn exec [{:keys [qs body headers protocol method host path]}]
+(defn exec [{{:keys [qs body headers protocol method host path]} :req}]
   (http/request
     {:method method
      :query-params qs

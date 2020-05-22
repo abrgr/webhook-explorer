@@ -14,6 +14,7 @@
    (.-userhandler c)
    #js {:onSuccess #(@on-login-success %)
         :onFailure #(@on-login-failure)})
+  (.useCodeGrantFlow c)
   c)
 
 (def ^:private ca (->> (make-cognito-auth) with-user-handler))

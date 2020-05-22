@@ -6,7 +6,9 @@
             [clojure.spec.alpha :as s]
             [webhook-explorer.specs.request-package]
             [webhook-explorer.specs.chan :as c]
-            ["mustache" :as m]))
+            [webhook-explorer.utils :as u]
+            ["mustache" :as m]
+            ["jsonpath" :as jp]))
 
 (defn parse-var [v]
   "Given a string, convert every.req.var or all.req.var to
@@ -266,12 +268,46 @@
                        (render v template-values)]))
                   this)))
 
+(defn body->captures [body-caps body]
+  (let [js-body (clj->js body)]
+    (into
+      {}
+      (map
+        (fn [[json-path {:keys [template-var]}]]
+          [template-var (.query jp js-body (name json-path))]))
+      body-caps)))
+
+(defn headers->captures [headers-caps headers]
+  (into
+    {}
+    (map
+      (fn [[header {:keys [template-var]}]]
+        [template-var (get headers header)]))
+    headers-caps))
+
+(defn resp-chan->captures [{{{body-caps :captures} :body
+                             headers-caps :headers} :captures} resp-ch]
+  (u/async-xform
+    (map
+      (fn [{:keys [body headers status] :as r}]
+        (merge
+          (body->captures body-caps body)
+          (headers->captures headers-caps headers))))
+    resp-ch))
+
 (defn exec-req [exec req dep-vals]
   (->> req
        (into
          {}
          (map (fn [[k v]] [k (render v dep-vals)])))
-       exec))
+       exec
+       (resp-chan->captures req)))
+
+(s/fdef exec-req
+  :args (s/cat :exec fn?
+               :req :request-package/req
+               :dep-vals map?)
+  :ret c/chan?)
 
 (defn run-pkg [{:keys [inputs exec]
                 {:keys [reqs] :as pkg} :pkg}]

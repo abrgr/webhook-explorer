@@ -11,10 +11,12 @@
   (let [out (async/chan)]
     (async/go
       (let [rp-name (get-in event [:path-parameters :name])
-            rp (async/<! (ops/get-request-package rp-name))]
+            rp (async/<! (ops/get-request-package rp-name))
+            res (async/<! (ops/execute rp {"inp1" "hello world"}))]
         (u/put-close!
           out
           {:is-base64-encoded false
            :status-code 200
-           :body (-> rp clj->js (js/JSON.stringify))})))
+           :body {:rp (-> rp clj->js (js/JSON.stringify))
+                  :res res}})))
     out))
