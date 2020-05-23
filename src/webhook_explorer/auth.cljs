@@ -1,6 +1,9 @@
 (ns webhook-explorer.auth
-  (:require [webhook-explorer.env :as env]
+  (:require [goog.object :as obj]
+            [webhook-explorer.env :as env]
             ["amazon-cognito-auth-js" :as cognito-auth]))
+
+(declare sign-out)
 
 (defn- make-cognito-auth []
   (->> env/cognito-cfg
@@ -13,7 +16,12 @@
   (set!
    (.-userhandler c)
    #js {:onSuccess #(@on-login-success %)
-        :onFailure #(@on-login-failure)})
+        :onFailure #(try
+                      (if (-> % js/JSON.parse (obj/get "error") (= "invalid_grant"))
+                        (sign-out)
+                        (@on-login-failure))
+                      (catch js/Error e
+                        (@on-login-failure)))})
   (.useCodeGrantFlow c)
   c)
 
