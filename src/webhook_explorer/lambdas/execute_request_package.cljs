@@ -11,8 +11,9 @@
   (let [out (async/chan)]
     (async/go
       (let [rp-name (get-in event [:path-parameters :name])
+            input-params (-> event (get :body) js->clj)
             rp (async/<! (ops/get-request-package rp-name))
-            res (async/<! (ops/execute rp {"inp1" "hello world"}))]
+            res (async/<! (ops/execute rp input-params))]
         (u/put-close!
           out
           {:is-base64-encoded false

@@ -172,12 +172,12 @@
          [(r/adapt-react-class MenuItem) {:value (str status)} (str status " - " label)]])
       status-codes)]]
    [req-parts/editable-headers-view
-    "Response headers"
-    (or headers {})
-    (fn [k v]
-      (if (nil? v)
-        (on-update update-in [:matchers idx :handler :mock :res :headers] dissoc (name k))
-        (on-update assoc-in [:matchers idx :handler :mock :res :headers (name k)] v)))]
+    {:title "Response headers"
+     :headers (or headers {})
+     :on-header-change (fn [k v]
+                         (if (nil? v)
+                           (on-update update-in [:matchers idx :handler :mock :res :headers] dissoc (name k))
+                           (on-update assoc-in [:matchers idx :handler :mock :res :headers (name k)] v)))}]
    [req-parts/base-body-view
     {:title "Body"
      :bodies (req-parts/make-bodies {:raw {:label "Raw" :body ""}})
@@ -347,9 +347,11 @@
   {:matches {}
    :handler nil})
 
-(defn- captures [{:keys [styles header-captures body-capture-type body-captures on-update]}]
+(defn- captures [{:keys [styles header-captures status-capture body-capture-type body-captures on-update]}]
   [req-captures/component
-   {:header-captures (req-captures/template-var-map->simple-map header-captures)
+   {:type :request
+    :status-capture status-capture
+    :header-captures (req-captures/template-var-map->simple-map header-captures)
     :body-capture-type body-capture-type
     :body-captures (req-captures/template-var-map->simple-map body-captures)
     :on-update-header-capture #(on-update assoc-in [:captures :headers %1 :template-var] %2)
@@ -357,7 +359,9 @@
     :on-remove-all-body-captures #(on-update update :captures dissoc :body)
     :on-update-body-capture-type #(on-update assoc-in [:captures :body] {:type % :captures {}})
     :on-update-body-capture #(on-update assoc-in [:captures :body :captures %1 :template-var] %2)
-    :on-remove-body-capture #(on-update update-in [:captures :body :captures] dissoc %)}])
+    :on-remove-body-capture #(on-update update-in [:captures :body :captures] dissoc %)
+    :on-should-capture-status #(on-update assoc-in [:captures :status :template-var] (if % "" nil))
+    :on-update-status-capture #(on-update assoc-in [:captures :status :template-var] %)}])
 
 (defn- get-all-template-vars [path header-captures body-captures]
   (->> (concat (vals header-captures) (vals body-captures))
@@ -386,6 +390,7 @@
 (defn- preamble* [{:keys [styles state items svc]}]
   (let [{:keys [match-type path method domain]
          {header-captures :headers
+          {status-capture :template-var} :status
           {body-capture-type :type
            body-captures :captures} :body} :captures} (get-in state [:context :handler])
         template-vars (get-all-template-vars path header-captures body-captures)]
@@ -404,6 +409,7 @@
                       :domain domain
                       :on-update (partial on-update* svc)}]
      [captures {:styles styles
+                :status-capture status-capture
                 :header-captures (or header-captures {})
                 :body-capture-type body-capture-type
                 :body-captures body-captures

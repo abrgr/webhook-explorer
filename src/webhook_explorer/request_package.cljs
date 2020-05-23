@@ -285,12 +285,19 @@
         [template-var (get headers header)]))
     headers-caps))
 
+(defn status->captures [{:keys [template-var]} status]
+  (when template-var
+    {template-var (str status)}))
+
 (defn resp-chan->captures [{{{body-caps :captures} :body
-                             headers-caps :headers} :captures} resp-ch]
+                             headers-caps :headers
+                             status-caps :status} :captures} resp-ch]
   (u/async-xform
     (map
       (fn [{:keys [body headers status] :as r}]
         (merge
+          {}
+          (status->captures status-caps status)
           (body->captures body-caps body)
           (headers->captures headers-caps headers))))
     resp-ch))

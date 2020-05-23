@@ -156,10 +156,10 @@
   [:> TextField {:value value
                  :onChange #(on-change key (obj/getValueByKeys % #js ["target" "value"]))}])
 
-(defn editable-headers-view [title headers on-header-change]
+(defn editable-headers-view [{:keys [title headers key-title value-title on-header-change]}]
   [base-kv-view {:title title
-                 :k-title "Header"
-                 :v-title "Value"
+                 :k-title (or key-title "Header")
+                 :v-title (or value-title "Value")
                  :m headers
                  :editable true
                  :value-component editable-value

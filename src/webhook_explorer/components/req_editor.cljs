@@ -20,7 +20,7 @@
   [:<>
    [:> FormControl {:fullWidth true
                     :margin "normal"}
-    [:> FormControlLabel {:label "Secure"
+    [:> FormControlLabel {:label "HTTPS"
                           :control (r/as-element
                                     [:> Switch {:checked (= protocol "https")
                                                 :onChange #(on-update
@@ -51,12 +51,12 @@
         (on-update :qs (dissoc qs k))
         (on-update :qs (assoc qs k v))))]
    [req-parts/editable-headers-view
-    "Request Headers"
-    headers
-    (fn [k v]
-      (if (nil? v)
-        (on-update :headers (dissoc headers k))
-        (on-update :headers (assoc headers k v))))]
+    {:title "Request Headers"
+     :headers headers
+     :on-header-change (fn [k v]
+                         (if (nil? v)
+                           (on-update :headers (dissoc headers k))
+                           (on-update :headers (assoc headers k v))))}]
    [req-parts/editable-body-view
     "Request Body"
     (req-parts/make-bodies

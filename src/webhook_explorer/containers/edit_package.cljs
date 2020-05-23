@@ -44,6 +44,7 @@
 (defn- request* [{:keys [idx svc state class-name styles]
                   {:keys [req-name]
                    {header-captures :headers
+                    status-capture :status
                     {body-capture-type :type
                      body-captures :captures} :body} :captures
                    {:keys [protocol method host path qs headers body]} :req} :item}]
@@ -83,7 +84,9 @@
       :body body
       :on-update (fn [k v] (xs/send svc {:type :update-req :req-idx idx :k k :v v}))}]]
    [req-captures/component
-    {:header-captures (req-captures/template-var-map->simple-map header-captures)
+    {:type :response
+     :status-capture (:template-var status-capture)
+     :header-captures (req-captures/template-var-map->simple-map header-captures)
      :body-capture-type body-capture-type
      :body-captures (req-captures/template-var-map->simple-map body-captures)
      :on-update-header-capture #(xs/send svc {:type :update-header-capture :req-idx idx :header %1 :template-var %2})
@@ -91,7 +94,9 @@
      :on-remove-all-body-captures #(xs/send svc {:type :remove-all-body-captures :req-idx idx})
      :on-update-body-capture-type #(xs/send svc {:type :update-body-capture-type :req-idx idx :body-capture-type %})
      :on-update-body-capture #(xs/send svc {:type :update-body-capture :req-idx idx :body-capture-key %1 :template-var %2})
-     :on-remove-body-capture #(xs/send svc {:type :remove-body-capture :req-idx idx :body-capture-key %})}]])
+     :on-remove-body-capture #(xs/send svc {:type :remove-body-capture :req-idx idx :body-capture-key %})
+     :on-should-capture-status #(xs/send svc {:type :update-status-capture :req-idx idx :template-var (if % "" nil)})
+     :on-update-status-capture #(xs/send svc {:type :update-status-capture :req-idx idx :template-var %})}]])
 
 (defn request [props]
   [styled props request*])
@@ -181,7 +186,8 @@
               {:variant "subtitle1"}
               template-var])]))
       (for [{:keys [req-name captures]} (get-in state [:context :package :reqs])
-            :let [caps (concat (-> captures :headers vals)
+            :let [caps (concat (filter some? [(get captures :status)])
+                               (-> captures :headers vals)
                                (vals (get-in captures [:body :captures])))]
             :when (not-empty caps)]
         ^{:key req-name}

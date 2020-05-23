@@ -25,6 +25,7 @@
                [:remove-body-capture -> *self* ! :remove-body-capture]
                [:update-req-name -> *self* ! :update-req-name]
                [:update-req -> *self* ! :update-req]
+               [:update-status-capture -> *self* ! :update-status-capture]
                [:save -> :.saving]
                (children
                 > :editing [[after 3000 -> *self* ! :clear-notification]]
@@ -124,6 +125,11 @@
        {:ctx-prop :package}
        (fn [package {:keys [req-idx body-capture-key]}]
          (update-in package [:reqs req-idx :captures :body :captures] dissoc body-capture-key)))
+      :update-status-capture
+      (xs/xform-ctx-from-event
+        {:ctx-prop :package}
+        (fn [package {:keys [req-idx template-var]}]
+          (assoc-in package [:reqs req-idx :captures :status :template-var] template-var)))
       :show-saving-error
       (xs/assign-ctx {:ctx-prop :notification
                       :static-ctx "Error saving package"})
