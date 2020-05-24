@@ -127,9 +127,9 @@
          (update-in package [:reqs req-idx :captures :body :captures] dissoc body-capture-key)))
       :update-status-capture
       (xs/xform-ctx-from-event
-        {:ctx-prop :package}
-        (fn [package {:keys [req-idx template-var]}]
-          (assoc-in package [:reqs req-idx :captures :status :template-var] template-var)))
+       {:ctx-prop :package}
+       (fn [package {:keys [req-idx template-var]}]
+         (assoc-in package [:reqs req-idx :captures :status :template-var] template-var)))
       :show-saving-error
       (xs/assign-ctx {:ctx-prop :notification
                       :static-ctx "Error saving package"})

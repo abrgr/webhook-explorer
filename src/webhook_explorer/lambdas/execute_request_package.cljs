@@ -15,9 +15,9 @@
             rp (async/<! (ops/get-request-package rp-name))
             res (async/<! (ops/execute rp input-params))]
         (u/put-close!
-          out
-          {:is-base64-encoded false
-           :status-code 200
-           :body {:rp (-> rp clj->js (js/JSON.stringify))
-                  :res res}})))
+         out
+         {:is-base64-encoded false
+          :status-code 200
+          :body {:rp rp
+                 :res res}})))
     out))

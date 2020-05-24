@@ -1,5 +1,5 @@
 (ns webhook-explorer.utils
-  (:require-macros [webhook-explorer.utils :refer [let+]]) 
+  (:require-macros [webhook-explorer.utils :refer [let+]])
   (:require [debux.cs.core :as d :refer-macros  [dbg dbgn]]
             [clojure.core.async :as async]))
 

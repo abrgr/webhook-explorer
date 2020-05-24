@@ -110,20 +110,20 @@
 
 (defn everys->all [everys]
   (reduce
-    (fn [all every-val]
-      (reduce
-        (fn [all [k v]]
-          (update
-            all
-            k
-            (fn [prev]
-              (into
-                (or prev [])
-                (if (coll? v) v [v])))))
-        all
-        every-val))
-    {}
-    (mapv :value everys)))
+   (fn [all every-val]
+     (reduce
+      (fn [all [k v]]
+        (update
+         all
+         k
+         (fn [prev]
+           (into
+            (or prev [])
+            (if (coll? v) v [v])))))
+      all
+      every-val))
+   {}
+   (mapv :value everys)))
 
 (defn all-ch [next-id req-name ch]
   "Creates a channel that listens for values on ch for request, req-name
@@ -197,27 +197,27 @@
 
 (defn flattened-template-data [req-deps trigger+dep->vals]
   (reduce
-    (fn [acc {:keys [trigger req template-var plural]}]
-      (assoc
-        acc
-        (str (name trigger) "." req "." template-var)
-        (get-in trigger+dep->vals [{:trigger trigger :req req} template-var])))
-    {}
-    req-deps))
+   (fn [acc {:keys [trigger req template-var plural]}]
+     (assoc
+      acc
+      (str (name trigger) "." req "." template-var)
+      (get-in trigger+dep->vals [{:trigger trigger :req req} template-var])))
+   {}
+   req-deps))
 
 (defn flattened-template-data->template-data [ftd]
   (reduce
-    (fn [acc [k v]]
-      (assoc-in acc (string/split k #"\." 3) v))
-    {}
-    ftd))
+   (fn [acc [k v]]
+     (assoc-in acc (string/split k #"\." 3) v))
+   {}
+   ftd))
 
 (defn plural-vars [req-deps]
   (into
-    #{}
-    (comp (filter :plural)
-          (map #(select-keys % [:trigger :req :template-var])))
-    req-deps))
+   #{}
+   (comp (filter :plural)
+         (map #(select-keys % [:trigger :req :template-var])))
+   req-deps))
 
 (defn dep-val-seq [req-deps inputs trigger+dep->vals]
   "Given a coll? of required dependencies, an input map, and a map from
@@ -230,15 +230,15 @@
     (let [td (flattened-template-data req-deps trigger+dep->vals)
           is-plural? (plural-vars req-deps)
           d->vs (group-by
-                  (comp (every-pred
-                          (comp coll? second)
-                          (comp
-                            not
-                            is-plural?
-                            #(update % :trigger keyword)
-                            (partial zipmap [:trigger :req :template-var])
-                            #(string/split % #"\." 3)
-                            first))) td)
+                 (comp (every-pred
+                        (comp coll? second)
+                        (comp
+                         not
+                         is-plural?
+                         #(update % :trigger keyword)
+                         (partial zipmap [:trigger :req :template-var])
+                         #(string/split % #"\." 3)
+                         first))) td)
           manies (into {} (get d->vs true))
           singles (into {} (get d->vs false))]
       (map
@@ -253,7 +253,7 @@
 (s/fdef dep-val-seq
   :args (s/cat :req-deps (s/coll-of string?)
                :inputs (s/map-of string? string?)
-               :dep->vals (s/map-of string? (s/or :single string? 
+               :dep->vals (s/map-of string? (s/or :single string?
                                                   :many (s/coll-of string?))))
   :ret (s/coll-of (s/map-of string? string?)))
 
@@ -261,29 +261,29 @@
   (cond
     (string? this) (m/render this (clj->js template-values))
     (map? this) (into
-                  {}
-                  (map
-                    (fn [[k v]]
-                      [(if (string? k) (render k template-values) k)
-                       (render v template-values)]))
-                  this)))
+                 {}
+                 (map
+                  (fn [[k v]]
+                    [(if (string? k) (render k template-values) k)
+                     (render v template-values)]))
+                 this)))
 
 (defn body->captures [body-caps body]
   (let [js-body (clj->js body)]
     (into
-      {}
-      (map
-        (fn [[json-path {:keys [template-var]}]]
-          [template-var (.query jp js-body (name json-path))]))
-      body-caps)))
+     {}
+     (map
+      (fn [[json-path {:keys [template-var]}]]
+        [template-var (.query jp js-body (name json-path))]))
+     body-caps)))
 
 (defn headers->captures [headers-caps headers]
   (into
-    {}
-    (map
-      (fn [[header {:keys [template-var]}]]
-        [template-var (get headers header)]))
-    headers-caps))
+   {}
+   (map
+    (fn [[header {:keys [template-var]}]]
+      [template-var (get headers header)]))
+   headers-caps))
 
 (defn status->captures [{:keys [template-var]} status]
   (when template-var
@@ -293,20 +293,20 @@
                              headers-caps :headers
                              status-caps :status} :captures} resp-ch]
   (u/async-xform
-    (map
-      (fn [{:keys [body headers status] :as r}]
-        (merge
-          {}
-          (status->captures status-caps status)
-          (body->captures body-caps body)
-          (headers->captures headers-caps headers))))
-    resp-ch))
+   (map
+    (fn [{:keys [body headers status] :as r}]
+      (merge
+       {}
+       (status->captures status-caps status)
+       (body->captures body-caps body)
+       (headers->captures headers-caps headers))))
+   resp-ch))
 
 (defn exec-req [exec req dep-vals]
   (->> req
        (into
-         {}
-         (map (fn [[k v]] [k (render v dep-vals)])))
+        {}
+        (map (fn [[k v]] [k (render v dep-vals)])))
        exec
        (resp-chan->captures req)))
 

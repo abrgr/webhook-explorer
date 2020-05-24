@@ -65,13 +65,13 @@
                              :control (r/as-element
                                        [:> Switch {:checked (some? status-capture)
                                                    :onChange #(on-should-capture-status
-                                                                (obj/getValueByKeys % #js ["target" "checked"]))}])}]
-        (when (some? status-capture)
-          [:> TextField
-           {:value status-capture
-            :on-change #(on-update-status-capture (obj/getValueByKeys % #js ["target" "value"]))
-            :label "Template variable for status code"
-            :fullWidth true}])])
+                                                               (obj/getValueByKeys % #js ["target" "checked"]))}])}]
+       (when (some? status-capture)
+         [:> TextField
+          {:value status-capture
+           :on-change #(on-update-status-capture (obj/getValueByKeys % #js ["target" "value"]))
+           :label "Template variable for status code"
+           :fullWidth true}])])
     [req-parts/editable-headers-view
      {:title (str (get type->name type) " header captures (" (count header-captures) ")")
       :headers header-captures

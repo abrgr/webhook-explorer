@@ -702,6 +702,15 @@ Resources:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
           /api/request-packages:
+            get:
+              responses: {}
+              security:
+                - CognitoAuth: []
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GenericHandler.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
             post:
               responses: {}
               security:
@@ -790,6 +799,12 @@ Resources:
     Properties:
       Handler: lambdas/handler.handler
       Events:
+        ListRequestPackages:
+          Type: Api
+          Properties:
+            Path: /api/request-packages
+            Method: get
+            RestApiId: !Ref WebhookExplorerApi
         RequestPackageExecute:
           Type: Api
           Properties:

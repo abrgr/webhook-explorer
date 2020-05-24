@@ -24,37 +24,37 @@
         opts #js {:hostname server-name
                   :port (or server-port (get default-port scheme))
                   :path (if (empty? query-string)
-                              uri
-                              (str uri "?" query-string))
+                          uri
+                          (str uri "?" query-string))
                   :method (name (or request-method :get))
                   :headers (http-util/build-headers headers)}
         resp-body (atom (js/Buffer.alloc 0))
         aborted? (atom false)
         on-res (fn on-res [res]
                  (.on
-                   res
-                   "data"
-                   (fn [data]
-                     (swap! resp-body #(js/Buffer.concat #js [% data]))))
+                  res
+                  "data"
+                  (fn [data]
+                    (swap! resp-body #(js/Buffer.concat #js [% data]))))
                  (.on
-                   res
-                   "end"
-                   (fn []
-                     (let [status (obj/get res "statusCode")
-                           headers (obj/get res "headers")
-                           response  {:status status
-                                      :success ((every-pred pos-int? (partial > 400)) status)
-                                      :body (.toString @resp-body "utf8") ; TODO: check content-type
-                                      :headers (->> headers
-                                                    js->clj
-                                                    (into
-                                                      {}
-                                                      (map (fn [[k v]] [(string/lower-case k) v]))))}]
-                       (if-not @aborted?
-                         (async/put! c response))
-                       (if cancel
-                         (async/close! cancel))
-                       (async/close! c)))))
+                  res
+                  "end"
+                  (fn []
+                    (let [status (obj/get res "statusCode")
+                          headers (obj/get res "headers")
+                          response  {:status status
+                                     :success ((every-pred pos-int? (partial > 400)) status)
+                                     :body (.toString @resp-body "utf8") ; TODO: check content-type
+                                     :headers (->> headers
+                                                   js->clj
+                                                   (into
+                                                    {}
+                                                    (map (fn [[k v]] [(string/lower-case k) v]))))}]
+                      (if-not @aborted?
+                        (async/put! c response))
+                      (if cancel
+                        (async/close! cancel))
+                      (async/close! c)))))
         req (runner opts on-res)]
     (when timeout
       (.setTimeout req timeout))
