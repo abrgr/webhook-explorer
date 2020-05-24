@@ -48,7 +48,7 @@
                                    :input-template-vars []
                                    :reqs []}})
       :update-package-name
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [package-name]}]
          (assoc package :name package-name)))
@@ -59,7 +59,7 @@
                           :captures {:headers {}}
                           :req {:qs {} :headers {} :body ""}})
       :remove-req
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx]}]
          (update
@@ -69,7 +69,7 @@
                         (subvec % (inc req-idx)))
                 (into [])))))
       :add-input-template-var
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [template-var]}]
          (update
@@ -78,7 +78,7 @@
           conj
           template-var)))
       :remove-input-template-var
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [template-var]}]
          (update
@@ -86,47 +86,47 @@
           :input-template-vars
           (partial filterv (partial not= template-var)))))
       :update-req-name
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx req-name]}]
          (assoc-in package [:reqs req-idx :req-name] req-name)))
       :update-req
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx k v]}]
          (assoc-in package [:reqs req-idx :req k] v)))
       :update-header-capture
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx header template-var]}]
          (assoc-in package [:reqs req-idx :captures :headers header :template-var] template-var)))
       :remove-header-capture
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx header]}]
          (update-in package [:reqs req-idx :captures :headers] dissoc header)))
       :remove-all-body-captures
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx]}]
          (update-in package [:reqs req-idx :captures] dissoc :body)))
       :update-body-capture-type
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx body-capture-type]}]
          (assoc-in package [:reqs req-idx :captures :body] {:type body-capture-type :captures {}})))
       :update-body-capture
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx body-capture-key template-var]}]
          (assoc-in package [:reqs req-idx :captures :body :captures body-capture-key :template-var] template-var)))
       :remove-body-capture
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx body-capture-key]}]
          (update-in package [:reqs req-idx :captures :body :captures] dissoc body-capture-key)))
       :update-status-capture
-      (xs/xform-ctx-from-event
+      (xs/xform-ctx-from-evt
        {:ctx-prop :package}
        (fn [package {:keys [req-idx template-var]}]
          (assoc-in package [:reqs req-idx :captures :status :template-var] template-var)))

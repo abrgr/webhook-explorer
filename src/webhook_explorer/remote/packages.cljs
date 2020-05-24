@@ -16,3 +16,16 @@
                            :json-params {:package pkg}}))
            {:keys [error] {:keys [success]} :body} res]
        (or error (when-not success (js/Error. "Failure")))))))
+
+(defn load-packages [params]
+  (putil/chan->promise
+   (async/go
+     (let [res (async/<! (http-utils/req
+                          {:method :get
+                           :path "request-packages"
+                           :query-params (select-keys params [:token])}))
+           {:keys [error body]} res]
+       (or
+         error
+         (when-not (:request-packages body) (js/Error. "Failure"))
+         body)))))

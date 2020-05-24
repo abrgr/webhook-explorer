@@ -213,7 +213,7 @@
              :msg :failed-cfg-spec
              :id id
              :explanation (s/explain-data (s/spec :xstate/config) cfg)})
-      (throw (js/Error. "Bad config")))
+      (throw (js/Error. "Bad state machine config")))
     (-> c
         cfg->machine*
         (assoc :id (name id)))))
@@ -284,10 +284,12 @@
       clj->js
       xs/assign))
 
-(defn assign-ctx-from-evt [{:keys [evt-prop ctx-prop static-ctx]}]
+(defn assign-ctx-from-evt [{:keys [evt-prop evt-path ctx-prop static-ctx]}]
   (-> static-ctx
       (assoc ctx-prop (fn [_ evt]
-                        (-> evt evt->clj evt-prop)))
+                        (-> evt
+                            evt->clj
+                            (get-in (if evt-prop [evt-prop] evt-path)))))
       clj->js
       xs/assign))
 
@@ -303,7 +305,7 @@
       clj->js
       xs/assign))
 
-(defn xform-ctx-from-event [{:keys [ctx-prop static-ctx]} update-fn & update-args]
+(defn xform-ctx-from-evt [{:keys [ctx-prop static-ctx]} update-fn & update-args]
   (-> static-ctx
       (assoc
        ctx-prop
