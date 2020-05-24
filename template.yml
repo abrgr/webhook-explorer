@@ -817,6 +817,20 @@ Resources:
           EXPECTED_AUD: !Ref WebhookExplorerApp
           COGNITO_USER_POOL_ID: !Ref WebhookExplorerUserPool
           HANDLERS_TABLE_NAME: !Ref HandlersTable
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref WebhookRequestBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HandlersTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "cognito-idp:ListUsers"
+                - "cognito-idp:AdminDisableUser"
+                - "cognito-idp:AdminEnableUser"
+                - "cognito-idp:AdminUpdateUserAttributes"
+                - "cognito-idp:AdminCreateUser"
+              Resource: !GetAtt WebhookExplorerUserPool.Arn
   GenericHandlerPermissionFix:
     Type: "AWS::Lambda::Permission"
     Properties:

@@ -24,15 +24,24 @@
    "Access-Control-Allow-Methods" "*"
    "Access-Control-Allow-Headers" "*"})
 
+(defn make-err-response [err]
+  #js {:isBase64Encoded false
+       :statusCode 500
+       :body (js/JSON.stringify #js {:error "Unknown"})})
+
 (defn handler [event context cb]
   (let [evt (->clj event)
         ctx (->clj context)]
     (->> (h/handler (->clj event) (->clj context))
-         (u/async-xform (comp
-                         (map (partial cske/transform-keys csk/->camelCase))
-                         (map #(update % :body (comp js/JSON.stringify clj->js)))
-                         (map (fn [x]
-                                (update x :headers #(merge default-headers %))))
-                         (map clj->js)))
+         (u/async-xform 
+           (map
+             (fn [res]
+               (if (map? res)
+                 (-> res
+                     (->> (cske/transform-keys csk/->camelCase))
+                     (update :body (comp js/JSON.stringify clj->js))
+                     (update :headers (partial merge default-headers))
+                     clj->js)
+                 (make-err-response res)))))
          (u/async-do (partial send-result cb)))
     nil))

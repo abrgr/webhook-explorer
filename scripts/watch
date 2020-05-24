@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec docker-compose run --rm --service-ports lein with-profile dev run -m shadow.cljs.devtools.cli --npm watch test dev lambda

@@ -32,7 +32,8 @@
       (xs/xform-ctx-from-evt
         {:ctx-prop :next-req}
         (fn [_ {{:keys [next-token]} :data}]
-          {:token next-token}))
+          (when next-token
+            {:token next-token})))
       :store-error
       (xs/assign-ctx-from-evt
         {:ctx-prop :error

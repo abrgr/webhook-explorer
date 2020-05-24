@@ -3,6 +3,12 @@
 bucket="ezbds-bin"
 stack_id="webhook-explorer"
 
+echo "Building..."
+if ! docker-compose run --rm --service-ports lein with-profile release run -m shadow.cljs.devtools.cli --npm release :lambda ; then
+  echo "Failed to build"
+  exit 2
+fi
+
 echo "Packaging..."
 if ! docker-compose run --rm --entrypoint /project/scripts/package-in-docker aws "${bucket}" ; then
   echo "Failed to package"

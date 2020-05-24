@@ -10,8 +10,9 @@
   [event context]
   (let [out (async/chan)]
     (async/go
-      (let [token (get-in event [:query-string-parameters :token])
-            res (async/<! (ops/list-request-packages {:token token}))]
+      (u/let+ [token (get-in event [:query-string-parameters :token])
+               res (async/<! (ops/list-request-packages {:token token}))
+               :abort [(instance? js/Error res) (u/put-close! out res)]]
         (u/put-close!
          out
          {:is-base64-encoded false

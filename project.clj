@@ -10,12 +10,13 @@
                  [clj-commons/secretary "1.2.4"]
                  [cljs-http "0.1.46"]
                  [camel-snake-kebab "0.4.1"]
-                 [org.clojure/data.json "0.2.7"]
-                 [philoskim/debux-stubs "0.6.5"]]
+                 [org.clojure/data.json "0.2.7"]]
   :plugins [[lein-cljfmt "0.6.7"]]
   :source-paths ["src"]
   :profiles {:dev
               {:dependencies [[lilactown/punk-adapter-web "0.0.10"]
                               [binaryage/devtools "1.0.0"]
-                              [philoskim/debux "0.6.5"]]}}
+                              [philoskim/debux "0.6.5"]]}
+             :release
+              {:dependencies [[philoskim/debux-stubs "0.6.5"]]}}
   :repl-options {:init-ns webhook-explorer.core})

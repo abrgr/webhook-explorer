@@ -76,8 +76,9 @@
         :row-height row-height
         :items packages
         :next-req next-req
-        :load-more-items (xs/send svc {:type :load-packages})
-        :get-row-by-idx (partial nth packages)
+        :load-more-items #(do (xs/send svc {:type :load-packages})
+                              nil)
+        :get-row-by-idx (partial get packages)
         :cols cols
         :no-rows-renderer (partial no-rows-renderer styles)
         :cell-renderer cell-renderer}])))
