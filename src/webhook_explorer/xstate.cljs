@@ -36,6 +36,8 @@
         guards (get-mods-by-type :guard :guard mods)]
     (cond-> {}
       (= target-type :other) (assoc :target (name target))
+      (= target-type :ext-self) (assoc :internal false)
+      (namespace target) (assoc :internal (not= (namespace target) '*ext*))
       (not-empty actions) (assoc :actions actions)
       (not-empty guards) (assoc :guards guards))))
 
@@ -196,6 +198,9 @@
      [] - means an actual list; \\[\\] means optional
      transition = [:event -> :target ! action \\[! action2...\\] | guard \\[| guard...\\]]
      self transition = [:event -> *self*]
+     forced external transition = [:event -> *ext*/event]
+     forced internal transition = [:event -> *int*/event]
+     external self transition = [:event -> *ext*/*self*]
      delayed transition = [after 100 -> :target ...]
      invocation = [$ :service-name [...transitions (e.g. on-done, on-error) or :key :val]] ; id defaults to src
      entry actions = [>! :action-name \\[:action-name2...\\]]

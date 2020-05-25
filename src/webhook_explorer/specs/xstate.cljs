@@ -2,9 +2,11 @@
   (:require [clojure.spec.alpha :as s]
             [goog.object :as obj]))
 
+(quote a/b)
 (s/def :xstate/transition-to
   (s/cat :to-glyph #{'->}
          :target (s/alt :self #{'*self*}
+                        :ext-self #{(symbol "*ext*" "*self*")} ; TODO: why does the compiler complain when using '*ext*/*self*? Still tries to look up the namespace even when quoted
                         :other keyword?)
          :mods (s/* (s/alt :action (s/cat :action-glyph #{'!}
                                           :action keyword?)
