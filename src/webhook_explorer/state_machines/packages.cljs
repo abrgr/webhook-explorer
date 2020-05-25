@@ -9,7 +9,7 @@
    {:cfg
     (xs/cfg->machine
      :packages
-     '[> :ready [[:reset -> *self* ! :reset]
+     '[> :ready [[:reset -> *ext*/*self*]
                  (children
                    > :regular [[:load-packages -> :loading]]
                    :error [[:load-packages -> :loading]]
@@ -21,10 +21,7 @@
            :next-req {}
            :error nil}
      :actions
-     {:reset
-      (xs/assign-ctx {:ctx-prop :packages
-                      :static-ctx []})
-      :store-packages
+     {:store-packages
       (xs/assign-ctx-from-evt
         {:ctx-prop :packages
          :evt-path [:data :request-packages]})

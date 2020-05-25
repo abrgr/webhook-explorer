@@ -29,22 +29,9 @@
 
 (def ^:private cols
   (array-map
-   :name {:label "Request Package"}))
-
-(defn- edit-links [{{:keys [domain path method has-exact-handler has-prefix-handler]} :handler}]
-  [:<>
-   (when has-exact-handler
-     [:> Button
-      {:on-click #(routes/nav-to-edit-handler {:domain domain
-                                               :path path
-                                               :method method
-                                               :match-type "exact"})
-       :color "primary"}
-      "Exact"])
-   (when has-prefix-handler
-     [:> Button {:on-click #(routes/nav-to-edit-handler {:domain domain :handler-path path :match-type "prefix"})
-                 :color "primary"}
-      "Prefix"])])
+   :name {:label "Request Package"}
+   :edit {:label "Edit"}
+   :executions {:label "Executions"}))
 
 (defn- cell-renderer [{:keys [col empty-row? row-data cell-data]}]
   (r/as-element
@@ -55,7 +42,16 @@
     (if empty-row?
       (when (= col :name)
         [:> CircularProgress])
-      cell-data)]))
+      (case col
+        :edit
+        [:> Button
+          {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
+          "Edit"]
+        :executions
+        [:> Button
+          {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
+          "Executions"]
+        cell-data))]))
 
 (defn- no-rows-renderer [styles]
   (r/as-element
