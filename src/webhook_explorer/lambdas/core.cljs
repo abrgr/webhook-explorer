@@ -5,6 +5,7 @@
             [webhook-explorer.utils :as u]
             [webhook-explorer.promise-utils :as putil]
             [webhook-explorer.lambdas.handler :as h]
+            [webhook-explorer.lambdas.get-request-package]
             [webhook-explorer.lambdas.execute-request-package]
             [webhook-explorer.lambdas.list-request-packages]))
 

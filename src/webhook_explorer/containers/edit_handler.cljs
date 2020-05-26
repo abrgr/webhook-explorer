@@ -4,6 +4,7 @@
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.xstate :as xs]
+            [webhook-explorer.icons :as icons]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
@@ -37,7 +38,13 @@
 (def ^:private styled
   (styles/style-wrapper
    (fn [theme]
-     {:extended-icon {:marginRight (.spacing theme 1)}
+     {:failed-container {:display "flex"
+                         :flexDirection "column"
+                         :height "100%"
+                         :alignItems "center"
+                         :justifyContent "center"}
+      :disabled {:color "rgba(0, 0, 0, 0.26)"}
+      :extended-icon {:marginRight (.spacing theme 1)}
       :path-container {:display "flex"
                        :alignItems "flex-start"}
       :full-flex {:flex 1
@@ -444,6 +451,17 @@
       :on-update (partial on-update* svc)}
      matcher]))
 
+(defn- failed-component* [{:keys [styles]}]
+  [:div {:className (obj/get styles "failed-container")}
+   [:> icons/HandlerConfigIcon {:style #js {:fontSize 100}
+                                :color "disabled"}]
+   [:> Typography {:variant "h4"
+                   :class-name (obj/get styles "disabled")}
+    "Failed to load this request handler"]])
+
+(defn- failed-component [props]
+  [styled props failed-component*])
+
 (defn- state->items [state]
   (get-in state [:context :handler :matchers]))
 
@@ -453,6 +471,7 @@
     :state state
     :preamble-component preamble
     :postamble-component postamble
+    :failed-component failed-component
     :item-renderer item-renderer
     :state->items state->items
     :ready-state :ready

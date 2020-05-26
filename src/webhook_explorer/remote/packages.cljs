@@ -29,3 +29,15 @@
          error
          (when-not (:request-packages body) (js/Error. "Failure"))
          body)))))
+
+(defn load-package [{:keys [name]}]
+  (putil/chan->promise
+   (async/go
+     (let [res (async/<! (http-utils/req
+                          {:method :get
+                           :path (str "request-packages/" (js/encodeURIComponent name))}))
+           {:keys [error] {:keys [request-package]} :body} res]
+       (or
+         error
+         (when-not request-package (js/Error. "Failure"))
+         request-package)))))

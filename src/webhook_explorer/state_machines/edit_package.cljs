@@ -11,7 +11,12 @@
      :edit-package
      '[* [[:reset -> :start ! :reset-params]]
        > :idle []
-       :start [[*transient* -> :ready ! :set-default-package]]
+       :start [[*transient* -> :fetch-package | :has-params]
+               [*transient* -> :ready ! :set-default-package]]
+       :fetch-package [[$ :fetch-package
+                        :on-done -> :ready ! :receive-package
+                        :on-error -> :failed ! :receive-package-error]]
+       :failed []
        :ready [[:update-package-name -> *self* ! :update-package-name]
                [:add-input-template-var -> *self* ! :add-input-template-var]
                [:remove-input-template-var -> *self* ! :remove-input-template-var]
@@ -33,7 +38,7 @@
                           :on-done -> :editing ! :show-saving-success
                           :on-error -> :editing ! :show-saving-error]])]])
     :opts
-    {:ctx {}
+    {:ctx {:params nil}
      :actions
      {:reset-params
       (xs/assign-ctx-from-evt {:evt-prop :params
@@ -42,6 +47,12 @@
                                                       :input-template-vars []
                                                       :reqs []}
                                             :error nil}})
+      :receive-package
+      (xs/assign-ctx-from-evt {:evt-prop :data
+                               :ctx-prop :package})
+      :receive-package-error
+      (xs/assign-ctx-from-evt {:evt-prop :data
+                               :ctx-prop :error})
       :set-default-package
       (xs/assign-ctx {:ctx-prop :package
                       :static-ctx {:name ""
@@ -139,9 +150,13 @@
       :clear-notification
       (xs/assign-ctx {:ctx-prop :notification
                       :static-ctx nil})}
+     :guards
+     {:has-params (fn [{:keys [params]}] (some? params))}
      :services
      {:save-package (fn [{:keys [package] :as ctx} evt]
-                      (remote-pkgs/save-package package))}}}))
+                      (remote-pkgs/save-package package))
+      :fetch-package (fn [{{:keys [name]} :params} evt]
+                       (remote-pkgs/load-package {:name name}))}}}))
 
 (defn svc
   ([]

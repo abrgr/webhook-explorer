@@ -4,6 +4,7 @@
             [goog.object :as obj]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.xstate :as xs]
+            [webhook-explorer.icons :as icons]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.req-parts :as req-parts]
@@ -27,7 +28,13 @@
 (def ^:private styled
   (styles/style-wrapper
    (fn [theme]
-     {:right-controls {:display "flex"
+     {:failed-container {:display "flex"
+                         :flexDirection "column"
+                         :height "100%"
+                         :alignItems "center"
+                         :justifyContent "center"}
+      :disabled {:color "rgba(0, 0, 0, 0.26)"}
+      :right-controls {:display "flex"
                        :flex-direction "row"
                        :justify-content "flex-end"}
       :capture-container {:width "100%"
@@ -210,12 +217,24 @@
 (defn- postamble [props]
   [styled props postamble*])
 
+(defn- failed-component* [{:keys [styles]}]
+  [:div {:className (obj/get styles "failed-container")}
+   [:> icons/RequestPackageIcon {:style #js {:fontSize 100}
+                                 :color "disabled"}]
+   [:> Typography {:variant "h4"
+                   :class-name (obj/get styles "disabled")}
+    "Failed to load this request package"]])
+
+(defn- failed-component [props]
+  [styled props failed-component*])
+
 (defn- -component* [{:keys [svc state]}]
   [card-list/component
    {:svc svc
     :state state
     :preamble-component preamble
     :postamble-component postamble
+    :failed-component failed-component
     :item-renderer request
     :state->items state->items
     :ready-state :ready

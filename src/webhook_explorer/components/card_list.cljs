@@ -61,6 +61,7 @@
                           item-renderer
                           preamble-component
                           postamble-component
+                          failed-component
                           add-item-title
                           on-add-item
                           state
@@ -70,7 +71,7 @@
   [:div
    {:className (obj/get styles "container")}
    (xs/case state
-     failed-state [:div "Failed"]
+     failed-state [failed-component {:state state :svc svc}]
      ready-state [main-list {:styles styles
                              :state state
                              :svc svc
