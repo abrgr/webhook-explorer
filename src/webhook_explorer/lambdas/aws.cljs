@@ -27,6 +27,18 @@
         (pcatch c))
     c))
 
+(defn s3-put-object [{:keys [key body content-type]}]
+  (let [c (async/chan)]
+    (-> s3
+        (.putObject #js {:Bucket bucket
+                         :Key key
+                         :ContentType (or content-type "application/json")
+                         :Body body})
+        (.promise)
+        (.then #(async/close! c))
+        (pcatch c))
+    c))
+
 (defn js-assoc [o k v]
   (obj/set o k v)
   o)

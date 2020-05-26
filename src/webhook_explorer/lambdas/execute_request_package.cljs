@@ -25,3 +25,21 @@
           :body {:rp rp
                  :res res}})))
     out))
+
+(defmethod h/handler {:method "POST"
+                      :path "/api/request-packages/{name}/executions"}
+  [event context]
+  (let [rp-name (-> event
+                    (get-in [:path-parameters :name])
+                    (js/decodeURIComponent))
+        input-params (-> event (get :body) js->clj)]
+    (u/async-xform
+      (map
+        (u/pass-errors
+          (fn [res]
+            {:is-base64-encoded false
+             :status-code 200
+             :body res})))
+      (ops/write-execution {:request-package-name rp-name
+                            :uid "adam" ; TODO: get real uid
+                            :inputs input-params}))))

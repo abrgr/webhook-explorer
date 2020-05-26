@@ -10,6 +10,9 @@
 
 (def package-folder-prefix "packages/")
 
+(defn executions-folder-prefix [package-name]
+  (str "executions/" package-name "/"))
+
 (defn request-package-folder-key [{:keys [name]}]
   (str package-folder-prefix name "/"))
 
@@ -27,23 +30,42 @@
                   (->> (u/put-close! out)))))
     out))
 
-(defn list-request-packages [{:keys [token]}]
+(defn list-items [{:keys [token prefix]}]
   (let [out (async/chan)]
     (async/go
       (u/let+ [{:keys [items next-token]
-                :as r} (-> {:prefix package-folder-prefix :token token}
+                :as r} (-> {:prefix prefix :token token}
                            aws/s3-list-objects
                            async/<!) :abort [(instance? js/Error r) (u/put-close! out r)]]
               (u/put-close!
                out
-               {:request-packages (mapv
-                                   (fn [n]
-                                     {:name (-> n
-                                                (string/replace-first package-folder-prefix "")
-                                                (string/replace #"/$" ""))})
-                                   items)
+               {:items (map
+                         (fn [n]
+                           (-> n
+                               (string/replace-first package-folder-prefix "")
+                               (string/replace #"/$" "")))
+                         items)
                 :next-token next-token})))
     out))
+
+(defn list-request-packages [{:keys [token]}]
+  (u/async-xform
+    (map
+      (u/pass-errors
+        (fn [{:keys [items next-token]}]
+          {:request-packages (mapv (partial assoc nil :name) items)
+           :next-token next-token})))
+    (list-items {:token token :prefix package-folder-prefix})))
+
+(defn list-request-package-executions [{:keys [request-package-name token]}]
+  (u/async-xform
+    (map
+      (u/pass-errors
+        (fn [{:keys [items next-token]}]
+          {:request-package-executions (mapv (partial assoc nil :id) items)
+           :next-token next-token})))
+    (list-items {:token token
+                 :prefix (executions-folder-prefix request-package-name)})))
 
 (defn exec [{{:keys [qs body headers protocol method host path]} :req}]
   (http/request
@@ -56,6 +78,19 @@
                :hostname host
                :pathname path
                :query (clj->js qs)})}))
+
+(defn write-execution [{:keys [request-package-name uid inputs]}]
+  (let [id (str (random-uuid))  
+        k (str (executions-folder-prefix request-package-name) id)]
+    (u/async-xform-all
+      (map
+        (u/pass-errors
+          (constantly {:id id})))
+      (aws/s3-put-object {:key k
+                          :content-type "application/json"
+                          :body (-> {:uid uid :inputs inputs}
+                                    clj->js
+                                    js/JSON.stringify)}))))
 
 (defn execute [rp inputs]
   (reqp/run-pkg
