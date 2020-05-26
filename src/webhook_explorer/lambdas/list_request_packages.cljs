@@ -8,14 +8,12 @@
 (defmethod h/handler {:method "GET"
                       :path "/api/request-packages"}
   [event context]
-  (let [out (async/chan)]
-    (async/go
-      (u/let+ [token (get-in event [:query-string-parameters :token])
-               res (async/<! (ops/list-request-packages {:token token}))
-               :abort [(instance? js/Error res) (u/put-close! out res)]]
-        (u/put-close!
-         out
-         {:is-base64-encoded false
-          :status-code 200
-          :body res})))
-    out))
+  (let [token (get-in event [:query-string-parameters :token])]
+    (u/async-xform
+      (map
+        (u/pass-errors
+          (fn [res]
+            {:is-base64-encoded false
+             :status-code 200
+             :body res})))
+      (ops/list-request-packages {:token token}))))
