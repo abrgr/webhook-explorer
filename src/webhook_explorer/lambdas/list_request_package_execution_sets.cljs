@@ -1,4 +1,4 @@
-(ns webhook-explorer.lambdas.list-request-package-executions
+(ns webhook-explorer.lambdas.list-request-package-execution-sets
   (:require [debux.cs.core :as d :refer-macros  [dbg dbgn]]
             [clojure.core.async :as async]
             [webhook-explorer.utils :as u]
@@ -19,4 +19,4 @@
             {:is-base64-encoded false
              :status-code 200
              :body res})))
-      (ops/list-request-package-executions {:request-package-name rp-name :token token}))))
+      (ops/list-execution-sets {:request-package-name rp-name :token token}))))

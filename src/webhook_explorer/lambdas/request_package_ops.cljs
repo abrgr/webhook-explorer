@@ -10,8 +10,8 @@
 
 (def package-folder-prefix "packages/")
 
-(defn executions-folder-prefix [package-name]
-  (str "executions/" package-name "/"))
+(defn execution-sets-folder-prefix [package-name]
+  (str "execution-sets/" package-name "/"))
 
 (defn request-package-folder-key [{:keys [name]}]
   (str package-folder-prefix name "/"))
@@ -48,6 +48,14 @@
                 :next-token next-token})))
     out))
 
+(defn make-execution-set-id [uid]
+  (str (u/descending-s3-date) "|" uid "|" (random-uuid)))
+
+(defn read-execution-set-id [id]
+  (-> id
+      (string/split #"[|]")
+      (->> (zipmap [:descending-date :date :uid :id]))))
+
 (defn list-request-packages [{:keys [token]}]
   (u/async-xform
     (map
@@ -57,15 +65,18 @@
            :next-token next-token})))
     (list-items {:token token :prefix package-folder-prefix})))
 
-(defn list-request-package-executions [{:keys [request-package-name token]}]
+(defn list-execution-sets [{:keys [request-package-name token]}]
   (u/async-xform
     (map
       (u/pass-errors
         (fn [{:keys [items next-token]}]
-          {:request-package-executions (mapv (partial assoc nil :id) items)
+          {:execution-sets (mapv #(-> %
+                                      (string/replace #"^.*[/]" "")
+                                      read-execution-set-id
+                                      (dissoc :descending-date)) items)
            :next-token next-token})))
     (list-items {:token token
-                 :prefix (executions-folder-prefix request-package-name)})))
+                 :prefix (execution-sets-folder-prefix request-package-name)})))
 
 (defn exec [{{:keys [qs body headers protocol method host path]} :req}]
   (http/request
@@ -79,9 +90,9 @@
                :pathname path
                :query (clj->js qs)})}))
 
-(defn write-execution [{:keys [request-package-name uid inputs]}]
-  (let [id (str (random-uuid))  
-        k (str (executions-folder-prefix request-package-name) id)]
+(defn write-execution-set [{:keys [request-package-name uid inputs]}]
+  (let [id (make-execution-set-id uid)
+        k (str (execution-sets-folder-prefix request-package-name) id)]
     (u/async-xform-all
       (map
         (u/pass-errors

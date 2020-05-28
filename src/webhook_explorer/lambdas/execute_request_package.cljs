@@ -32,6 +32,7 @@
   (let [rp-name (-> event
                     (get-in [:path-parameters :name])
                     (js/decodeURIComponent))
+        uid (get-in event [:request-context :authorizer :claims :uid])
         input-params (-> event (get :body) js->clj)]
     (u/async-xform
       (map
@@ -40,6 +41,6 @@
             {:is-base64-encoded false
              :status-code 200
              :body res})))
-      (ops/write-execution {:request-package-name rp-name
-                            :uid "adam" ; TODO: get real uid
-                            :inputs input-params}))))
+      (ops/write-execution-set {:request-package-name rp-name
+                                :uid uid
+                                :inputs input-params}))))

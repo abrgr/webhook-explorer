@@ -8,7 +8,7 @@
             [webhook-explorer.lambdas.get-request-package]
             [webhook-explorer.lambdas.execute-request-package]
             [webhook-explorer.lambdas.list-request-packages]
-            [webhook-explorer.lambdas.list-request-package-executions]))
+            [webhook-explorer.lambdas.list-request-package-execution-sets]))
 
 (defn ->clj [js]
   (-> js
