@@ -1,0 +1,26 @@
+{
+  "Records": [
+    {
+      "messageId": "9f77597f-0998-4ec8-9e67-24bb87beda10",
+      "receiptHandle": "AQEBvY/xK0doqO6R6RzJigixQALwRHODX9aXa0jUjYV1s+bn+LRFm35MCvu2lyINHP38xteKwJUNihp1wIJ9R0OOu9FKD/MGWFJ6QpOmVic6DWyvgzNL4DpMcbZJX6NmQ/AGzHdkovTrY/3L8uHuoLetQ/dblEMa1lL4/1TEpLqZRRPo2l/hy68xBAzBqJ77Nr/crBLG47WaAsc2hRYXGa05IWuCsUarz/sH7PDTc2+xUnQEFERdfKysC4uUAY3nlPGMRf1tMKe9/b/lSRgXWyT6B/QSWpRwPEKhpgOW7UdOQ10X1vP9kl8OsNXJbCfkUeQjaKULE2OTO3c031/YbEtcUnZqo05a/UJ+ZjcHtSxCj2DhRJ0wCJSEtN3GcAOjxHJNt/CC3iQxkvrEOf7myJHzhXYoW9z+Agp2C1yTa/Ks60U=",
+      "body": "{\"execution-request-key\":\"execution-sets/my package/7980-08-04T05:46:20.230|2020-05-28T20:15:41.770Z||bc0560c0-5d95-47ab-9677-88cace9b5e9c/requests/0\"}",
+      "md5OfBody": "d8ba55db04603c983beb04cb1a938524",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1523232000000",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1523232000001"
+      },
+      "messageAttributes": {
+        "path": {
+          "dataType": "String",
+          "stringValue": "execute-request-package"
+        }
+      },
+      "md5OfBody": "7b270e59b47ff90a553787216d55d91d",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:MyQueue",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}

@@ -7,21 +7,45 @@
 
 (defmethod h/handler {:method "SQS"
                       :path "execute-request-package"}
-  [event context]
-  (let [out (async/chan)]
-    (async/go
-      (u/let+ [rp-name (-> event
-                           (get-in [:path-parameters :name])
-                           (js/decodeURIComponent))
-               input-params (-> event (get :body) js->clj)
-               rp (async/<! (ops/get-request-package rp-name))
-               :abort [(instance? js/Error rp) (u/put-close! out rp)]
-               res (async/<! (ops/execute rp input-params))
-               :abort [(instance? js/Error res) (u/put-close! out res)]]
-              (u/put-close!
-               out
-               {:is-base64-encoded false
-                :status-code 200
-                :body {:rp rp
-                       :res res}})))
-    out))
+  [{[{{:keys [execution-request-key]} :body}] :records} context]
+  (->> execution-request-key
+       ((fn [k]
+         (->> k
+              ops/get-execution-request
+              (u/async-xform
+                (map
+                  (u/pass-errors
+                    (fn [req]
+                      (assoc req :execution-request-key k))))))))
+       (u/async-xform
+         (map
+           (u/pass-errors
+             (fn [{:keys [request-package-key inputs execution-request-key]}]
+               (->> (ops/get-request-package-by-key request-package-key)
+                    (u/async-xform
+                      (map
+                        (u/pass-errors
+                          (fn [rp]
+                            {:rp rp
+                             :inputs inputs
+                             :execution-request-key execution-request-key})))))))))
+       u/async-unwrap
+       (u/async-xform
+         (map
+           (u/pass-errors
+             (fn [{:keys [rp inputs execution-request-key]}]
+               (->> {:rp rp :inputs inputs}
+                    ops/execute
+                    (u/async-xform
+                      (map
+                        (u/pass-errors
+                          (fn [result]
+                            {:result result
+                             :execution-request-key execution-request-key})))))))))
+       u/async-unwrap
+       (u/async-xform
+         (map
+           (u/pass-errors
+             (fn [x]
+               (ops/write-execution-result x)))))
+       u/async-unwrap))

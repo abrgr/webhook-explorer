@@ -2,7 +2,9 @@
   (:require-macros [webhook-explorer.utils :refer [let+]])
   (:require [debux.cs.core :as d :refer-macros  [dbg dbgn]]
             [clojure.core.async :as async]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [camel-snake-kebab.core :as csk]
+            [camel-snake-kebab.extras :as cske]))
 
 (defn put-close! [c v]
   "Put v to port c and close port c."
@@ -14,6 +16,18 @@
     (if (instance? js/Error x)
       x
       (f x))))
+
+(defn spy-chan [n in-ch]
+  "Return a new channel that receives all items from in-ch. Items are printed with 'n' prefix as they are read."
+  (let [out (async/chan)]
+    (async/go-loop [x (async/<! in-ch)]
+     (when x
+       (println n x)
+       (async/>! out x)
+       (recur (async/<! in-ch)))
+     (println n "CLOSING")
+     (async/close! out))
+    out))
 
 (defn async-xform [xf in-ch]
   "Return a new channel that will receive values from in-ch transformed by the transducer xf."
@@ -84,3 +98,27 @@
                            (pad-start (str %) padding "0")
                            %))))))
         (string/join))))
+
+(defn js->kebab-clj [js]
+  (-> js
+      (js->clj :keywordize-keys true)
+      (->> (cske/transform-keys csk/->kebab-case-keyword))))
+
+(defn clj->camel-js [c]
+  (-> c
+      (->> (cske/transform-keys csk/->camelCaseKeyword))
+      clj->js))
+
+(defn json->kebab-clj [j]
+  (try
+    (some-> j (js/JSON.parse) js->kebab-clj)
+    (catch js/Error e
+      (.error js/console {:msg "Failed to parse json"
+                          :json j
+                          :error e})
+      (throw e))))
+
+(defn clj->camel-json [c]
+  (some-> c
+          clj->camel-js
+          (js/JSON.stringify)))

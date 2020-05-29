@@ -1,0 +1,5 @@
+#!/bin/sh
+
+event="${1}"
+docker_basedir="$(readlink -f "$(dirname "$(readlink -f "$0")")/..")"
+exec docker-compose run --rm sam  local invoke GenericHandler --event "${event}" --docker-volume-basedir "${docker_basedir}" --env-vars sam-env.json
