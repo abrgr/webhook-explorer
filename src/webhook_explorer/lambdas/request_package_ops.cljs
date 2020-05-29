@@ -27,6 +27,7 @@
                rp-json (async/<! (aws/s3-get-object rp-key)) :abort [(instance? js/Error rp-json) (u/put-close! out rp-json)]]
               (-> (.parse js/JSON rp-json)
                   (js->clj :keywordize-keys true)
+                  (assoc :key rp-key)
                   (->> (u/put-close! out)))))
     out))
 
@@ -40,11 +41,11 @@
               (u/put-close!
                out
                {:items (map
-                         (fn [n]
-                           (-> n
-                               (string/replace-first package-folder-prefix "")
-                               (string/replace #"/$" "")))
-                         items)
+                        (fn [n]
+                          (-> n
+                              (string/replace-first package-folder-prefix "")
+                              (string/replace #"/$" "")))
+                        items)
                 :next-token next-token})))
     out))
 
@@ -58,25 +59,25 @@
 
 (defn list-request-packages [{:keys [token]}]
   (u/async-xform
-    (map
-      (u/pass-errors
-        (fn [{:keys [items next-token]}]
-          {:request-packages (mapv (partial assoc nil :name) items)
-           :next-token next-token})))
-    (list-items {:token token :prefix package-folder-prefix})))
+   (map
+    (u/pass-errors
+     (fn [{:keys [items next-token]}]
+       {:request-packages (mapv (partial assoc nil :name) items)
+        :next-token next-token})))
+   (list-items {:token token :prefix package-folder-prefix})))
 
 (defn list-execution-sets [{:keys [request-package-name token]}]
   (u/async-xform
-    (map
-      (u/pass-errors
-        (fn [{:keys [items next-token]}]
-          {:execution-sets (mapv #(-> %
-                                      (string/replace #"^.*[/]" "")
-                                      read-execution-set-id
-                                      (dissoc :descending-date)) items)
-           :next-token next-token})))
-    (list-items {:token token
-                 :prefix (execution-sets-folder-prefix request-package-name)})))
+   (map
+    (u/pass-errors
+     (fn [{:keys [items next-token]}]
+       {:execution-sets (mapv #(-> %
+                                   (string/replace #"^.*[/]" "")
+                                   read-execution-set-id
+                                   (dissoc :descending-date)) items)
+        :next-token next-token})))
+   (list-items {:token token
+                :prefix (execution-sets-folder-prefix request-package-name)})))
 
 (defn exec [{{:keys [qs body headers protocol method host path]} :req}]
   (http/request
@@ -90,18 +91,42 @@
                :pathname path
                :query (clj->js qs)})}))
 
-(defn write-execution-set [{:keys [request-package-name uid inputs]}]
+(defn write-execution-set [{:keys [request-package uid inputs]}]
   (let [id (make-execution-set-id uid)
-        k (str (execution-sets-folder-prefix request-package-name) id)]
-    (u/async-xform-all
-      (map
-        (u/pass-errors
-          (constantly {:id id})))
-      (aws/s3-put-object {:key k
-                          :content-type "application/json"
-                          :body (-> {:uid uid :inputs inputs}
-                                    clj->js
-                                    js/JSON.stringify)}))))
+        k (str (execution-sets-folder-prefix (:name request-package)) id "/requests/")]
+    (->> inputs
+         (map-indexed
+          (fn [idx input]
+            (let [this-key (str k idx)]
+              {:body (js/JSON.stringify #js {:execution-request-key this-key})
+               :key this-key
+               :path "execute-request-package"
+               :data (-> {:uid uid
+                          :request-package-key (:key request-package)
+                          :inputs input}
+                         clj->js
+                         js/JSON.stringify)})))
+         (map
+          (fn [msg]
+            (let [c (async/chan)]
+              (async/go
+                (async/<! (aws/s3-put-object
+                           {:key (:key msg)
+                            :content-type "application/json"
+                            :body (:data msg)}))
+                (u/put-close! c msg))
+              c)))
+         async/merge
+         (async/into [])
+         (u/async-xform
+          (map
+           (u/pass-errors aws/sqs-put-all)))
+         u/async-unwrap
+         (u/async-xform
+          (map
+           (u/pass-errors
+            (fn [results]
+              {:id id})))))))
 
 (defn execute [rp inputs]
   (reqp/run-pkg

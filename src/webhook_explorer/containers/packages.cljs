@@ -45,12 +45,12 @@
       (case col
         :edit
         [:> Button
-          {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
-          "Edit"]
+         {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
+         "Edit"]
         :executions
         [:> Button
-          {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
-          "Executions"]
+         {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
+         "Executions"]
         cell-data))]))
 
 (defn- no-rows-renderer [styles]
@@ -64,7 +64,7 @@
 
 (defn- -component [{:keys [styles svc state]}]
   (xs/case state
-    :ready 
+    :ready
     (let [{{:keys [packages next-req error]} :context} state]
       [table-page/component
        {:create-btn-content "Create request package"
@@ -81,8 +81,8 @@
 
 (defn component []
   [xs/with-svc {:svc app-state/packages}
-    (fn [state]
-      [styled
-       {:svc app-state/packages
-        :state state}
-       -component])])
+   (fn [state]
+     [styled
+      {:svc app-state/packages
+       :state state}
+      -component])])

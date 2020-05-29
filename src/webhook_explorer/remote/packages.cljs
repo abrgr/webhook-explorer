@@ -26,9 +26,9 @@
                            :query-params (select-keys params [:token])}))
            {:keys [error body]} res]
        (or
-         error
-         (when-not (:request-packages body) (js/Error. "Failure"))
-         body)))))
+        error
+        (when-not (:request-packages body) (js/Error. "Failure"))
+        body)))))
 
 (defn load-package [{:keys [name]}]
   (putil/chan->promise
@@ -38,6 +38,6 @@
                            :path (str "request-packages/" (js/encodeURIComponent name))}))
            {:keys [error] {:keys [request-package]} :body} res]
        (or
-         error
-         (when-not request-package (js/Error. "Failure"))
-         request-package)))))
+        error
+        (when-not request-package (js/Error. "Failure"))
+        request-package)))))

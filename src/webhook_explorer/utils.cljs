@@ -26,10 +26,21 @@
   (async-xform xf (async/into [] in-ch)))
 
 (defn async-do [doer in-ch]
-  "Apply doer for each item in in-ch."
+  "Apply doer to one item in in-ch."
   (async/take! in-ch doer))
 
+(defn async-unwrap [in-ch]
+  (let [out-ch (async/chan)]
+    (async/go
+      (-> in-ch
+          (->> (async/into []))
+          async/<!
+          async/merge
+          (async/pipe out-ch)))
+    out-ch))
+
 (defn pad-start [s n pad-char]
+  "Left-pad string s with pad-char to length s"
   (let [padding (max 0 (- n (count s)))]
     (-> (repeat padding pad-char)
         vec
@@ -54,21 +65,22 @@
    {:str-fun (memfn toISOString)}])
 
 (defn descending-s3-date
+  "Returns a string that will sort in descending order by date followed by | followed by an iso string"
   ([]
    (descending-s3-date (js/Date.)))
   ([d]
-    (->> descending-s3-date-parts
-         (map
-           (fn [{:keys [fun str-fun max padding xform const]
-                 :or {xform identity}}]
-             (cond
-               const const
-               str-fun (str-fun d)
-               :else (-> d
-                         fun
-                         xform
-                         (->> (- max))
-                         (#(if padding
-                             (pad-start (str %) padding "0")
-                             %))))))
-         (string/join))))
+   (->> descending-s3-date-parts
+        (map
+         (fn [{:keys [fun str-fun max padding xform const]
+               :or {xform identity}}]
+           (cond
+             const const
+             str-fun (str-fun d)
+             :else (-> d
+                       fun
+                       xform
+                       (->> (- max))
+                       (#(if padding
+                           (pad-start (str %) padding "0")
+                           %))))))
+        (string/join))))

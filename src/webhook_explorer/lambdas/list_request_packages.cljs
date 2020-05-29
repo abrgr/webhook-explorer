@@ -10,10 +10,10 @@
   [event context]
   (let [token (get-in event [:query-string-parameters :token])]
     (u/async-xform
-      (map
-        (u/pass-errors
-          (fn [res]
-            {:is-base64-encoded false
-             :status-code 200
-             :body res})))
-      (ops/list-request-packages {:token token}))))
+     (map
+      (u/pass-errors
+       (fn [res]
+         {:is-base64-encoded false
+          :status-code 200
+          :body res})))
+     (ops/list-request-packages {:token token}))))

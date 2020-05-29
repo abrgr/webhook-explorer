@@ -2,7 +2,7 @@
   (:require [reagent.core :as r]
             [clojure.string :as s]
             [webhook-explorer.state-machines.handlers :as handler-machine]
-            [webhook-explorer.state-machines.packages :as packages-machine]  
+            [webhook-explorer.state-machines.packages :as packages-machine]
             [webhook-explorer.state-machines.edit-package :as edit-package-machine]))
 
 (defonce nav (r/atom {:page :home

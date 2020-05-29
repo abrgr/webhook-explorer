@@ -13,10 +13,10 @@
                     (get-in [:path-parameters :name])
                     (js/decodeURIComponent))]
     (u/async-xform
-      (map
-        (u/pass-errors
-          (fn [res]
-            {:is-base64-encoded false
-             :status-code 200
-             :body res})))
-      (ops/list-execution-sets {:request-package-name rp-name :token token}))))
+     (map
+      (u/pass-errors
+       (fn [res]
+         {:is-base64-encoded false
+          :status-code 200
+          :body res})))
+     (ops/list-execution-sets {:request-package-name rp-name :token token}))))

@@ -15,9 +15,9 @@
                            (js/decodeURIComponent))
                rp (async/<! (ops/get-request-package rp-name))
                :abort [(instance? js/Error rp) (u/put-close! out rp)]]
-        (u/put-close!
-         out
-         {:is-base64-encoded false
-          :status-code 200
-          :body {:request-package rp}})))
+              (u/put-close!
+               out
+               {:is-base64-encoded false
+                :status-code 200
+                :body {:request-package rp}})))
     out))
