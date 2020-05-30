@@ -103,14 +103,13 @@
                        :inputs input})})))
          (map
           (fn [msg]
-            (let [c (async/chan)]
-              (async/go
-                (async/<! (aws/s3-put-object
-                           {:key (:key msg)
-                            :content-type "application/json"
-                            :body (:data msg)}))
-                (u/put-close! c msg))
-              c)))
+            (->> (aws/s3-put-object
+                   {:key (:key msg)
+                    :content-type "application/json"
+                    :body (:data msg)})
+                 (u/async-xform
+                   (map
+                     (u/pass-errors (constantly msg)))))))
          async/merge
          (async/into [])
          (u/async-xform
