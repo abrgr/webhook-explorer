@@ -10,7 +10,8 @@
   :lambda {:target :node-library
            :output-to "lambdas/handler.js"
            :exports {:handler webhook-explorer.lambdas.core/handler}
-           :js-options {:js-provider :shadow
+           :js-options {:closure-defines {goog.DEBUG true}
+                        :js-provider :shadow
                         :keep-native-requires true
                         :keep-as-require #{"aws-sdk" "jsonpath" "mustache"}}}
   :dev {:target :browser

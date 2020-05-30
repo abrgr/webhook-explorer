@@ -12,7 +12,7 @@
                     (get-in [:path-parameters :name])
                     (js/decodeURIComponent))
         uid (get-in event [:request-context :authorizer :claims :uid])
-        input-params (get-in event [:body :inputs])]
+        input-params (get-in event [:body :request-package-execution :inputs])]
     (->> (ops/get-request-package rp-name)
          (u/async-xform
           (map
@@ -28,4 +28,4 @@
             (fn [res]
               {:is-base64-encoded false
                :status-code 200
-               :body res})))))))
+               :body {:request-package-execution res}})))))))

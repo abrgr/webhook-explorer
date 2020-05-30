@@ -76,8 +76,8 @@
 (s/def :xstate/config
   (s/cat :parallel (s/? #{'||})
          :any-state (s/? :xstate/any-state)
-         :init-state (s/cat :ornament #{'>}
-                            :state :xstate/state)
+         :init-state (s/? (s/cat :ornament #{'>}
+                                 :state :xstate/state))
          :unadorned-states (s/* (s/cat :state :xstate/state))
          :final-states (s/* (s/cat :ornament #{'x}
                                    :state :xstate/state))))
@@ -174,9 +174,9 @@
 (s/def :xstate-js/machine
   (s/keys
    :req-un [:xstate-js/id
-            :xstate-js/initial
             :xstate-js/states]
-   :opt-un [:xstate-js/on
+   :opt-un [:xstate-js/initial
+            :xstate-js/on
             :xstate-js/type]))
 
 (s/def :xstate-test/init

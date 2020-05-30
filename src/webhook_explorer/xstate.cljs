@@ -1,13 +1,16 @@
 (ns webhook-explorer.xstate
   (:require-macros [webhook-explorer.xstate :refer [case]])
   (:require [clojure.spec.alpha :as s]
+            [clojure.walk :as walk]
             [webhook-explorer.specs.xstate]
             ["xstate" :as xs]
             [goog.object :as obj]
             [reagent.core :as r]))
 
 (declare state-def->js-state
-         cfg->machine*)
+         cfg->machine*
+         js-state->clj
+         js-svc->clj)
 
 (defn state-def->state-names [{:keys [transition delayed-transition]}]
   (->> (concat transition delayed-transition)
@@ -152,8 +155,7 @@
   :ret :xstate-js/states)
 
 (defn cfg->machine* [{:keys [parallel any-state init-state unadorned-states final-states]}]
-  (cond-> {:initial (-> init-state :state :id name)
-           :states (->> (concat [init-state] unadorned-states)
+  (cond-> {:states (->> (concat (if init-state [init-state] []) unadorned-states)
                         (map :state)
                         (map state->js-states)
                         (concat (map
@@ -167,6 +169,7 @@
                                   :state)
                                  final-states))
                         (apply merge))}
+    init-state (assoc :initial (-> init-state :state :id name))
     (some? any-state) (assoc :on (-> any-state :def state-def->js-transition :on))
     (some? any-state) (update :states (partial merge-with #(or %1 %2)) (->> any-state
                                                                             :def
@@ -229,9 +232,20 @@
 
 (def assign xs/assign)
 
+(defn js-svc->clj
+  ([svc]
+   (js-svc->clj svc {}))
+  ([svc extra-meta]
+   (let [machine (obj/get svc "machine")
+         config (-> machine (obj/get "config") (js->clj :keywordize-keys true))
+         opts (-> machine (obj/get "options") (js->clj :keywordize-keys true))]
+     ^{:js-cfg (update extra-meta :js-cfg merge config opts (js->clj (obj/get svc "options")))}
+     {:svc svc})))
+
 (defn interpret-and-start [machine opts]
-  (let [svc ^{:js-cfg (-> machine meta (update :js-cfg merge opts))}
-        {:svc (xs/interpret (:m machine))}]
+  (let [svc (js-svc->clj
+             (xs/interpret (:m machine) (clj->js (assoc opts :devTools js/goog.DEBUG)))
+             (meta machine))]
     (.start (:svc svc))
     svc))
 
@@ -274,12 +288,22 @@
     (obj/get evt "_clj") ; anything sent with our send function has _clj
     (js->clj evt :keywordize-keys true)))
 
+(defn js-inner-machine->clj [form]
+
+  (if (instance? xs/Interpreter form)
+    (assoc
+     (js-svc->clj form)
+     :state
+     (js-state->clj (obj/get form "state")))
+    form))
+
 (defn js-state->clj [state]
-  (reduce
-   (fn [acc k]
-     (assoc acc (keyword k) (js->clj (obj/get state k) :keywordize-keys true)))
-   ^{:js-state state} {}
-   ["context" "activities" "actions" "meta" "value" "event" "done" "changed"]))
+  (-> ["context" "activities" "actions" "meta" "value" "event" "done" "changed"]
+      (->> (reduce
+            (fn [acc k]
+              (assoc acc (keyword k) (js->clj (obj/get state k) :keywordize-keys true)))
+            ^{:js-state state} {}))
+      (update :context (partial walk/postwalk js-inner-machine->clj))))
 
 (defn clj-state->js [state]
   (-> state meta :js-state))
@@ -336,6 +360,34 @@
       clj->js
       xs/assign))
 
+(defn spawn
+  ([actor]
+   (xs/spawn (:m actor)))
+  ([actor opts]
+   (xs/spawn (:m actor) (clj->js opts))))
+
+(defn clj-evt->js [evt]
+  (cond
+    (ident? evt) (name evt)
+    (string? evt) evt
+    (map? evt) (->> evt
+                    (mapcat
+                     (fn [[k v]]
+                       [(name k) (if (ident? v) (name v) v)]))
+                    (concat ["_clj" evt])
+                    (apply js-obj))))
+
+(defn send-event [event target-fn]
+  (xs/send
+   (if (fn? event)
+     (fn [ctx evt]
+       (-> (event
+            (js->clj ctx :keywordize-keys true)
+            (js->clj evt :keywordize-keys true))
+           clj-evt->js))
+     event)
+   #js {:to (fn [ctx] (target-fn (js->clj ctx :keywordize-keys true)))}))
+
 (defn replace-cfg [m cfg]
   (machine {:cfg cfg :opts (js->clj (obj/get (:m m) "options") :keywordize-keys true)}))
 
@@ -358,17 +410,7 @@
       (r/as-element (child @s)))))
 
 (defn send [{:keys [svc]} evt]
-  (.send
-   svc
-   (cond
-     (ident? evt) (name evt)
-     (string? evt) evt
-     (map? evt) (->> evt
-                     (mapcat
-                      (fn [[k v]]
-                        [(name k) (if (ident? v) (name v) v)]))
-                     (concat ["_clj" evt])
-                     (apply js-obj)))))
+  (.send svc (clj-evt->js evt)))
 
 (defn matches? [state test-state]
-  (.matches (clj-state->js state) (name test-state)))
+  (and state (.matches (clj-state->js state) (name test-state))))

@@ -10,7 +10,13 @@
             [webhook-explorer.icons :as icons]
             [webhook-explorer.actions.handlers :as handlers-actions]
             [webhook-explorer.components.table-page :as table-page]
+            ["@material-ui/core/Dialog" :default Dialog]
+            ["@material-ui/core/DialogActions" :default DialogActions]
+            ["@material-ui/core/DialogContent" :default DialogContent]
+            ["@material-ui/core/DialogContentText" :default DialogContentText]
+            ["@material-ui/core/DialogTitle" :default DialogTitle]
             ["@material-ui/core/Button" :default Button]
+            ["@material-ui/core/TextField" :default TextField]
             ["@material-ui/core/Typography" :default Typography]
             ["@material-ui/core/CircularProgress" :default CircularProgress]
             ["@material-ui/core/TableCell" :default TableCell]))
@@ -58,22 +64,57 @@
                     :className (obj/get styles "disabled")}
      "No executions yet"]]))
 
+(defn- execution-dialog [{:keys [svc state]}]
+  [:> Dialog {:open (not (xs/matches? state :hidden))
+              :onClose #(xs/send svc {:type :cancel-execution})
+              :fullWidth true
+              :PaperProps #js {:style #js {"height" "75%"}}}
+   [:> DialogTitle "Execute"]
+   [:> DialogContent
+    (xs/case state
+      :loading
+      [:> CircularProgress]
+      :error
+      "Error"
+      :ready
+      [:<>
+       [:> DialogContentText
+        "Execute this request package with these inputs:"]
+       (for [[input value] (get-in state [:context :execution-inputs])]
+         ^{:key input}
+         [:> TextField
+          {:label input
+           :fullWidth true
+           :value value
+           :on-change #(xs/send svc {:type :update-execution-input :k input :v (obj/getValueByKeys % #js ["target" "value"])})}])])]
+   [:> DialogActions
+    [:> Button {:onClick #(xs/send svc {:type :cancel-execution})}
+     "Cancel"]
+    [:> Button {:onClick #(xs/send svc {:type :execute})
+                :color "primary"}
+     "Execute"]]])
+
 (defn- -component [{:keys [styles svc state]}]
-  (xs/case state
-    :ready
-    (let [{{:keys [executions next-req error]} :context} state]
-      [table-page/component
-       {:create-btn-content "Create execution"
-        :on-create routes/nav-to-new-package
-        :row-height row-height
-        :items executions
-        :next-req next-req
-        :load-more-items #(do (xs/send svc {:type :load-executions})
-                              nil)
-        :get-row-by-idx (partial get executions)
-        :cols cols
-        :no-rows-renderer (partial no-rows-renderer styles)
-        :cell-renderer cell-renderer}])))
+  [:<>
+   [execution-dialog
+    {:styles styles
+     :svc svc
+     :state (get-in state [:context :execute-ref :state])}]
+   (xs/case state
+     :ready
+     (let [{{:keys [executions next-req error]} :context} state]
+       [table-page/component
+        {:create-btn-content "Create execution"
+         :on-create #(xs/send svc {:type :show-execution})
+         :row-height row-height
+         :items executions
+         :next-req next-req
+         :load-more-items #(do (xs/send svc {:type :load-executions})
+                               nil)
+         :get-row-by-idx (partial get executions)
+         :cols cols
+         :no-rows-renderer (partial no-rows-renderer styles)
+         :cell-renderer cell-renderer}]))])
 
 (defn component []
   [xs/with-svc {:svc app-state/package-executions}
