@@ -14,6 +14,7 @@
             [webhook-explorer.containers.handlers :as handlers]
             [webhook-explorer.containers.edit-handler :as edit-handler]
             [webhook-explorer.containers.packages :as packages]
+            [webhook-explorer.containers.package-executions :as package-executions]
             [webhook-explorer.containers.edit-package :as edit-package]
             [webhook-explorer.containers.req :as req]
             [webhook-explorer.containers.auth :as auth]))
@@ -27,6 +28,7 @@
       :handlers [handlers/component]
       :edit-handler [edit-handler/component]
       :packages [packages/component]
+      :package-executions [package-executions/component]
       :edit-package [edit-package/component]
       :req [req/component params]
       [auth/component])))

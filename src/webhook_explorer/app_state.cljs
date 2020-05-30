@@ -3,6 +3,7 @@
             [clojure.string :as s]
             [webhook-explorer.state-machines.handlers :as handler-machine]
             [webhook-explorer.state-machines.packages :as packages-machine]
+            [webhook-explorer.state-machines.package-executions :as package-executions-machine]
             [webhook-explorer.state-machines.edit-package :as edit-package-machine]))
 
 (defonce nav (r/atom {:page :home
@@ -32,6 +33,8 @@
 (defonce edit-package (edit-package-machine/svc))
 
 (defonce packages (packages-machine/svc))
+
+(defonce package-executions (package-executions-machine/svc))
 
 (defn logged-in? []
   (some? (:cognito-session @auth)))

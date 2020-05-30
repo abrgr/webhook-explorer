@@ -41,3 +41,16 @@
         error
         (when-not request-package (js/Error. "Failure"))
         request-package)))))
+
+(defn load-executions [rp-name params]
+  (putil/chan->promise
+   (async/go
+     (let [res (async/<! (http-utils/req
+                          {:method :get
+                           :path (str "request-packages/" (js/encodeURIComponent rp-name) "/executions")
+                           :query-params (select-keys params [:token])}))
+           {:keys [error body]} res]
+       (or
+        error
+        (when-not (:execution-sets body) (js/Error. "Failure"))
+        body)))))

@@ -91,6 +91,10 @@
   (reset! app-state/nav {:page :edit-package})
   (xs/send app-state/edit-package {:type :reset :params {:name name}}))
 
+(defextroute hist package-executions-path nav-to-package-executions [require-login] "/packages/:name/executions" [name]
+  (reset! app-state/nav {:page :package-executions})
+  (xs/send app-state/package-executions {:type :reset :params {:name name}}))
+
 (defn init! []
   (defroute "*" []
     (secretary/dispatch! (auth-path)))

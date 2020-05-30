@@ -19,12 +19,12 @@
 (defn get-request-package-by-key [rp-key]
   (->> (aws/s3-get-object rp-key)
        (u/async-xform
-         (map
-           (u/pass-errors
-             (fn [rp-json]
-               (-> rp-json
-                   u/json->kebab-clj
-                   (assoc :key rp-key))))))))
+        (map
+         (u/pass-errors
+          (fn [rp-json]
+            (-> rp-json
+                u/json->kebab-clj
+                (assoc :key rp-key))))))))
 
 (defn get-request-package [rp-name]
   (let [out (async/chan)]
@@ -34,9 +34,9 @@
                                          aws/s3-list-objects
                                          async/<!) :abort [(instance? js/Error r) (u/put-close! out r)]
                rp-key (first items)]
-        (-> rp-key
-            get-request-package-by-key
-            (async/pipe out))))
+              (-> rp-key
+                  get-request-package-by-key
+                  (async/pipe out))))
     out))
 
 (defn list-items [{:keys [token prefix]}]
@@ -89,18 +89,18 @@
 
 (defn write-execution-set [{:keys [request-package uid inputs]}]
   (let [id (make-execution-set-id uid)
-        k (str (execution-sets-folder-prefix (:name request-package)) id "/requests/")]
+        k (str (execution-sets-folder-prefix (:name request-package)) id "/executions/")]
     (->> inputs
          (map-indexed
           (fn [idx input]
-            (let [this-key (str k idx)]
+            (let [this-key (str k idx "/request")]
               {:body (js/JSON.stringify #js {:execution-request-key this-key})
                :key this-key
                :path "execute-request-package"
                :data (u/clj->camel-json
-                       {:uid uid
-                        :request-package-key (:key request-package)
-                        :inputs input})})))
+                      {:uid uid
+                       :request-package-key (:key request-package)
+                       :inputs input})})))
          (map
           (fn [msg]
             (let [c (async/chan)]
@@ -124,17 +124,17 @@
               {:id id})))))))
 
 (defn write-execution-result [{:keys [execution-request-key result]}]
-  (let [result-key (str execution-request-key "/result")]
+  (let [result-key (string/replace execution-request-key #"/[^/]+$" "/result")]
     (aws/s3-put-object
-      {:key result-key
-       :content-type "application/json"
-       :body (u/clj->camel-json result)})))
+     {:key result-key
+      :content-type "application/json"
+      :body (u/clj->camel-json result)})))
 
 (defn get-execution-request [execution-request-key]
   (->> (aws/s3-get-object execution-request-key)
        (u/async-xform
-         (map
-           (u/pass-errors u/json->kebab-clj)))))
+        (map
+         (u/pass-errors u/json->kebab-clj)))))
 
 (defn exec [{{:keys [qs body headers protocol method host path]} :req :as req}]
   (http/request
@@ -150,9 +150,9 @@
 
 (defn execute [{:keys [rp inputs]}]
   (->> (reqp/run-pkg
-         {:inputs inputs
-          :exec exec
-          :pkg rp})
+        {:inputs inputs
+         :exec exec
+         :pkg rp})
        (u/async-xform-all
-         (map
-           (u/pass-errors (constantly {:results {:success true}}))))))
+        (map
+         (u/pass-errors (constantly {:results {:success true}}))))))

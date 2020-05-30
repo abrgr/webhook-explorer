@@ -1,7 +1,7 @@
 (ns webhook-explorer.lambdas.core
   (:require [clojure.core.async :as async]
             [camel-snake-kebab.core :as csk]
-            [camel-snake-kebab.extras :as cske]  
+            [camel-snake-kebab.extras :as cske]
             [webhook-explorer.utils :as u]
             [webhook-explorer.promise-utils :as putil]
             [webhook-explorer.lambdas.handler :as h]

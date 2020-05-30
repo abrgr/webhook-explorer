@@ -21,12 +21,12 @@
   "Return a new channel that receives all items from in-ch. Items are printed with 'n' prefix as they are read."
   (let [out (async/chan)]
     (async/go-loop [x (async/<! in-ch)]
-     (when x
-       (println n x)
-       (async/>! out x)
-       (recur (async/<! in-ch)))
-     (println n "CLOSING")
-     (async/close! out))
+      (when x
+        (println n x)
+        (async/>! out x)
+        (recur (async/<! in-ch)))
+      (println n "CLOSING")
+      (async/close! out))
     out))
 
 (defn async-xform [xf in-ch]

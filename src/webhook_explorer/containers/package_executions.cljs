@@ -1,4 +1,4 @@
-(ns webhook-explorer.containers.packages
+(ns webhook-explorer.containers.package-executions
   (:require [clojure.core.async :as async]
             [clojure.string :as string]
             [reagent.core :as r]
@@ -29,9 +29,9 @@
 
 (def ^:private cols
   (array-map
-   :name {:label "Request Package"}
-   :edit {:label "Edit"}
-   :executions {:label "Executions"}))
+   :date {:label "Date"}
+   :uid {:label "User ID"}
+   :id {:label "ID"}))
 
 (defn- cell-renderer [{:keys [col empty-row? row-data cell-data]}]
   (r/as-element
@@ -43,14 +43,10 @@
       (when (= col :name)
         [:> CircularProgress])
       (case col
-        :edit
+        :id
         [:> Button
          {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
-         "Edit"]
-        :executions
-        [:> Button
-         {:on-click #(routes/nav-to-package-executions {:name (:name row-data)})}
-         "Executions"]
+         cell-data]
         cell-data))]))
 
 (defn- no-rows-renderer [styles]
@@ -60,29 +56,29 @@
                                  :color "disabled"}]
     [:> Typography {:variant "h4"
                     :className (obj/get styles "disabled")}
-     "No request packages created yet"]]))
+     "No executions yet"]]))
 
 (defn- -component [{:keys [styles svc state]}]
   (xs/case state
     :ready
-    (let [{{:keys [packages next-req error]} :context} state]
+    (let [{{:keys [executions next-req error]} :context} state]
       [table-page/component
-       {:create-btn-content "Create request package"
+       {:create-btn-content "Create execution"
         :on-create routes/nav-to-new-package
         :row-height row-height
-        :items packages
+        :items executions
         :next-req next-req
-        :load-more-items #(do (xs/send svc {:type :load-packages})
+        :load-more-items #(do (xs/send svc {:type :load-executions})
                               nil)
-        :get-row-by-idx (partial get packages)
+        :get-row-by-idx (partial get executions)
         :cols cols
         :no-rows-renderer (partial no-rows-renderer styles)
         :cell-renderer cell-renderer}])))
 
 (defn component []
-  [xs/with-svc {:svc app-state/packages}
+  [xs/with-svc {:svc app-state/package-executions}
    (fn [state]
      [styled
-      {:svc app-state/packages
+      {:svc app-state/package-executions
        :state state}
       -component])])
