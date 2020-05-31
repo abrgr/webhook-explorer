@@ -790,7 +790,7 @@ Resources:
                 requestTemplates:
                   application/json: "{\"statusCode\": 200}"
                 type: "mock"
-          /api/request-packages/{name}/executions/{executionId}:
+          /api/request-packages/{name}/executions/{id}:
             get:
               responses: {}
               security:

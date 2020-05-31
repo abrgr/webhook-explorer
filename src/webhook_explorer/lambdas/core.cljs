@@ -9,6 +9,7 @@
             [webhook-explorer.lambdas.enqueue-request-package-execution]
             [webhook-explorer.lambdas.list-request-packages]
             [webhook-explorer.lambdas.list-request-package-execution-sets]
+            [webhook-explorer.lambdas.list-request-package-execution-set-executions]
             [webhook-explorer.lambdas.execute-request-package]))
 
 (defn send-result [cb res]
@@ -39,7 +40,16 @@
       (update :body u/json->kebab-clj)
       (update :records (partial map #(update % :body u/json->kebab-clj)))))
 
-(def xform-event (comp xform-sqs-event xform-json-body))
+(defn xform-path-params [evt]
+  (update
+   evt
+   :path-parameters
+   (partial
+    into
+    {}
+    (map (fn [[k v]] [k (js/decodeURIComponent v)])))))
+
+(def xform-event (comp xform-sqs-event xform-json-body xform-path-params))
 
 (defn handler [event context cb]
   (let [evt (-> event u/js->kebab-clj xform-event)

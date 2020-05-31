@@ -13,6 +13,20 @@
 (defn execution-sets-folder-prefix [package-name]
   (str "execution-sets/" package-name "/"))
 
+(defn execution-set-executions-prefix [package-name execution-set-id]
+  (str (execution-sets-folder-prefix package-name)
+       execution-set-id
+       "/executions/"))
+
+(defn execution-prefix->execution-request-key [execution-prefix]
+  (str execution-prefix "request"))
+
+(defn execution-prefix->execution-result-key [execution-prefix]
+  (str execution-prefix "result"))
+
+(defn execution-request-key->execution-result-key [execution-request-key]
+  (string/replace execution-request-key #"/[^/]+$" "/result"))
+
 (defn request-package-folder-key [{:keys [name]}]
   (str package-folder-prefix name "/"))
 
@@ -57,8 +71,15 @@
                 :next-token next-token})))
     out))
 
-(defn make-execution-set-id [uid]
-  (str (u/descending-s3-date) "|" uid "|" (random-uuid)))
+(defn make-execution-set-id
+  ([uid]
+   (make-execution-set-id uid (js/Date.) (random-uuid)))
+  ([uid date id]
+   (str (u/descending-s3-date (if (string? date) (js/Date. date) date))
+        "|"
+        uid
+        "|"
+        id)))
 
 (defn read-execution-set-id [id]
   (-> id
@@ -79,17 +100,22 @@
    (map
     (u/pass-errors
      (fn [{:keys [items next-token]}]
-       {:execution-sets (mapv #(-> %
-                                   (string/replace #"^.*[/]" "")
-                                   read-execution-set-id
-                                   (dissoc :descending-date)) items)
+       {:execution-sets (mapv
+                         (fn [k]
+                           (-> k
+                               (string/replace #"^.*[/]" "")
+                               (#(-> %
+                                     read-execution-set-id
+                                     (assoc :execution-set-id %)))
+                               (dissoc :descending-date)))
+                         items)
         :next-token next-token})))
    (list-items {:token token
                 :prefix (execution-sets-folder-prefix request-package-name)})))
 
 (defn write-execution-set [{:keys [request-package uid inputs]}]
   (let [id (make-execution-set-id uid)
-        k (str (execution-sets-folder-prefix (:name request-package)) id "/executions/")]
+        k (execution-set-executions-prefix (:name request-package) id)]
     (->> inputs
          (map-indexed
           (fn [idx input]
@@ -104,12 +130,12 @@
          (map
           (fn [msg]
             (->> (aws/s3-put-object
-                   {:key (:key msg)
-                    :content-type "application/json"
-                    :body (:data msg)})
+                  {:key (:key msg)
+                   :content-type "application/json"
+                   :body (:data msg)})
                  (u/async-xform
-                   (map
-                     (u/pass-errors (constantly msg)))))))
+                  (map
+                   (u/pass-errors (constantly msg)))))))
          async/merge
          (async/into [])
          (u/async-xform
@@ -123,11 +149,44 @@
               {:id id})))))))
 
 (defn write-execution-result [{:keys [execution-request-key result]}]
-  (let [result-key (string/replace execution-request-key #"/[^/]+$" "/result")]
+  (let [result-key (execution-request-key->execution-result-key execution-request-key)]
     (aws/s3-put-object
      {:key result-key
       :content-type "application/json"
       :body (u/clj->camel-json result)})))
+
+(defn list-execution-set-executions [{:keys [request-package-name
+                                             execution-set-id
+                                             token]}]
+  (->> (list-items {:token token
+                    :prefix (execution-set-executions-prefix
+                             request-package-name
+                             execution-set-id)})
+       (u/async-xform
+        (map
+         (u/pass-errors
+          (fn [{:keys [items next-token]}]
+            (->> items
+                 (map
+                  (fn [execution-prefix]
+                    (let [prefix (str execution-prefix "/")
+                          c (async/chan)
+                          request-url-c (aws/s3-signed-get-object
+                                         {:key (execution-prefix->execution-request-key prefix)})
+                          result-url-c (aws/s3-signed-get-object
+                                        {:key (execution-prefix->execution-result-key prefix)})]
+                      (async/go
+                        (let [result {:request-url (async/<! request-url-c)
+                                      :result-url (async/<! result-url-c)}]
+                          (u/put-close! c result)))
+                      c)))
+                 async/merge
+                 (u/async-xform-all
+                  (map
+                   (fn [executions]
+                     {:executions executions
+                      :next-token next-token}))))))))
+       u/async-unwrap))
 
 (defn get-execution-request [execution-request-key]
   (->> (aws/s3-get-object execution-request-key)

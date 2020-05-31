@@ -67,6 +67,18 @@
         (pcatch c))
     c))
 
+(defn s3-signed-get-object [{:keys [key expires] :or {expires 3600}}]
+  (let [c (async/chan)]
+    (.getSignedUrl
+     s3
+     "getObject"
+     #js {:Bucket env/bucket
+          :Key key
+          :Expires expires}
+     (fn [err url]
+       (u/put-close! c (or err url))))
+    c))
+
 (defn sqs-send-batch
   ([items]
    (sqs-send-batch 0))
