@@ -2,6 +2,7 @@
   (:require [webhook-explorer.xstate :as xs]
             [webhook-explorer.env :as env]
             [webhook-explorer.remote.packages :as remote-pkgs]
+            [webhook-explorer.nav-to :as nav-to]
             [goog.object :as obj]))
 
 (def machine
@@ -48,7 +49,11 @@
       (xs/xform-ctx-from-evt
        {:ctx-prop :execution-inputs}
        (fn [inputs {:keys [k v] :as e}]
-         (assoc inputs k v)))}
+         (assoc inputs k v)))
+      :nav-to-execution
+      (xs/->action
+        (fn [ctx evt]
+          (nav-to/go :package-execution (select-keys (:params ctx) [:name :id]))))}
      :services
      {:load-package (fn [{{:keys [name]} :params}]
                       (remote-pkgs/load-package {:name name}))

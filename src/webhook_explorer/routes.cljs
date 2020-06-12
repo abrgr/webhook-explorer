@@ -31,7 +31,7 @@
        (secretary/dispatch! (str js/window.location.pathname js/window.location.search))))
     (.setEnabled true)))
 
-(defextroute hist auth-path nav-to-auth nil "/" [query-params]
+(defextroute hist :auth auth-path nav-to-auth nil "/" [query-params]
   (reset! app-state/nav {:page :auth
                          :params (select-keys query-params [:failure])}))
 
@@ -40,18 +40,19 @@
     (nav-to-auth)
     true))
 
-(defextroute hist reqs-path nav-to-reqs [require-login] "/reqs" [query-params]
+(defextroute hist :reqs reqs-path nav-to-reqs [require-login] "/reqs" [query-params]
   (reset! app-state/nav {:page :reqs
                          :params (select-keys query-params [:latest-date :all :fav :pub :tag])}))
 
-(defextroute hist users-path nav-to-users [require-login] "/users" []
+(defextroute hist :users users-path nav-to-users [require-login] "/users" []
   (reset! app-state/nav {:page :users}))
 
-(defextroute hist handlers-path nav-to-handlers [require-login] "/handlers" []
+(defextroute hist :handlers handlers-path nav-to-handlers [require-login] "/handlers" []
   (reset! app-state/nav {:page :handlers}))
 
 (defextroute
   hist
+  :edit-handler
   edit-handler-path
   nav-to-edit-handler
   [require-login]
@@ -68,6 +69,7 @@
 
 (defextroute
   hist
+  :new-handler
   new-handler-path
   nav-to-new-handler
   [require-login]
@@ -76,24 +78,28 @@
   (reset! app-state/nav {:page :edit-handler})
   (xs/send app-state/handler {:type :reset}))
 
-(defextroute hist req-path nav-to-req [require-login] "/req/:slug" [slug]
+(defextroute hist :req req-path nav-to-req [require-login] "/req/:slug" [slug]
   (reset! app-state/nav {:page :req :params {:slug slug}}))
 
-(defextroute hist packages-path nav-to-packages [require-login] "/packages" []
+(defextroute hist :packages packages-path nav-to-packages [require-login] "/packages" []
   (reset! app-state/nav {:page :packages})
   (xs/send app-state/packages {:type :reset}))
 
-(defextroute hist new-package-path nav-to-new-package [require-login] "/packages/new" []
+(defextroute hist :new-package new-package-path nav-to-new-package [require-login] "/packages/new" []
   (reset! app-state/nav {:page :edit-package})
   (xs/send app-state/edit-package {:type :reset}))
 
-(defextroute hist edit-package-path nav-to-edit-package [require-login] "/packages/edit/:name" [name]
+(defextroute hist :edit-package edit-package-path nav-to-edit-package [require-login] "/packages/edit/:name" [name]
   (reset! app-state/nav {:page :edit-package})
   (xs/send app-state/edit-package {:type :reset :params {:name name}}))
 
-(defextroute hist package-executions-path nav-to-package-executions [require-login] "/packages/:name/executions" [name]
+(defextroute hist :package-executions package-executions-path nav-to-package-executions [require-login] "/packages/:name/executions" [name]
   (reset! app-state/nav {:page :package-executions})
   (xs/send app-state/package-executions {:type :reset :params {:name name}}))
+
+(defextroute hist :package-execution package-execution-path nav-to-package-execution [require-login] "/packages/:name/executions/:id" [name id]
+  (reset! app-state/nav {:page :package-execution})
+  (xs/send app-state/package-execution {:type :reset :params {:name name :id id}}))
 
 (defn init! []
   (defroute "*" []

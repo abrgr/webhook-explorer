@@ -347,6 +347,10 @@
       clj->js
       xs/assign))
 
+(defn ->action [f]
+  (fn [ctx evt]
+    (f (js->clj ctx :keywordize-keys true) (evt->clj evt))))
+
 (defn update-ctx-from-evt [{:keys [ctx-prop updater-prop static-ctx]}]
   (-> static-ctx
       (assoc
