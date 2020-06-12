@@ -7,7 +7,9 @@
     `(do (defroute ~path-name ~matcher ~params ~body-with-actions)
          (defmethod webhook-explorer.nav-to/go
            ~page-id
-           [_# args#]
-           (.setToken ~hist (apply ~path-name args#)))
+           ([_#]
+             (.setToken ~hist (~path-name)))
+           ([_# args#]
+             (.setToken ~hist (~path-name args#))))
          (defn ~nav-name [& args#]
            (.setToken ~hist (apply ~path-name args#))))))

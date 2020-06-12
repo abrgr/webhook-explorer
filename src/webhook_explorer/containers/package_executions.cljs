@@ -5,7 +5,7 @@
             [goog.object :as obj]
             [webhook-explorer.app-state :as app-state]
             [webhook-explorer.xstate :as xs]
-            [webhook-explorer.routes :as routes]
+            [webhook-explorer.nav-to :as nav-to]
             [webhook-explorer.styles :as styles]
             [webhook-explorer.icons :as icons]
             [webhook-explorer.actions.handlers :as handlers-actions]
@@ -37,22 +37,25 @@
   (array-map
    :date {:label "Date"}
    :uid {:label "User ID"}
-   :id {:label "ID"}))
+   :link {:label "Open"}))
 
-(defn- cell-renderer [{:keys [col empty-row? row-data cell-data]}]
+(defn- cell-renderer [pkg-name {:keys [col empty-row? row-data cell-data]}]
   (r/as-element
    [:> TableCell
     {:component "div"
      :variant "body"
      :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
     (if empty-row?
-      (when (= col :name)
+      (when (= col :date)
         [:> CircularProgress])
       (case col
-        :id
+        :link
         [:> Button
-         {:on-click #(routes/nav-to-edit-package {:name (:name row-data)})}
-         cell-data]
+         {:on-click #(nav-to/go
+                       :package-execution
+                       {:name pkg-name
+                        :id (:execution-set-id row-data)})}
+         "Open execution"]
         cell-data))]))
 
 (defn- no-rows-renderer [styles]
@@ -101,8 +104,9 @@
      :svc svc
      :state (get-in state [:context :execute-ref :state])}]
    (xs/case state
-     :ready
-     (let [{{:keys [executions next-req error]} :context} state]
+     :error
+     "Error retrieving executions"
+     (let [{{:keys [executions next-req error params]} :context} state]
        [table-page/component
         {:create-btn-content "Create execution"
          :on-create #(xs/send svc {:type :show-execution})
@@ -114,7 +118,7 @@
          :get-row-by-idx (partial get executions)
          :cols cols
          :no-rows-renderer (partial no-rows-renderer styles)
-         :cell-renderer cell-renderer}]))])
+         :cell-renderer (partial cell-renderer (:name params))}]))])
 
 (defn component []
   [xs/with-svc {:svc app-state/package-executions}
