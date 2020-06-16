@@ -37,7 +37,6 @@
 
 (defonce package-executions (package-executions-machine/svc))
 
-; TODO: switch to dynamic var for now, set by execute-package
 (defonce package-execution (package-execution-machine/svc))
 
 (defn logged-in? []

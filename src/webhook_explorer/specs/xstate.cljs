@@ -2,10 +2,10 @@
   (:require [clojure.spec.alpha :as s]
             [goog.object :as obj]))
 
-(quote a/b)
 (s/def :xstate/transition-to
   (s/cat :to-glyph #{'->}
          :target (s/alt :self #{'*self*}
+                        :forbidden #{'*forbidden*}
                         :ext-self #{(symbol "*ext*" "*self*")} ; TODO: why does the compiler complain when using '*ext*/*self*? Still tries to look up the namespace even when quoted
                         :other keyword?)
          :mods (s/* (s/alt :action (s/cat :action-glyph #{'!}
@@ -33,8 +33,12 @@
                            :machine (s/cat
                                      :on-done (s/cat :on-done-glyph #{:on-done}
                                                      :to :xstate/transition-to)
-                                     :data (s/cat :data-glyph #{:data}
-                                                  :data map?))))))
+                                     :data (s/?
+                                             (s/cat :data-glyph #{:data}
+                                                    :data (s/map-of
+                                                            keyword?
+                                                            (s/fspec
+                                                              :args (s/cat :ctx any? :evt map?))))))))))
 (s/def :xstate/entry-actions
   (s/spec
    (s/cat :entry-glyph #{'>!}
@@ -129,10 +133,14 @@
 (s/def :xstate-js/actions
   (s/coll-of string?))
 (s/def :xstate-js/transition
-  (s/keys
-   :opt-un [:xstate-js/target
-            :xstate-js/cond
-            :xstate-js/actions]))
+  (s/or
+    :forbidden
+    undefined?
+    :regular
+    (s/keys
+       :opt-un [:xstate-js/target
+                :xstate-js/cond
+                :xstate-js/actions])))
 (s/def :xstate-js/src string?)
 (s/def :xstate-js/invocation
   (s/keys
@@ -198,7 +206,7 @@
   (s/and
    :xstate/runtime-config
    (s/keys
-    :req-un [:xstate/machine
+    :req-un [:xstate/machine]
+    :opt-un [:xstate-test/ctx 
              :xstate-test/ctx-specs
-             :xstate-test/ctx-spec
-             :xstate-test/ctx])))
+             :xstate-test/ctx-spec])))

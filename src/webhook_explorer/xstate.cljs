@@ -10,7 +10,8 @@
 (declare state-def->js-state
          cfg->machine*
          js-state->clj
-         js-svc->clj)
+         js-svc->clj
+         machine?)
 
 (defn state-def->state-names [{:keys [transition delayed-transition]}]
   (->> (concat transition delayed-transition)
@@ -37,12 +38,14 @@
 (defn transition-to->js-transition [{:keys [mods] [target-type target] :target}]
   (let [actions (get-mods-by-type :action :action mods)
         guards (get-mods-by-type :guard :guard mods)]
-    (cond-> {}
-      (= target-type :other) (assoc :target (name target))
-      (= target-type :ext-self) (assoc :internal false)
-      (namespace target) (assoc :internal (not= (namespace target) '*ext*))
-      (not-empty actions) (assoc :actions actions)
-      (not-empty guards) (assoc :guards guards))))
+    (if (= target-type :forbidden)
+      js/undefined
+      (cond-> {}
+        (= target-type :other) (assoc :target (name target))
+        (= target-type :ext-self) (assoc :internal false)
+        (namespace target) (assoc :internal (not= (namespace target) '*ext*))
+        (not-empty actions) (assoc :actions actions)
+        (not-empty guards) (assoc :guards guards)))))
 
 (defn transition-to->js-transition* [to]
   (transition-to->js-transition (s/conform :xstate/transition-to to)))
@@ -52,8 +55,9 @@
   :ret :xstate-js/transition)
 
 (defn transition->js-on [{:keys [to] [event-type event] :event}]
-  {(if (= event-type :transient) "" event)
-   [(transition-to->js-transition to)]})
+  (let [transition (transition-to->js-transition to)]
+    {(if (= event-type :transient) "" event)
+     (if transition [transition] transition)}))
 
 (defn transition->js-on* [transition]
   (transition->js-on (s/conform :xstate/transition transition)))
@@ -70,15 +74,28 @@
    :on-error :onError
    :data :data})
 
+(defn evt->clj [evt]
+  (if (obj/containsKey evt "_clj")
+    (obj/get evt "_clj") ; anything sent with our send function has _clj
+    (js->clj evt :keywordize-keys true)))
+
 (defn handlers->js [handlers]
   (reduce
    (fn [js-handlers [handler-type {:keys [to data]}]]
      (assoc
       js-handlers
       (get js-handler-by-type handler-type)
-      (if to
-        (transition-to->js-transition to)
-        data)))
+      (cond
+        to (transition-to->js-transition to)
+        data (->> data
+                  (into
+                    {}
+                    (map
+                      (fn [[k data-fn]]
+                        [k
+                         (fn [js-ctx js-evt]
+                           (data-fn (js->clj js-ctx :keywordize-keys true) (evt->clj js-evt)))])))
+                  clj->js))))
    {}
    handlers))
 
@@ -167,7 +184,8 @@
                                     %)
                                   state->js-states
                                   :state)
-                                 final-states))
+                                 final-states)
+                                [{}])
                         (apply merge))}
     init-state (assoc :initial (-> init-state :state :id name))
     (some? any-state) (assoc :on (-> any-state :def state-def->js-transition :on))
@@ -249,19 +267,24 @@
     (.start (:svc svc))
     svc))
 
-(defn- xform-opt-fns [opt-fns]
-  (->> opt-fns
-       (map
-        (fn [[n f]]
-          [n
-           (if (fn? f)
-             (fn
-               ([ctx evt]
-                (f (js->clj ctx :keywordize-keys true) (js->clj evt :keywordize-keys true)))
-               ([ctx evt meta]
-                (f (js->clj ctx :keywordize-keys true) (js->clj evt :keywordize-keys true) (js->clj meta :keywordize-keys true))))
-             f)]))
-       (into {})))
+(defn- make-opt-val-fn [f]
+  (fn
+    ([ctx evt]
+     (f (js->clj ctx :keywordize-keys true) (evt->clj evt)))
+    ([ctx evt meta]
+     (f (js->clj ctx :keywordize-keys true) (evt->clj evt) (js->clj meta :keywordize-keys true)))))
+
+(defn- xform-machine-opt-vals [opt-vals]
+  (into
+    {}
+    (map
+     (fn [[n v]]
+       [n
+        (cond
+          (fn? v) (make-opt-val-fn v)
+          (machine? v) (:m v)
+          :else v)]))
+    opt-vals))
 
 (defn machine->js-cfg [machine]
   (-> machine
@@ -277,16 +300,14 @@
   {:m (cond-> (xs/Machine
                (clj->js cfg)
                (-> opts
-                   (update :guards xform-opt-fns)
-                   (update :actions xform-opt-fns)
-                   (update :services xform-opt-fns)
+                   (update :guards xform-machine-opt-vals)
+                   (update :actions xform-machine-opt-vals)
+                   (update :services xform-machine-opt-vals)
                    clj->js))
         (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
 
-(defn evt->clj [evt]
-  (if (obj/containsKey evt "_clj")
-    (obj/get evt "_clj") ; anything sent with our send function has _clj
-    (js->clj evt :keywordize-keys true)))
+(defn machine? [maybe-machine]
+  ((every-pred :m (comp :js-cfg meta)) maybe-machine))
 
 (defn js-inner-machine->clj [form]
 
@@ -308,9 +329,16 @@
 (defn clj-state->js [state]
   (-> state meta :js-state))
 
+(defn shallow-clj->js [obj]
+  (apply
+    js-obj
+    (mapcat
+      (fn [[k v]] [(name k) v])
+      obj)))
+
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
-      clj->js
+      shallow-clj->js
       xs/assign))
 
 (defn assign-ctx-from-evt [{:keys [evt-prop evt-path ctx-prop static-ctx]}]
@@ -319,7 +347,7 @@
                         (-> evt
                             evt->clj
                             (get-in (if evt-prop [evt-prop] evt-path)))))
-      clj->js
+      shallow-clj->js
       xs/assign))
 
 (defn xform-ctx [{:keys [ctx-prop static-ctx]} update-fn & update-args]
@@ -331,7 +359,7 @@
           update-fn
           (obj/get ctx (name ctx-prop))
           update-args)))
-      clj->js
+      shallow-clj->js
       xs/assign))
 
 (defn xform-ctx-from-evt [{:keys [ctx-prop static-ctx]} update-fn & update-args]
@@ -344,7 +372,7 @@
           (obj/get ctx (name ctx-prop))
           (evt->clj evt)
           update-args)))
-      clj->js
+      shallow-clj->js
       xs/assign))
 
 (defn ->action [f]
@@ -361,7 +389,7 @@
             update-fn
             (obj/get ctx (name ctx-prop))
             update-args))))
-      clj->js
+      shallow-clj->js
       xs/assign))
 
 (defn spawn

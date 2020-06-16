@@ -97,9 +97,9 @@
   (reset! app-state/nav {:page :package-executions})
   (xs/send app-state/package-executions {:type :reset :params {:name name}}))
 
-(defextroute hist :package-execution package-execution-path nav-to-package-execution [require-login] "/packages/:name/executions/:id" [name id]
+(defextroute hist :package-execution package-execution-path nav-to-package-execution [require-login] "/packages/:name/executions/:execution-id" [name execution-id]
   (reset! app-state/nav {:page :package-execution})
-  (xs/send app-state/package-execution {:type :reset :params {:name name :id id}}))
+  (xs/send app-state/package-execution {:type :reset :params {:name name :execution-id execution-id}}))
 
 (defn init! []
   (defroute "*" []

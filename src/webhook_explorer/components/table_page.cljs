@@ -31,11 +31,12 @@
                            no-rows-renderer
                            cell-renderer]}]
   [:div {:className (obj/get styles "container")}
-   [:div {:className (obj/get styles "right-align")}
-    [:> Button {:variant "contained"
-                :color "primary"
-                :onClick on-create}
-     create-btn-content]]
+   (when create-btn-content
+     [:div {:className (obj/get styles "right-align")}
+      [:> Button {:variant "contained"
+                  :color "primary"
+                  :onClick on-create}
+       create-btn-content]])
    [infinite-table/component
     {:row-height row-height
      :items items
