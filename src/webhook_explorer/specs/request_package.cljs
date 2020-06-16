@@ -12,7 +12,7 @@
   (s/map-of string? string?))
 (s/def :request-package.req/body string?)
 (s/def :request-package.req/req
-  (s/keys :req-un [:request-package.req/headers
+  (s/keys :opt-un [:request-package.req/headers
                    :request-package.req/qs
                    :request-package.req/body]))
 (s/def :request-package/req

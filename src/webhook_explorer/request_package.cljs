@@ -92,6 +92,8 @@
 (s/def ::req string?)
 (s/def ::template-var string?)
 (s/def ::plural boolean?)
+(s/def ::trigger+dep
+  (s/keys :req-un [::trigger ::req]))
 (s/def ::dep
   (s/keys :req-un [::trigger ::req ::template-var ::plural]))
 (s/fdef dependency-graph
@@ -251,10 +253,14 @@
               (map (partial merge singles))))))))
 
 (s/fdef dep-val-seq
-  :args (s/cat :req-deps (s/coll-of string?)
+  :args (s/cat :req-deps (s/coll-of ::dep)
                :inputs (s/map-of string? string?)
-               :dep->vals (s/map-of string? (s/or :single string?
-                                                  :many (s/coll-of string?))))
+               :trigger+dep->vals (s/map-of
+                                    ::trigger+dep
+                                    (s/map-of
+                                      string?
+                                      (s/or :single string?
+                                            :many (s/coll-of string?)))))
   :ret (s/coll-of (s/map-of string? string?)))
 
 (defn render [this template-values]
@@ -274,7 +280,7 @@
      {}
      (map
       (fn [[json-path {:keys [template-var]}]]
-        [template-var (.query jp js-body (name json-path))]))
+        [template-var (js->clj (.query jp js-body (name json-path)))]))
      body-caps)))
 
 (defn headers->captures [headers-caps headers]
@@ -307,6 +313,7 @@
        (into
         {}
         (map (fn [[k v]] [k (render v dep-vals)])))
+       (#(do (println "pre-req" % req) %))
        exec
        (resp-chan->captures req)))
 

@@ -28,14 +28,16 @@
     (let [r1 (rp/dependency-graph {:name "g"
                                    :input-template-vars []
                                    :reqs [{:name "a"
-                                           :req {:headers {:h1 "{{hi}}"
-                                                           :h2 "{{{every.req1.a}}}"}
-                                                 :qs {:q1 "{{#all.req1.b}}{{.}}{{/all.req1.b}}"}
-                                                 :body "{{every.req2.c}}"}}
+                                           :req {:headers {"h1" "{{hi}}"
+                                                           "h2" "{{{every.req1.a}}}"}
+                                                 :qs {"q1" "{{#all.req1.b}}{{.}}{{/all.req1.b}}"}
+                                                 :body "{{every.req2.c}}"}
+                                           :captures {}}
                                           {:name "b"
-                                           :req {:headers {:h1 "{{every.req3.a}}"}
-                                                 :qs {:q1 "{{all.req1.this_thing_here}}"}
-                                                 :body "{{every.req1.c}}"}}]})]
+                                           :req {:headers {"h1" "{{every.req3.a}}"}
+                                                 :qs {"q1" "{{all.req1.this_thing_here}}"}
+                                                 :body "{{every.req1.c}}"}
+                                           :captures {}}]})]
       (is (= r1 {"a" #{{:trigger :every :req "req1" :template-var "a" :plural false}
                        {:trigger :all :req "req1" :template-var "b" :plural true}
                        {:trigger :every :req "req2" :template-var "c" :plural false}}
@@ -111,11 +113,15 @@
                 (let [reqs (reduce
                             (fn [reqs [req-name items]]
                               (if (not-empty items)
-                                (conj reqs {:name req-name :req (items-to-req items)})
+                                (conj reqs {:name req-name
+                                            :req (items-to-req items)
+                                            :captures {}})
                                 reqs))
                             []
                             input-deps)
-                      result (rp/dependency-graph {:reqs reqs})
+                      result (rp/dependency-graph {:name "test"
+                                                   :input-template-vars []
+                                                   :reqs reqs})
                       expected (input-deps-to-deps input-deps)]
                   (is (= result expected)))))
 
@@ -153,11 +159,15 @@
            rp-ch  (rp/run-pkg {:inputs {"inp_a" "hello"}
                                :exec (fn [req]
                                        (async/go
-                                         (swap! invocations conj {:req req})
+                                         ; TODO: we check for our req-names because we end up getting exercised to validate our spec. How do you opt a specific function out of instrumentation?
+                                         (when (#{"a" "b" "c"} (:name req))
+                                           (swap! invocations conj {:req req}))
                                          (if (= (:name req) "a")
                                            {:headers {"x" ["val1" "val2" "val3"]}}
                                            {:body {"x" "hello"}})))
-                               :pkg {:reqs reqs}})]
+                               :pkg {:name "test"
+                                     :input-template-vars #{"inp_a"}
+                                     :reqs reqs}})]
        (async/take!
         rp-ch
         (fn []
