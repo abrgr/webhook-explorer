@@ -8,8 +8,8 @@
          (defmethod webhook-explorer.nav-to/go
            ~page-id
            ([_#]
-             (.setToken ~hist (~path-name)))
+            (.setToken ~hist (~path-name)))
            ([_# args#]
-             (.setToken ~hist (~path-name args#))))
+            (.setToken ~hist (~path-name args#))))
          (defn ~nav-name [& args#]
            (.setToken ~hist (apply ~path-name args#))))))

@@ -1,5 +1,5 @@
 (ns webhook-explorer.remote.s3-load
-  (:require [clojure.string :as string] 
+  (:require [clojure.string :as string]
             [goog.object :as obj]
             [goog.Uri :as uri]
             [goog.uri.utils :as uu]

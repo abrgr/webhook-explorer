@@ -43,13 +43,27 @@
   "Apply doer to one item in in-ch."
   (async/take! in-ch doer))
 
+(defn async-merge-ordered
+  ([in-chs]
+   (async-merge-ordered in-chs (async/chan)))
+  ([[in-ch & in-chs] out-ch]
+   (async/go
+     (if in-ch
+       (loop [i (async/<! in-ch)]
+         (if i
+           (do (async/>! out-ch i)
+               (recur (async/<! in-ch)))
+           (async-merge-ordered in-chs out-ch)))
+       (async/close! out-ch)))
+   out-ch))
+
 (defn async-unwrap [in-ch]
   (let [out-ch (async/chan)]
     (async/go
       (-> in-ch
           (->> (async/into []))
           async/<!
-          async/merge
+          async-merge-ordered
           (async/pipe out-ch)))
     out-ch))
 

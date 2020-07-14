@@ -256,11 +256,11 @@
   :args (s/cat :req-deps (s/coll-of ::dep)
                :inputs (s/map-of string? string?)
                :trigger+dep->vals (s/map-of
-                                    ::trigger+dep
-                                    (s/map-of
-                                      string?
-                                      (s/or :single string?
-                                            :many (s/coll-of string?)))))
+                                   ::trigger+dep
+                                   (s/map-of
+                                    string?
+                                    (s/or :single string?
+                                          :many (s/coll-of string?)))))
   :ret (s/coll-of (s/map-of string? string?)))
 
 (defn render [this template-values]
