@@ -9,9 +9,9 @@
                         :ext-self #{(symbol "*ext*" "*self*")} ; TODO: why does the compiler complain when using '*ext*/*self*? Still tries to look up the namespace even when quoted
                         :other keyword?)
          :mods (s/* (s/alt :action (s/cat :action-glyph #{'!}
-                                          :action keyword?)
-                           :guard (s/cat :guard-glyph #{'|}
-                                         :guard keyword?)))))
+                                          :action keyword?)))
+         :guard (s/? (s/cat :guard-glyph #{'|}
+                            :guard keyword?))))
 (s/def :xstate/transition
   (s/spec
    (s/cat :event (s/alt :real keyword? :transient #{'*transient*})
@@ -34,11 +34,11 @@
                                      :on-done (s/cat :on-done-glyph #{:on-done}
                                                      :to :xstate/transition-to)
                                      :data (s/?
-                                             (s/cat :data-glyph #{:data}
-                                                    :data (s/map-of
-                                                            keyword?
-                                                            (s/fspec
-                                                              :args (s/cat :ctx any? :evt map?))))))))))
+                                            (s/cat :data-glyph #{:data}
+                                                   :data (s/map-of
+                                                          keyword?
+                                                          (s/fspec
+                                                           :args (s/cat :ctx any? :evt map?))))))))))
 (s/def :xstate/entry-actions
   (s/spec
    (s/cat :entry-glyph #{'>!}
@@ -94,16 +94,16 @@
    keyword?
    (s/and (partial instance? js/Object)
           #(obj/containsKey % "type"))))
-(s/def :xstate.runtime-config.guard/cond map?)
-(s/def :xstate.runtime-config.guard/state map?)
+(s/def :xstate.runtime-config.guards/cond map?)
+(s/def :xstate.runtime-config.guards/state map?)
 (s/def :xstate.runtime-config/guards
   (s/map-of
    keyword?
    (s/fspec
     :args (s/cat :ctx any?
                  :evt map?
-                 :meta (s/keys :req-un [:xstate.runtime-config.guard/cond
-                                        :xstate.runtime-config.guard/state]))
+                 :meta (s/keys :req-un [:xstate.runtime-config.guards/cond
+                                        :xstate.runtime-config.guards/state]))
     :ret boolean?)))
 
 (s/def :xstate.runtime-config/activities
@@ -134,13 +134,13 @@
   (s/coll-of string?))
 (s/def :xstate-js/transition
   (s/or
-    :forbidden
-    undefined?
-    :regular
-    (s/keys
-       :opt-un [:xstate-js/target
-                :xstate-js/cond
-                :xstate-js/actions])))
+   :forbidden
+   undefined?
+   :regular
+   (s/keys
+    :opt-un [:xstate-js/target
+             :xstate-js/cond
+             :xstate-js/actions])))
 (s/def :xstate-js/src string?)
 (s/def :xstate-js/invocation
   (s/keys
@@ -207,6 +207,6 @@
    :xstate/runtime-config
    (s/keys
     :req-un [:xstate/machine]
-    :opt-un [:xstate-test/ctx 
+    :opt-un [:xstate-test/ctx
              :xstate-test/ctx-specs
              :xstate-test/ctx-spec])))

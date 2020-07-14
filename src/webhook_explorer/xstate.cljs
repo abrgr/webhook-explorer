@@ -35,9 +35,8 @@
        (map v)
        (map name)))
 
-(defn transition-to->js-transition [{:keys [mods] [target-type target] :target}]
-  (let [actions (get-mods-by-type :action :action mods)
-        guards (get-mods-by-type :guard :guard mods)]
+(defn transition-to->js-transition [{:keys [mods] {:keys [guard]} :guard [target-type target] :target}]
+  (let [actions (get-mods-by-type :action :action mods)]
     (if (= target-type :forbidden)
       js/undefined
       (cond-> {}
@@ -45,7 +44,7 @@
         (= target-type :ext-self) (assoc :internal false)
         (namespace target) (assoc :internal (not= (namespace target) '*ext*))
         (not-empty actions) (assoc :actions actions)
-        (not-empty guards) (assoc :guards guards)))))
+        guard (assoc :cond (name guard))))))
 
 (defn transition-to->js-transition* [to]
   (transition-to->js-transition (s/conform :xstate/transition-to to)))
@@ -89,12 +88,12 @@
         to (transition-to->js-transition to)
         data (->> data
                   (into
-                    {}
-                    (map
-                      (fn [[k data-fn]]
-                        [k
-                         (fn [js-ctx js-evt]
-                           (data-fn (js->clj js-ctx :keywordize-keys true) (evt->clj js-evt)))])))
+                   {}
+                   (map
+                    (fn [[k data-fn]]
+                      [k
+                       (fn [js-ctx js-evt]
+                         (data-fn (js->clj js-ctx :keywordize-keys true) (evt->clj js-evt)))])))
                   clj->js))))
    {}
    handlers))
@@ -276,15 +275,15 @@
 
 (defn- xform-machine-opt-vals [opt-vals]
   (into
-    {}
-    (map
-     (fn [[n v]]
-       [n
-        (cond
-          (fn? v) (make-opt-val-fn v)
-          (machine? v) (:m v)
-          :else v)]))
-    opt-vals))
+   {}
+   (map
+    (fn [[n v]]
+      [n
+       (cond
+         (fn? v) (make-opt-val-fn v)
+         (machine? v) (:m v)
+         :else v)]))
+   opt-vals))
 
 (defn machine->js-cfg [machine]
   (-> machine
@@ -295,6 +294,13 @@
   :args (s/cat :machine :xstate/machine)
   :ret :xstate-js/machine)
 
+(defn shallow-clj->js [obj]
+  (apply
+   js-obj
+   (mapcat
+    (fn [[k v]] [(name k) v])
+    obj)))
+
 (defn machine [{:keys [cfg opts]}]
   ^{:js-cfg (merge cfg opts)}
   {:m (cond-> (xs/Machine
@@ -304,7 +310,7 @@
                    (update :actions xform-machine-opt-vals)
                    (update :services xform-machine-opt-vals)
                    clj->js))
-        (:ctx opts) (.withContext (-> opts :ctx clj->js)))})
+        (:ctx opts) (.withContext (-> opts :ctx shallow-clj->js)))})
 
 (defn machine? [maybe-machine]
   ((every-pred :m (comp :js-cfg meta)) maybe-machine))
@@ -328,13 +334,6 @@
 
 (defn clj-state->js [state]
   (-> state meta :js-state))
-
-(defn shallow-clj->js [obj]
-  (apply
-    js-obj
-    (mapcat
-      (fn [[k v]] [(name k) v])
-      obj)))
 
 (defn assign-ctx [{:keys [ctx-prop static-ctx]}]
   (-> {ctx-prop (constantly static-ctx)}
