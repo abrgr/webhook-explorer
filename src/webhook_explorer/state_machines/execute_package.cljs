@@ -52,8 +52,8 @@
          (assoc inputs k v)))
       :nav-to-execution
       (xs/->action
-        (fn [ctx evt]
-          (nav-to/go :package-execution (select-keys (:params ctx) [:name :id]))))}
+       (fn [ctx evt]
+         (nav-to/go :package-execution (select-keys (:params ctx) [:name :id]))))}
      :services
      {:load-package (fn [{{:keys [name]} :params}]
                       (remote-pkgs/load-package {:name name}))

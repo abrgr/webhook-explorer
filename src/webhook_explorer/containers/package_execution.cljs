@@ -39,25 +39,17 @@
    :uid {:label "User ID"}
    :link {:label "Open"}))
 
+; NOTE: this is very messy. We prefix every col with in/ or out/ and then we resolve the path into cell-data here.
 (defn- cell-renderer [pkg-name {:keys [col empty-row? row-data cell-data]}]
-  (println row-data)
   (r/as-element
    [:> TableCell
     {:component "div"
      :variant "body"
      :style #js {:height row-height :display "flex" :flex 1 :alignItems "center"}}
     (if empty-row?
-      (when (= col :date)
+      (when (= col :in/date)
         [:> CircularProgress])
-      (case col
-        :link
-        [:> Button
-         {:on-click #(nav-to/go
-                       :package-execution
-                       {:name pkg-name
-                        :id (:execution-set-id row-data)})}
-         "Open execution"]
-        cell-data))]))
+      (get-in row-data (conj ({"in" [:req :inputs] "out" [:res :results]} (namespace col)) (-> col name keyword))))]))
 
 (defn- no-rows-renderer [styles]
   (r/as-element
@@ -69,12 +61,19 @@
      "No executions yet"]
     [:> CircularProgress]]))
 
+(defn prefix-map-keys [m prefix]
+  (->> m
+       (map
+        (fn [[k v]]
+          [(keyword prefix (name k)) v]))
+       (into {})))
+
 (defn- -component [{:keys [styles svc state]}]
   [:<>
    (xs/case state
      :error
      "Error retrieving execution set"
-     (let [{{:keys [executions next-req error params]} :context} state]
+     (let [{{:keys [executions cols next-req error params]} :context} state]
        [table-page/component
         {:row-height row-height
          :items executions
@@ -82,7 +81,7 @@
          :load-more-items #(do (xs/send svc {:type :load-executions})
                                nil)
          :get-row-by-idx (partial get executions)
-         :cols cols
+         :cols (merge (-> :inputs cols (prefix-map-keys "in")) (-> :outputs cols (prefix-map-keys "out")))
          :no-rows-renderer (partial no-rows-renderer styles)
          :cell-renderer (partial cell-renderer (:name params))}]))])
 
